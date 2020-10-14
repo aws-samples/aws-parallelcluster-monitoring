@@ -9,7 +9,7 @@
 #source the AWS ParallelCluster profile
 . /etc/parallelcluster/cfnconfig
 
-yum -y install docker glibc-static
+yum -y install docker
 service docker start
 chkconfig docker on
 usermod -a -G docker $cfn_cluster_user
@@ -22,11 +22,6 @@ chmod +x /usr/local/bin/docker-compose
 case "${cfn_node_type}" in
 MasterServer)
 
-# Install docker to simplify Prometheus & Grafana deployment
-yum -y install git golang-bin make
-
-wget "${2}"
-
 #Unsupported
 #cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 #cfn_cluster_cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cfn_cluster_cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
@@ -37,20 +32,22 @@ master_instance_id=$(ec2-metadata -i | awk '{print $2}')
 cfn_max_queue_size=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "MaxSize"))[0].ParameterValue')
 s3_bucket=$(echo $cfn_postinstall | sed "s/s3:\/\///g;s/\/.*//")
 
-yum -y install git golang-bin make 
+yum -y install golang-bin 
 
-wget "${2}"
-unzip main.zip ../Grafana/grafana/*
-unzip main.zip ../Grafana/nginx/*
-unzip main.zip ../Grafana/www/*
-unzip main.zip ../Grafana/docker-compose/*
-unzip main.zip ../Grafana/prometheus/*
-mv Grafana/* /home/$cfn_cluster_user/
+filename=$(wget -nv "${2}" 2>&1 |cut -d\" -f2)
+packagename=$(basename "${filename}" ".zip")
 
-unzip -j main.zip ../Grafana/custom-metrics/1h-cost-metrics.sh                  -d /usr/local/bin/
-unzip -j main.zip ../Grafana/custom-metrics/1m-cost-metrics.sh                  -d /usr/local/bin/
-unzip -j main.zip ../Grafana/custom-metrics/aws-region.py                       -d /usr/local/bin/
-unzip -j main.zip ../Grafana/prometheus-slurm-exporter/slurm_exporter.service   -d /etc/systemd/system/
+unzip "${filename}" "${packagename}/grafana/*"
+unzip "${filename}" "${packagename}/nginx/*"
+unzip "${filename}" "${packagename}/www/*"
+unzip "${filename}" "${packagename}/docker-compose/*"
+unzip "${filename}" "${packagename}/prometheus/*"
+mv -f ${packagename}/* "/home/${cfn_cluster_user}/"
+
+unzip -j "${filename}" "${packagename}/custom-metrics/1h-cost-metrics.sh"                   -d /usr/local/bin/
+unzip -j "${filename}" "${packagename}/custom-metrics/1m-cost-metrics.sh"                   -d /usr/local/bin/
+unzip -j "${filename}" "${packagename}/custom-metrics/aws-region.py"                        -d /usr/local/bin/
+unzip -j "${filename}" "${packagename}/prometheus-slurm-exporter/slurm_exporter.service"    -d /etc/systemd/system/
 
 chmod +x /usr/local/bin/1h-cost-metrics.sh 
 chmod +x /usr/local/bin/1m-cost-metrics.sh 
@@ -107,7 +104,7 @@ systemctl start slurm_exporter
 ;;
 ComputeFleet)
 
-docker-compose --env-file /etc/parallelcluster/cfnconfig -f /home/$cfn_cluster_user/docker-compose/docker-compose.compute.yml -p grafana-compute up -d
+docker-compose -f /home/$cfn_cluster_user/docker-compose/docker-compose.compute.yml -p grafana-compute up -d
 
 ;;
 esac
