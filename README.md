@@ -26,8 +26,8 @@ This project is build with the following components:
 * **Prometheus** [open-source](https://github.com/prometheus/prometheus/) project for systems and service monitoring from the [Cloud Native Computing Foundation](https://cncf.io/). It collects metrics from configured targets at given intervals, evaluates rule expressions, displays the results, and can trigger alerts if some condition is observed to be true.  
 * The **Prometheus Pushgateway** is on [open-source](https://github.com/prometheus/pushgateway/) tool that allows ephemeral and batch jobs to expose their metrics to Prometheus.
 * **[Nginx](http://nginx.org/)** is an HTTP and reverse proxy server, a mail proxy server, and a generic TCP/UDP proxy server.
-* **Prometheus-Slurm-Exporter** is a [Prometheus collector](https://github.com/vpenso/prometheus-slurm-exporter/) and exporter for metrics extracted from the Slurm (https://slurm.schedmd.com/overview.html) resource scheduling system.
-* **Node_exporter** is a [Prometheus exporter](https://github.com/prometheus/node_exporter) for hardware and OS metrics exposed by \*NIX kernels, written in Go with pluggable metric collectors.
+* **[Prometheus-Slurm-Exporter](https://github.com/vpenso/prometheus-slurm-exporter/)** is a Prometheus collector and exporter for metrics extracted from the [Slurm](https://slurm.schedmd.com/overview.html) resource scheduling system.
+* **[Node_exporter](https://github.com/prometheus/node_exporter)** is a Prometheus exporter for hardware and OS metrics exposed by \*NIX kernels, written in Go with pluggable metric collectors.
 
 Note: *while almost all components are under the Apache2 license, only **Prometheus-Slurm-Exporter is licensed under GPLv3**, you need to be aware of it and accept the license terms before proceeding and installing this component.*
 
