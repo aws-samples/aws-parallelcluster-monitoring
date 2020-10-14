@@ -22,12 +22,12 @@ It automatically sets up the required compute resources and a shared filesystem 
 ## Solution components
 This project is build with the following components:
 
-* **Grafana** is an open-source (https://github.com/grafana/grafana) platform for monitoring and observability. Grafana allows you to query, visualize, alert on and understand your metrics as well as create, explore, and share dashboards fostering a data driven culture. 
-* **Prometheus** open-source (https://github.com/prometheus/prometheus/) project for systems and service monitoring from the Cloud Native Computing Foundation (https://cncf.io/). It collects metrics from configured targets at given intervals, evaluates rule expressions, displays the results, and can trigger alerts if some condition is observed to be true.  
-* The **Prometheus Pushgateway** is on open-source (https://github.com/prometheus/pushgateway/) tool that allows ephemeral and batch jobs to expose their metrics to Prometheus.
+* **Grafana** is an [open-source](https://github.com/grafana/grafana) platform for monitoring and observability. Grafana allows you to query, visualize, alert on and understand your metrics as well as create, explore, and share dashboards fostering a data driven culture. 
+* **Prometheus** [open-source](https://github.com/prometheus/prometheus/) project for systems and service monitoring from the Cloud Native Computing Foundation (https://cncf.io/). It collects metrics from configured targets at given intervals, evaluates rule expressions, displays the results, and can trigger alerts if some condition is observed to be true.  
+* The **Prometheus Pushgateway** is on [open-source](https://github.com/prometheus/pushgateway/) tool that allows ephemeral and batch jobs to expose their metrics to Prometheus.
 * **Nginx** (http://nginx.org/) is an HTTP and reverse proxy server, a mail proxy server, and a generic TCP/UDP proxy server.
-* **Prometheus-Slurm-Exporter** (https://github.com/vpenso/prometheus-slurm-exporter/) is a Prometheus collector and exporter for metrics extracted from the Slurm (https://slurm.schedmd.com/overview.html) resource scheduling system.
-* **Node_exporter** (https://github.com/prometheus/node_exporter) is a Prometheus exporter for hardware and OS metrics exposed by \*NIX kernels, written in Go with pluggable metric collectors.
+* **Prometheus-Slurm-Exporter** is a [Prometheus collector](https://github.com/vpenso/prometheus-slurm-exporter/) and exporter for metrics extracted from the Slurm (https://slurm.schedmd.com/overview.html) resource scheduling system.
+* **Node_exporter** is a [Prometheus exporter](https://github.com/prometheus/node_exporter) for hardware and OS metrics exposed by \*NIX kernels, written in Go with pluggable metric collectors.
 
 Note: *while almost all components are under the Apache2 license, only **Prometheus-Slurm-Exporter is licensed under GPLv3**, you need to be aware of it and accept the license terms before proceeding and installing this component.*
 
@@ -47,8 +47,8 @@ Note: *while almost all components are under the Apache2 license, only **Prometh
 
 ## How to install it
 
-You can simply use the post-install script that you can find in this git-hub (http://link/) repo as it is, or customize it as you need. For instance, you might want to change your Grafana password to something more secure and meaningful for you, or you might want to customize some dashboards by adding additional components to monitor. 
-The proposed post-install script will take care of installing and configuring everything for you. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. Please note that, at the moment, the post install script has only been tested using Amazon Linux 2 (https://aws.amazon.com/amazon-linux-2/).
+You can simply use the post-install script that you can find [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana-post-install.sh) as it is, or customize it as you need. For instance, you might want to change your [Grafana password](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docker-compose/docker-compose.master.yml#L43) to something more secure and meaningful for you, or you might want to customize some dashboards by adding additional components to monitor. 
+The proposed post-install script will take care of installing and configuring everything for you. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. Please note that, at the moment, the post install script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
 
 ```
 base_os = alinux2
@@ -62,7 +62,7 @@ additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:i
 tags = {“Grafana” : “true”}
 ```
 
-Make sure that port 80 and port 443 of your master node are accessible from the internet (or form your network). You can achieve this by creating the appropriate security group via AWS Web-Console or via Command Line Interface (CLI (https://docs.aws.amazon.com/cli/index.html)), see an example below:
+Make sure that port 80 and port 443 of your master node are accessible from the internet (or form your network). You can achieve this by creating the appropriate security group via AWS Web-Console or via [CLI](https://docs.aws.amazon.com/cli/index.html), see an example below:
 
 ```
 aws ec2 create-security-group --group-name my-grafana-sg --description "Open Grafana dashboard ports" —vpc-id vpc-1a2b3c4d
@@ -70,7 +70,7 @@ aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --po
 aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --port 80 —cidr 0.0.0.0/0
 ```
 
-More information on how to create your security groups here (https://docs.aws.amazon.com/cli/latest/userguide/cli-services-ec2-sg.html#creating-a-security-group).
+More information on how to create your security groups [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-ec2-sg.html#creating-a-security-group).
 Finally, set the additional_sg parameter in the [VPC] section of your ParallelCluster config file.
 After your cluster is created, you can just open a web-browser and connect to https://your_public_ip (https://your_public_ip/) , a landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
 
