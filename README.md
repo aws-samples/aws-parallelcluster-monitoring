@@ -29,7 +29,7 @@ This project is build with the following components:
 * **[Prometheus-Slurm-Exporter](https://github.com/vpenso/prometheus-slurm-exporter/)** is a Prometheus collector and exporter for metrics extracted from the [Slurm](https://slurm.schedmd.com/overview.html) resource scheduling system.
 * **[Node_exporter](https://github.com/prometheus/node_exporter)** is a Prometheus exporter for hardware and OS metrics exposed by \*NIX kernels, written in Go with pluggable metric collectors.
 
-Note: *while almost all components are under the Apache2 license, only **Prometheus-Slurm-Exporter is licensed under GPLv3**, you need to be aware of it and accept the license terms before proceeding and installing this component.*
+Note: *while almost all components are under the Apache2 license, only **[Prometheus-Slurm-Exporter is licensed under GPLv3](https://github.com/vpenso/prometheus-slurm-exporter/blob/master/LICENSE)**, you need to be aware of it and accept the license terms before proceeding and installing this component.*
 
 
 ## Example Dashboards
