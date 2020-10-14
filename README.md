@@ -2,12 +2,12 @@
 
 This is a sample solution based on Grafana for monitoring various component of an HPC cluster built with AWS ParallelCluster.
 There are 6 dashboards that can be used as they are or customized as you need.
-* ParallelCluster Stats - this is the main dashboard taht shows general monitoring info and metrics for the whole cluster. It includes Slurm metrics and Storage performance metrics.
-* Master Node Details - this dashboard shows detailed metric for the Master node, including CPU, Memory, Network and Storage usage.
-* Compute Node List - this dashboard show the list of the available compute nodes. Each entry is a link to a more detailed page.
-* Compute Node Details - similarly to the master node details this dashboard show the same metric for the compute nodes.
-* Cluster Logs - This dashboard shows all the logs of your HPC Cluster. The logs are pushed by AWS ParallelCluster to AWS ClowdWatch Logs and finally reported here.
-* Cluster Costs (beta / in developemnt) - This dashboard shows the cost associated to every AWS Service utilized by your Cluster. It includes: EC2, EBS, FSx, S3, EFS.
+* [ParallelCluster Summary](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/ParallelCluster.json) - this is the main dashboard taht shows general monitoring info and metrics for the whole cluster. It includes Slurm metrics and Storage performance metrics.
+* [Master Node Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/master-node-details.json) - this dashboard shows detailed metric for the Master node, including CPU, Memory, Network and Storage usage.
+* [Compute Node List](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-list.json) - this dashboard show the list of the available compute nodes. Each entry is a link to a more detailed page.
+* [Compute Node Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-details.json) - similarly to the master node details this dashboard show the same metric for the compute nodes.
+* [Cluster Logs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/logs.json) - This dashboard shows all the logs of your HPC Cluster. The logs are pushed by AWS ParallelCluster to AWS ClowdWatch Logs and finally reported here.
+* [Cluster Costs (beta / in developemnt)](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/costs.json) - This dashboard shows the cost associated to every AWS Service utilized by your Cluster. It includes: EC2, EBS, FSx, S3, EFS.
 
 
 ## AWS ParallelCluster
