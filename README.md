@@ -45,7 +45,7 @@ Note: *while almost all components are under the Apache2 license, only **Prometh
 ![Costs](docs/Costs.png?raw=true "Best - AWS ParallelCluster Costs")
 
 
-## How to use it
+## How to install it
 
 You can simply use the post-install script that you can find in this git-hub (http://link/) repo as it is, or customize it as you need. For instance, you might want to change your Grafana password to something more secure and meaningful for you, or you might want to customize some dashboards by adding additional components to monitor. 
 The proposed post-install script will take care of installing and configuring everything for you. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. Please note that, at the moment, the post install script has only been tested using Amazon Linux 2 (https://aws.amazon.com/amazon-linux-2/).
