@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AWS ParallelCluster</title>
+    <style>
+        @font-face {
+            font-family: 'Amazon Ember';
+            src: url('https://a0.awsstatic.com/libra-css/fonts/amazon-ember/AmazonEmber_Rg.woff2');
+        }
+
+        html {
+            min-height: 100vh;
+            background-color: #232F3E;
+            background-image: url(background.png);
+            background-size: 600px;
+            background-position: 105% 110%;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }
+
+        body {
+            color: #fff;
+            font-family: 'Amazon Ember', 'sans-serif';
+        }
+
+        #content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #content #logo {
+            margin-top: 40px;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+
+        #content #grafana-logo {
+            cursor: pointer;
+            max-width: 50px;
+            vertical-align: top;
+        }
+
+        #content h1 {
+            font-weight: normal;
+            text-align: center;
+        }
+
+        #content #txt {
+            background-color: #fff;
+            border: 0;
+            font-size: 1.2em;
+            color: #000;
+            padding: 5px;
+            cursor: pointer;
+            width: 10%;
+            margin: 5px;
+            text-transform: uppercase;
+        }
+        
+        #content #grafana-txt {
+            background-color: #fff;
+            vertical-align: bottom;
+            border: 0;
+            font-size: 1.2em;
+            color: #000;
+            padding: 5px;
+            cursor: pointer;
+            margin: 5px;
+            text-transform: uppercase;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+        <img src="aws-logo.svg" alt="AWS logo" id="logo">
+        <h1>AWS ParallelCluster</h1>
+        <p>AWS ParallelCluster is an AWS-supported open source cluster management tool that makes it easy for you to deploy and manage High Performance Computing (HPC) clusters on AWS. ParallelCluster uses a simple text file to model and provision all the resources needed for your HPC applications in an automated and secure manner. It also supports a variety of job schedulers such as AWS Batch, SGE, Torque, and Slurm for easy job submissions.</p>
+        <p>AWS ParallelCluster is built on the popular open source CfnCluster project and is released via the Python Package Index (PyPI). ParallelCluster's source code is hosted on the Amazon Web Services repository on GitHub. AWS ParallelCluster is available at no additional charge, and you pay only for the AWS resources needed to run your applications.</p>
+        <p>More information <a href="https://aws.amazon.com/hpc/parallelcluster/"><button id="txt">here</button></a></p>
+        <p>The official documentation <a href="https://docs.aws.amazon.com/parallelcluster/"><button id="txt">here</button></a></p>
+        <p>The GitHub repository <a href="https://github.com/aws/aws-parallelcluster"><button id="txt">here</button></a></p>
+
+        <p><a href="/prometheus/"><button id="grafana-txt">Prometheus Server</button></a></p>
+        <p><a href="/grafana/"><button id="grafana-txt">Grafana Dashboards</button></a></p>
+    </div>
+  </body>
+</html>

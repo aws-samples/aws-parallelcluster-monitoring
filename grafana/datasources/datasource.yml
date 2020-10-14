@@ -1,0 +1,21 @@
+apiVersion: 1
+datasources:
+  - name: prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    version: 1
+    url: http://localhost:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 5s
+  - name: cloudwatch
+    type: cloudwatch
+    orgId: 1
+    version: 1
+    editable: true
+    jsonData:
+      authType: credentials
+      defaultRegion: us-east
+      

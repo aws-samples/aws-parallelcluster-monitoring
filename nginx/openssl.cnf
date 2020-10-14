@@ -1,0 +1,19 @@
+[req]
+prompt=no
+distinguished_name=ngnix
+x509_extensions=v3_req
+
+[ngnix]
+C=US
+ST=WA
+L=Seattle
+O=AWS
+OU=HPC
+CN=ngnix
+
+[v3_req]
+keyUsage=keyEncipherment, dataEncipherment, digitalSignature
+extendedKeyUsage=serverAuth
+subjectAltName=@alt_names
+
+[alt_names]

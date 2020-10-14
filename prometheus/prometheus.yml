@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 15s
+
+scrape_configs:
+#
+# SLURM resource manager:
+# 
+  - job_name: 'slurm_exporter'
+    scrape_interval:  30s
+    scrape_timeout:   30s
+    static_configs:
+      - targets: ['localhost:8080']
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['localhost:9091']
+  - job_name: 'prometheus_server'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'ec2_instances'
+    scrape_interval: 5s
+    ec2_sd_configs:
+      - port: 9100
+        refresh_interval: 10s
+    relabel_configs:
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name
+      - source_labels: [__meta_ec2_tag_Application]
+        target_label: instance_grafana
+        regex: __Application__
+        action: keep
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance_id
+      - source_labels: [__meta_ec2_availability_zone]
+        target_label: instance_az
+      - source_labels: [__meta_ec2_instance_state]
+        regex: running
+        action: keep
+        target_label: instance_state
+      - source_labels: [__meta_ec2_instance_type]
+        target_label: instance_type
+      - source_labels: [__meta_ec2_vpc_id]
+        target_label: instance_vpc
