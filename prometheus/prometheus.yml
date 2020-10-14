@@ -1,12 +1,15 @@
+#
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+#
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   scrape_timeout: 15s
 
 scrape_configs:
-#
-# SLURM resource manager:
-# 
   - job_name: 'slurm_exporter'
     scrape_interval:  30s
     scrape_timeout:   30s
