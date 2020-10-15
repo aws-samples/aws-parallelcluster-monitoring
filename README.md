@@ -70,8 +70,8 @@ aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --po
 aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --port 80 —cidr 0.0.0.0/0
 ```
 
-More information on how to create your security groups [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-ec2-sg.html#creating-a-security-group).
-Finally, set the additional_sg parameter in the `[VPC]` section of your ParallelCluster config file.
+More information on how to create your security groups [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-ec2-sg.html#creating-a-security-group).  
+Finally, set the additional_sg parameter in the `[VPC]` section of your ParallelCluster config file.  
 After your cluster is created, you can just open a web-browser and connect to `https://your_public_ip` or `http://your_public_ip` (all `http` connections will be automatically redirected to `https`), a landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
 
 
