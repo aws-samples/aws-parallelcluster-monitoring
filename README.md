@@ -7,7 +7,7 @@ There are 6 dashboards that can be used as they are or customized as you need.
 * [Compute Node List](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-list.json) - this dashboard show the list of the available compute nodes. Each entry is a link to a more detailed page.
 * [Compute Node Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-details.json) - similarly to the master node details this dashboard show the same metric for the compute nodes.
 * [Cluster Logs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/logs.json) - This dashboard shows all the logs of your HPC Cluster. The logs are pushed by AWS ParallelCluster to AWS ClowdWatch Logs and finally reported here.
-* [Cluster Costs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/costs.json)(beta / in developemnt) - This dashboard shows the cost associated to AWS Service utilized by your cluster. It includes: EC2, EBS, FSx, S3, EFS.
+* [Cluster Costs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/costs.json)(beta / in developemnt) - This dashboard shows the cost associated to AWS Service utilized by your cluster. It includes: [EC2](https://aws.amazon.com/ec2/pricing/), [EBS](https://aws.amazon.com/ebs/pricing/), [FSx](https://aws.amazon.com/fsx/lustre/pricing/), [S3](https://aws.amazon.com/s3/pricing/), [EFS](https://aws.amazon.com/efs/pricing/).
 
 
 ## AWS ParallelCluster
@@ -72,7 +72,7 @@ aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --po
 
 More information on how to create your security groups [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-ec2-sg.html#creating-a-security-group).
 Finally, set the additional_sg parameter in the `[VPC]` section of your ParallelCluster config file.
-After your cluster is created, you can just open a web-browser and connect to https://your_public_ip (https://your_public_ip/) , a landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
+After your cluster is created, you can just open a web-browser and connect to https://your_public_ip or http://your_public_ip (all `http` connections will be automatically redirected to `https`), a landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
 
 
 Note: Because of the higher volume of network traffic due to the compute nodes continuously pushing metrics to the master node,
