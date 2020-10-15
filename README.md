@@ -62,7 +62,7 @@ additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:i
 tags = {“Grafana” : “true”}
 ```
 
-Make sure that port 80 and port 443 of your master node are accessible from the internet (or form your network). You can achieve this by creating the appropriate security group via AWS Web-Console or via [CLI](https://docs.aws.amazon.com/cli/index.html), see an example below:
+Make sure that port `80` and port `443` of your master node are accessible from the internet (or form your network). You can achieve this by creating the appropriate security group via AWS Web-Console or via [CLI](https://docs.aws.amazon.com/cli/index.html), see an example below:
 
 ```
 aws ec2 create-security-group --group-name my-grafana-sg --description "Open Grafana dashboard ports" —vpc-id vpc-1a2b3c4d
@@ -72,11 +72,11 @@ aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --po
 
 More information on how to create your security groups [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-ec2-sg.html#creating-a-security-group).
 Finally, set the additional_sg parameter in the `[VPC]` section of your ParallelCluster config file.
-After your cluster is created, you can just open a web-browser and connect to https://your_public_ip or http://your_public_ip (all `http` connections will be automatically redirected to `https`), a landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
+After your cluster is created, you can just open a web-browser and connect to `https://your_public_ip` or `http://your_public_ip` (all `http` connections will be automatically redirected to `https`), a landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
 
 
-Note: Because of the higher volume of network traffic due to the compute nodes continuously pushing metrics to the master node,
-in case you expect to run a large scale cluster (hundreds of instances), we would recommend to use an instance type slightly bigger than what you planned for your master node. 
+Note: *Because of the higher volume of network traffic due to the compute nodes continuously pushing metrics to the master node,
+in case you expect to run a large scale cluster (hundreds of instances), we would recommend to use an instance type slightly bigger than what you planned for your master node.*
 
 ## Security
 
