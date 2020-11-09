@@ -48,7 +48,8 @@ Note: *while almost all components are under the Apache2 license, only **[Promet
 ## How to install it
 
 You can simply use the post-install script that you can find [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/post-install.sh) as it is, or customize it as you need. For instance, you might want to change your [Grafana password](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docker-compose/docker-compose.master.yml#L43) to something more secure and meaningful for you, or you might want to customize some dashboards by adding additional components to monitor.
-```
+
+```bash
 #Load AWS Parallelcluster environment variables
 . /etc/parallelcluster/cfnconfig
 
@@ -73,7 +74,7 @@ exit $?
 ``` 
 The proposed post-install script will take care of installing and configuring everything for you through the [install-monitoring.sh](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/parallelcluster-setup/install-monitoring.sh) script. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. You can find an AWS ParallelCluster template [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/parallelcluster-setup/pcluster-template.config). Please note that, at the moment, the installation script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
 
-```
+```bash
 base_os = alinux2
 
 post_install = s3://<my-bucket-name>/post-install.sh
@@ -87,7 +88,7 @@ tags = {“Grafana” : “true”}
 
 Make sure that port `80` and port `443` of your master node are accessible from the internet (or form your network). You can achieve this by creating the appropriate security group via AWS Web-Console or via [CLI](https://docs.aws.amazon.com/cli/index.html), see an example below:
 
-```
+```bash
 aws ec2 create-security-group --group-name my-grafana-sg --description "Open Grafana dashboard ports" —vpc-id vpc-1a2b3c4d
 aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --port 443 —cidr 0.0.0.0/0
 aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --port 80 —cidr 0.0.0.0/0
