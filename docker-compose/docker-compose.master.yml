@@ -22,7 +22,7 @@ services:
         ports:
             - '9090:9090'
         volumes:
-            - '/home/$cfn_cluster_user/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
+            - '/home/$cfn_cluster_user/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
             - 'prometheus-data:/prometheus'
         image: prom/prometheus
         command:
@@ -43,7 +43,7 @@ services:
             - 'GF_SECURITY_ADMIN_PASSWORD=Grafana4PC!'
             - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
         volumes:
-            - '/home/$cfn_cluster_user/grafana:/etc/grafana/provisioning'
+            - '/home/$cfn_cluster_user/__MONITORING_DIR__/grafana:/etc/grafana/provisioning'
             - 'grafana-data:/var/lib/grafana'
         image: grafana/grafana
     prometheus-node-exporter:
@@ -64,9 +64,9 @@ services:
             - '443:443'
         restart: unless-stopped
         volumes:
-            - '/home/$cfn_cluster_user/nginx/conf.d:/etc/nginx/conf.d/'
-            - '/home/$cfn_cluster_user/nginx/ssl:/etc/ssl/'
-            - '/home/$cfn_cluster_user/www:/usr/share/nginx/html'
+            - '/home/$cfn_cluster_user/__MONITORING_DIR__/nginx/conf.d:/etc/nginx/conf.d/'
+            - '/home/$cfn_cluster_user/__MONITORING_DIR__/nginx/ssl:/etc/ssl/'
+            - '/home/$cfn_cluster_user/__MONITORING_DIR__/www:/usr/share/nginx/html'
         image: nginx
 volumes:
     prometheus-data:
