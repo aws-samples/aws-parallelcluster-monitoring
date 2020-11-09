@@ -47,15 +47,15 @@ Note: *while almost all components are under the Apache2 license, only **[Promet
 
 ## How to install it
 
-You can simply use the post-install script that you can find [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana-post-install.sh) as it is, or customize it as you need. For instance, you might want to change your [Grafana password](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docker-compose/docker-compose.master.yml#L43) to something more secure and meaningful for you, or you might want to customize some dashboards by adding additional components to monitor. 
-The proposed post-install script will take care of installing and configuring everything for you. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. Please note that, at the moment, the post install script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
+You can simply use the post-install script that you can find [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/post-install.sh) as it is, or customize it as you need. For instance, you might want to change your [Grafana password](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docker-compose/docker-compose.master.yml#L43) to something more secure and meaningful for you, or you might want to customize some dashboards by adding additional components to monitor. 
+The proposed post-install script will take care of installing and configuring everything for you through the [install-monitoring.sh](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/install-monitoring.sh) script. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. Please note that, at the moment, the installation script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
 
 ```
 base_os = alinux2
 
-post_install = s3://<my-bucket-name>/grafana-post-install.sh
+post_install = s3://<my-bucket-name>/post-install.sh
 
-post_install_args = "https://github.com/aws-samples/aws-parallelcluster-monitoring/archive/main.zip"
+post_install_args = https://github.com/aws-samples/aws-parallelcluster-monitoring.git,install-monitoring.sh
 
 additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess,arn:aws:iam::aws:policy/AmazonSSMFullAccess,arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
 
