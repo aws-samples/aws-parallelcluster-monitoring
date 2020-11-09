@@ -25,5 +25,5 @@ case ${cfn_node_type} in
 esac
 
 #Execute the monitoring installation script
-bash -x "/home/${cfn_cluster_user}/${monitoring_dir_name}/${setup_command}" >/tmp/monitoring-setup.log 2>&1
+bash -x "/home/${cfn_cluster_user}/${monitoring_dir_name}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
 exit $?
