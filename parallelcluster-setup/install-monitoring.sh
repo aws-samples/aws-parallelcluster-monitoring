@@ -35,6 +35,7 @@ case "${cfn_node_type}" in
 		cluster_s3_bucket=$(cat /etc/chef/dna.json | grep \"cluster_s3_bucket\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_s3_key=$(cat /etc/chef/dna.json | grep \"cluster_config_s3_key\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_version=$(cat /etc/chef/dna.json | grep \"cluster_config_version\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
+		log_group_names="/aws/parallelcluster/$(echo ${stack_name} | cut -d "-" -f2-)"
 
 		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version /home/${cfn_cluster_user}/${monitoring_dir_name}/parallelcluster-setup/cluster-config.json
 
@@ -51,18 +52,19 @@ case "${cfn_node_type}" in
 
 
 		# replace tokens 
-		sed -i "s/_S3_BUCKET_/${s3_bucket}/g"               /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json
-		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json 
-		sed -i "s/__FSX_ID__/${cfn_fsx_fs_id}/g"            /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json
-		sed -i "s/__AWS_REGION__/${cfn_region}/g"           /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json 
+		sed -i "s/_S3_BUCKET_/${s3_bucket}/g"               	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json
+		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json 
+		sed -i "s/__FSX_ID__/${cfn_fsx_fs_id}/g"            	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json
+		sed -i "s/__AWS_REGION__/${cfn_region}/g"           	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/ParallelCluster.json 
 
-		sed -i "s/__AWS_REGION__/${cfn_region}/g"           /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/logs.json 
+		sed -i "s/__AWS_REGION__/${cfn_region}/g"           	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/logs.json
+		sed -i "s/__LOG_GROUP__NAMES__/${log_group_names}/g"    /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/logs.json
 
-		sed -i "s/__Application__/${stack_name}/g"          /home/${cfn_cluster_user}/${monitoring_dir_name}/prometheus/prometheus.yml 
+		sed -i "s/__Application__/${stack_name}/g"          	/home/${cfn_cluster_user}/${monitoring_dir_name}/prometheus/prometheus.yml 
 
-		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/master-node-details.json
-		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/compute-node-list.json 
-		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  /home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/compute-node-details.json 
+		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/master-node-details.json
+		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/compute-node-list.json 
+		sed -i "s/__INSTANCE_ID__/${master_instance_id}/g"  	/home/${cfn_cluster_user}/${monitoring_dir_name}/grafana/dashboards/compute-node-details.json 
 
 		sed -i "s/__MONITORING_DIR__/${monitoring_dir_name}/g"  /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.master.yml
 

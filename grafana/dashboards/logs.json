@@ -67,7 +67,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /slurmctld/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -116,7 +116,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /slurmd/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -179,7 +179,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /sqswatcher/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -228,7 +228,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /nodewatcher/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -277,7 +277,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /jobwatcher/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -340,7 +340,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /cfn-init/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -389,7 +389,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /cloud-init/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -452,7 +452,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /supervisord/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -501,7 +501,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /system-messages/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -564,7 +564,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /dcv-authenticator/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -613,7 +613,7 @@
           "expression": "fields @timestamp, @message, @logStream\n| sort @timestamp desc\n| limit 20\n| filter @logStream like /dcv-server/",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
@@ -676,7 +676,7 @@
           "expression": "fields @timestamp, @message \n| sort @timestamp desc\n| limit 20",
           "id": "",
           "logGroupNames": [
-            "/aws/parallelcluster/grafana2"
+            "__LOG_GROUP__NAMES__"
           ],
           "matchExact": true,
           "metricName": "",
