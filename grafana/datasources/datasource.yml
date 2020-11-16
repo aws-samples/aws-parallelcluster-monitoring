@@ -22,6 +22,6 @@ datasources:
     version: 1
     editable: true
     jsonData:
-      authType: credentials
+      authType: default
       defaultRegion: us-east
       
