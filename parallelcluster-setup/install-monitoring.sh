@@ -36,7 +36,7 @@ case "${cfn_node_type}" in
 		cluster_config_s3_key=$(cat /etc/chef/dna.json | grep \"cluster_config_s3_key\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_version=$(cat /etc/chef/dna.json | grep \"cluster_config_version\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 
-		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version /home/$cfn_cluster_user/parallelcluster-setup/cluster-config.json
+		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version /home/${cfn_cluster_user}/${monitoring_dir_name}/parallelcluster-setup/cluster-config.json
 
 		yum -y install golang-bin 
 
