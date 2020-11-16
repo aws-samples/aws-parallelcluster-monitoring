@@ -9,7 +9,7 @@
 #Load AWS Parallelcluster environment variables
 . /etc/parallelcluster/cfnconfig
 
-#get git-hib repo to clone and the installation script
+#get GitHub repo to clone and the installation script
 github_repo=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
 setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
 monitoring_dir_name=$(basename -s .git ${github_repo})
