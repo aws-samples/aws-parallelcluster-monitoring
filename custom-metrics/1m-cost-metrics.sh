@@ -21,8 +21,7 @@ compute_nodes_total_cost=0
 
 for queue in $queues; do 
 
-  instance_type=$(cat "${cluster_config_file}" \
-                        | jq -r --arg queue $queue '.cluster.queue_settings | to_entries[].value.compute_resource_settings | to_entries[] | select(.key==$queue).value.instance_type')
+  instance_type=$(cat "${cluster_config_file}" | jq -r --arg queue $queue '.cluster.queue_settings | to_entries[] | select(.key==$queue).value.compute_resource_settings | to_entries[]| .value.instance_type')
 
   compute_node_h_price=$(aws pricing get-products \
     --region us-east-1 \
@@ -46,7 +45,7 @@ for queue in $queues; do
               'Type=TERM_MATCH,Field=volumeApiName,Value=gp2' \
     | jq -r '.terms.OnDemand | to_entries[] | .value.priceDimensions | to_entries[] | .value.pricePerUnit.USD')
 
-  total_num_compute_nodes=$(/opt/slurm/bin/sinfo --noheader  --partition=$queue  | egrep  -v "idle~" | awk '{sum += $4} END {print sum}')
+  total_num_compute_nodes=$(/opt/slurm/bin/sinfo --noheader  --partition=$queue  | egrep  -v "idle~" | awk '{sum += $4} END {if (sum) print sum; else print 0; }')
 
   ebs_volume_size=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "ComputeRootVolumeSize"))[0].ParameterValue')
   compute_ebs_volume_cost=$(echo "scale=2; $ebs_cost_gb_month * $total_num_compute_nodes * $ebs_volume_size / 720" | bc)
