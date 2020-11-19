@@ -89,7 +89,7 @@ tags = {“Grafana” : “true”}
 Make sure that port `80` and port `443` of your master node are accessible from the internet (or form your network). You can achieve this by creating the appropriate security group via AWS Web-Console or via [CLI](https://docs.aws.amazon.com/cli/index.html), see an example below:
 
 ```bash
-aws ec2 create-security-group --group-name my-grafana-sg --description "Open Grafana dashboard ports" —vpc-id vpc-1a2b3c4d
+aws ec2 create-security-group --group-name my-grafana-sg --description "Open HTTP/HTTPS ports" —vpc-id vpc-1a2b3c4d
 aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --port 443 —cidr 0.0.0.0/0
 aws ec2 authorize-security-group-ingress --group-id sg-12345 --protocol tcp --port 80 —cidr 0.0.0.0/0
 ```
