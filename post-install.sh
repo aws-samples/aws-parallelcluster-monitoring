@@ -10,14 +10,17 @@
 . /etc/parallelcluster/cfnconfig
 
 #get GitHub repo to clone and the installation script
-github_repo=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
-setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
-monitoring_dir_name=$(basename -s .git ${github_repo})
+monitoring_url=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
+monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
+monitoring_tarball="${monitoring_dir_name}.tar.gz"
+setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 3 )
+monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
 case ${cfn_node_type} in
     MasterServer)
-        cd /home/$cfn_cluster_user/
-        git clone ${github_repo}
+        wget ${monitoring_url} -O ${monitoring_tarball}
+        mkdir -p ${monitoring_home}
+        tar xvf ${monitoring_tarball} -C ${monitoring_home} --strip-components 1
     ;;
     ComputeFleet)
     
@@ -25,5 +28,5 @@ case ${cfn_node_type} in
 esac
 
 #Execute the monitoring installation script
-bash -x "/home/${cfn_cluster_user}/${monitoring_dir_name}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
+bash -x "${monitoring_home}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
 exit $?

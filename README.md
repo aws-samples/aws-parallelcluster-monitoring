@@ -53,15 +53,18 @@ You can simply use the post-install script that you can find [here](https://gith
 #Load AWS Parallelcluster environment variables
 . /etc/parallelcluster/cfnconfig
 
-#get git-hib repo to clone and the installation script
-github_repo=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
-setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
-monitoring_dir_name=$(basename -s .git ${github_repo})
+#get GitHub repo to clone and the installation script
+monitoring_url=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
+monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
+monitoring_tarball="${monitoring_dir_name}.tar.gz"
+setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 3 )
+monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
 case ${cfn_node_type} in
     MasterServer)
-        cd /home/$cfn_cluster_user/
-        git clone ${github_repo}
+        wget ${monitoring_url} -O ${monitoring_tarball}
+        mkdir -p ${monitoring_home}
+        tar xvf ${monitoring_tarball} -C ${monitoring_home} --strip-components 1
     ;;
     ComputeFleet)
     
@@ -69,7 +72,7 @@ case ${cfn_node_type} in
 esac
 
 #Execute the monitoring installation script
-bash -x "/home/${cfn_cluster_user}/${monitoring_dir_name}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
+bash -x "${monitoring_home}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
 exit $?
 ``` 
 The proposed post-install script will take care of installing and configuring everything for you through the [install-monitoring.sh](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/parallelcluster-setup/install-monitoring.sh) script. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. You can find an AWS ParallelCluster template [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/parallelcluster-setup/pcluster-template.config). Please note that, at the moment, the installation script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
@@ -79,7 +82,7 @@ base_os = alinux2
 
 post_install = s3://<my-bucket-name>/post-install.sh
 
-post_install_args = https://github.com/aws-samples/aws-parallelcluster-monitoring.git,install-monitoring.sh
+post_install_args = https://github.com/aws-samples/aws-parallelcluster-monitoring/tarball/main,aws-parallelcluster-monitoring,install-monitoring.sh
 
 additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess,arn:aws:iam::aws:policy/AmazonSSMFullAccess,arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
 
