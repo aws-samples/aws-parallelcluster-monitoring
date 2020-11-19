@@ -11,11 +11,12 @@
 
 export AWS_DEFAULT_REGION=$cfn_region
 aws_region_long_name=$(python /usr/local/bin/aws-region.py $cfn_region)
-github_repo=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
-setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
-monitoring_dir_name=$(basename -s .git ${github_repo})
+
+monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
+monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
+
 queues=$(/opt/slurm/bin/sinfo --noheader -O partition  | sed 's/\*//g')
-cluster_config_file="/home/${cfn_cluster_user}/${monitoring_dir_name}/parallelcluster-setup/cluster-config.json"
+cluster_config_file="${monitoring_home}/parallelcluster-setup/cluster-config.json"
 
 compute_nodes_total_cost=0
 
