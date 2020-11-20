@@ -95,6 +95,17 @@ case "${cfn_node_type}" in
 	;;
 
 	ComputeFleet)
-		/usr/local/bin/docker-compose -f ${monitoring_home}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
+		compute_instance_type=$(ec2-metadata -t | awk '{print $2}')
+		gpu_instances="g[2-9].*\.[0-9]*[x]*large"
+		if [[ $compute_instance_type =~ $gpu_instances ]]; then
+			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
+			yum -y clean expire-cache
+			yum -y install nvidia-docker2
+			systemctl restart docker
+			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
+        else
+			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
+        fi
 	;;
 esac
