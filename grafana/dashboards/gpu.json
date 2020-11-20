@@ -18,8 +18,8 @@
   "editable": true,
   "gnetId": 11752,
   "graphTooltip": 0,
-  "id": 7,
-  "iteration": 1605631221337,
+  "id": 5,
+  "iteration": 1605896702545,
   "links": [
     {
       "icon": "external link",
@@ -951,7 +951,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1060,7 +1060,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1160,7 +1160,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1264,7 +1264,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1381,7 +1381,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1478,7 +1478,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1578,7 +1578,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1680,7 +1680,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -1777,7 +1777,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "7.3.2",
+      "pluginVersion": "7.3.3",
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
@@ -1848,13 +1848,8 @@
     "list": [
       {
         "allValue": null,
-        "current": {
-          "selected": true,
-          "text": "i-002fd33e53d27b6dd",
-          "value": "i-002fd33e53d27b6dd"
-        },
         "datasource": "prometheus",
-        "definition": "label_values(node_uname_info{job=~\"ec2_instances\"}, instance_id)",
+        "definition": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"g[3-4].*\"}, instance_id)",
         "error": null,
         "hide": 0,
         "includeAll": false,
@@ -1862,7 +1857,7 @@
         "multi": false,
         "name": "instance_id",
         "options": [],
-        "query": "label_values(node_uname_info{job=~\"ec2_instances\"}, instance_id)",
+        "query": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"g[3-4].*\"}, instance_id)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -1907,5 +1902,5 @@
   "timezone": "browser",
   "title": "GPU Nodes",
   "uid": "hpcsyl6zhqk",
-  "version": 19
+  "version": 1
 }
