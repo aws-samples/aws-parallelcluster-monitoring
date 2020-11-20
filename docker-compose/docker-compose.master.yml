@@ -11,16 +11,12 @@ services:
         network_mode: host
         pid: host
         restart: unless-stopped
-        ports:
-            - '9091:9091'
         image: prom/pushgateway
     prometheus:
         container_name: prometheus
         network_mode: host
         pid: host
         restart: unless-stopped
-        ports:
-            - '9090:9090'
         volumes:
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
             - 'prometheus-data:/prometheus'
@@ -37,8 +33,6 @@ services:
         network_mode: host
         pid: host
         restart: unless-stopped
-        ports:
-            - '3000:3000'
         environment:
             - 'GF_SECURITY_ADMIN_PASSWORD=Grafana4PC!'
             - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
@@ -60,8 +54,6 @@ services:
         container_name: nginx
         network_mode: host
         pid: host
-        ports:
-            - '443:443'
         restart: unless-stopped
         volumes:
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/nginx/conf.d:/etc/nginx/conf.d/'

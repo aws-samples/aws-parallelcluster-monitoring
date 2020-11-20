@@ -47,3 +47,27 @@ scrape_configs:
         target_label: instance_type
       - source_labels: [__meta_ec2_vpc_id]
         target_label: instance_vpc
+  - job_name: 'ec2_gpi_instances'
+    scrape_interval: 5s
+    ec2_sd_configs:
+      - port: 9400
+        refresh_interval: 10s
+    relabel_configs:
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: gpu_instance_name
+      - source_labels: [__meta_ec2_tag_Application]
+        target_label: gpu_instance_grafana
+        regex: __Application__
+        action: keep
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: gpu_instance_id
+      - source_labels: [__meta_ec2_availability_zone]
+        target_label: gpu_instance_az
+      - source_labels: [__meta_ec2_instance_state]
+        regex: running
+        action: keep
+        target_label: gpu_instance_state
+      - source_labels: [__meta_ec2_instance_type]
+        target_label: gpu_instance_type
+      - source_labels: [__meta_ec2_vpc_id]
+        target_label: gpu_instance_vpc
