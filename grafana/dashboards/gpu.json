@@ -7,9 +7,7 @@
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
-        "limit": 100,
         "name": "Annotations & Alerts",
-        "showIn": 0,
         "type": "dashboard"
       }
     ]
@@ -18,7 +16,7 @@
   "editable": true,
   "gnetId": 11752,
   "graphTooltip": 0,
-  "iteration": 1606131081690,
+  "iteration": 1606149765866,
   "links": [
     {
       "icon": "external link",
@@ -57,6 +55,7 @@
         "x": 0,
         "y": 0
       },
+      "hideTimeOverride": true,
       "id": 59,
       "interval": null,
       "links": [],
@@ -72,7 +71,7 @@
         }
       ],
       "maxDataPoints": 100,
-      "nullPointMode": "connected",
+      "nullPointMode": "null",
       "nullText": null,
       "postfix": "",
       "postfixFontSize": "50%",
@@ -96,6 +95,7 @@
         {
           "expr": "node_uname_info{instance_id=~\"$instance_id\"}",
           "format": "table",
+          "hide": false,
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -1859,9 +1859,9 @@
       {
         "allValue": null,
         "current": {
-          "selected": false,
-          "text": "i-076225e1b1aefc813",
-          "value": "i-076225e1b1aefc813"
+          "selected": true,
+          "text": "i-0edc71e97259faa4c",
+          "value": "i-0edc71e97259faa4c"
         },
         "datasource": "prometheus",
         "definition": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"g[3-4].*\"}, instance_id)",
@@ -1886,7 +1886,7 @@
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -1917,5 +1917,5 @@
   "timezone": "browser",
   "title": "GPU Nodes",
   "uid": "hpcsyl6zhqk",
-  "version": 1
+  "version": 2
 }
