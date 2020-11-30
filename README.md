@@ -6,6 +6,7 @@ There are 6 dashboards that can be used as they are or customized as you need.
 * [Master Node Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/master-node-details.json) - this dashboard shows detailed metric for the Master node, including CPU, Memory, Network and Storage usage.
 * [Compute Node List](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-list.json) - this dashboard show the list of the available compute nodes. Each entry is a link to a more detailed page.
 * [Compute Node Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-details.json) - similarly to the master node details this dashboard show the same metric for the compute nodes.
+* [GPU Nodes Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/gpu.json) - This dashboard shows GPUs releated metrics collected using nvidia-dcgm container.
 * [Cluster Logs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/logs.json) - This dashboard shows all the logs of your HPC Cluster. The logs are pushed by AWS ParallelCluster to AWS ClowdWatch Logs and finally reported here.
 * [Cluster Costs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/costs.json)(beta / in developemnt) - This dashboard shows the cost associated to AWS Service utilized by your cluster. It includes: [EC2](https://aws.amazon.com/ec2/pricing/), [EBS](https://aws.amazon.com/ebs/pricing/), [FSx](https://aws.amazon.com/fsx/lustre/pricing/), [S3](https://aws.amazon.com/s3/pricing/), [EFS](https://aws.amazon.com/efs/pricing/).
 
@@ -15,7 +16,7 @@ Create a cluster using [AWS ParallelCluster](https://www.hpcworkshops.com/03-hpc
 ```ini
 [cluster yourcluster]
 ...
-post_install = https://github.com/aws-samples/aws-parallelcluster-monitoring/releases/download/v0.6-beta/post-install.sh
+post_install = https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
 post_install_args = https://github.com/aws-samples/aws-parallelcluster-monitoring/tarball/main,aws-parallelcluster-monitoring,install-monitoring.sh
 additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess,arn:aws:iam::aws:policy/AmazonSSMFullAccess,arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
 tags = {“Grafana” : “true”}
@@ -89,7 +90,7 @@ exit $?
 ``` 
 The proposed post-install script will take care of installing and configuring everything for you through the [install-monitoring.sh](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/parallelcluster-setup/install-monitoring.sh) script. Though, few additional parameters are needed in the AWS ParallelCluster config file: the post_install_args, additional IAM policies, security group, and a tag. You can find an AWS ParallelCluster template [here](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/parallelcluster-setup/pcluster-template.config). Please note that, at the moment, the installation script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
 
-```bash
+```ini
 base_os = alinux2
 
 post_install = s3://<my-bucket-name>/post-install.sh
