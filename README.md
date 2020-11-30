@@ -9,6 +9,18 @@ There are 6 dashboards that can be used as they are or customized as you need.
 * [Cluster Logs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/logs.json) - This dashboard shows all the logs of your HPC Cluster. The logs are pushed by AWS ParallelCluster to AWS ClowdWatch Logs and finally reported here.
 * [Cluster Costs](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/costs.json)(beta / in developemnt) - This dashboard shows the cost associated to AWS Service utilized by your cluster. It includes: [EC2](https://aws.amazon.com/ec2/pricing/), [EBS](https://aws.amazon.com/ebs/pricing/), [FSx](https://aws.amazon.com/fsx/lustre/pricing/), [S3](https://aws.amazon.com/s3/pricing/), [EFS](https://aws.amazon.com/efs/pricing/).
 
+## Quickstart
+Create a cluster using [AWS ParallelCluster](https://www.hpcworkshops.com/03-hpc-aws-parallelcluster-workshop.html) and include the following configuration:
+
+```ini
+[cluster yourcluster]
+...
+post_install = https://github.com/aws-samples/aws-parallelcluster-monitoring/releases/download/v0.6-beta/post-install.sh
+post_install_args = https://github.com/aws-samples/aws-parallelcluster-monitoring/tarball/main,aws-parallelcluster-monitoring,install-monitoring.sh
+additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess,arn:aws:iam::aws:policy/AmazonSSMFullAccess,arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+tags = {“Grafana” : “true”}
+...
+```
 
 ## AWS ParallelCluster
 **AWS ParallelCluster** is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
