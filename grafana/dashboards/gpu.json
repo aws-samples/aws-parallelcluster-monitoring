@@ -1864,7 +1864,7 @@
           "value": "i-0edc71e97259faa4c"
         },
         "datasource": "prometheus",
-        "definition": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"g[3-4].*\"}, instance_id)",
+        "definition": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"[pg][2-4].*\"}, instance_id)",
         "error": null,
         "hide": 0,
         "includeAll": false,
@@ -1872,7 +1872,7 @@
         "multi": false,
         "name": "instance_id",
         "options": [],
-        "query": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"g[3-4].*\"}, instance_id)",
+        "query": "label_values(node_uname_info{job=~\"ec2_instances\",instance_type=~\"[pg][2-4].*\"}, instance_id)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,

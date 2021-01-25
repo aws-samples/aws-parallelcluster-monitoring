@@ -96,7 +96,7 @@ case "${cfn_node_type}" in
 
 	ComputeFleet)
 		compute_instance_type=$(ec2-metadata -t | awk '{print $2}')
-		gpu_instances="g[2-9].*\.[0-9]*[x]*large"
+		gpu_instances="[pg][2-9].*\.[0-9]*[x]*large"
 		if [[ $compute_instance_type =~ $gpu_instances ]]; then
 			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
