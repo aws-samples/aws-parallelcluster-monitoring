@@ -33,7 +33,7 @@ scrape_configs:
         filters:
           - name: instance-type
             values:
-              - g* 
+              - g* , p*
     relabel_configs:
       - source_labels: [__meta_ec2_tag_Name]
         target_label: instance_name
