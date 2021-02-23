@@ -19,7 +19,7 @@ Create a cluster using [AWS ParallelCluster](https://www.hpcworkshops.com/03-hpc
 post_install = https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
 post_install_args = https://github.com/aws-samples/aws-parallelcluster-monitoring/tarball/main,aws-parallelcluster-monitoring,install-monitoring.sh
 additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess,arn:aws:iam::aws:policy/AmazonSSMFullAccess,arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
-tags = {“Grafana” : “true”}
+tags = {"Grafana" : "true"}
 ...
 ```
 
