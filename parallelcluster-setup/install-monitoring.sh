@@ -15,6 +15,10 @@ case "${cfn_cluster_user}" in
 		service docker start
 		chkconfig docker on
 		usermod -a -G docker $cfn_cluster_user
+
+#to be replaced with yum -y install docker-compose as the repository problem is fixed
+		curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+		chmod +x /usr/local/bin/docker-compose
 	;;
 	
 	centos8)
@@ -24,10 +28,6 @@ case "${cfn_cluster_user}" in
 		usermod -a -G docker $cfn_cluster_user
 	;;
 esac
-
-#to be replaced with yum -y install docker-compose as the repository problem is fixed
-curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
 
 monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
