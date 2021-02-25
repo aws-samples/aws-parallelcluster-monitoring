@@ -9,10 +9,21 @@
 #source the AWS ParallelCluster profile
 . /etc/parallelcluster/cfnconfig
 
-yum -y install docker
-service docker start
-chkconfig docker on
-usermod -a -G docker $cfn_cluster_user
+case "${cfn_cluster_user}" in
+	ec2-user)
+		yum -y install docker
+		service docker start
+		chkconfig docker on
+		usermod -a -G docker $cfn_cluster_user
+	;;
+	
+	centos8)
+		dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+		dnf install docker-ce --nobest -y
+		systemctl enable --now docker
+		usermod -a -G docker $cfn_cluster_user
+	;;
+esac
 
 #to be replaced with yum -y install docker-compose as the repository problem is fixed
 curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
