@@ -1,36 +1,32 @@
-[global]
-update_check = true
-sanity_check = true
-cluster_template = w1cluster
+#!/bin/bash
+#
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+#
 
-[aws]
-aws_region_name = us-east-1
-aws_access_key_id = AKIAINWVAZD6X7LDAZAA
-aws_secret_access_key = 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
+#Load AWS Parallelcluster environment variables
+. /etc/parallelcluster/cfnconfig
 
-[cluster w1cluster]
-vpc_settings = odyvpc
-placement_group = DYNAMIC
-placement = compute
-key_name = llave_i3
-master_instance_type = t3.micro
-compute_instance_type = c5.large
-cluster_type = spot
-disable_hyperthreading = true
-initial_queue_size = 2
-max_queue_size = 2
-maintain_initial_size = true
-scheduler = slurm
-base_os = centos8
-post_install = s3://odyhpc.bucket102/post_install.sh
-post_install_args = https://github.com/coderodyhpc/aws-parallelcluster-monitoring/tarball/main,coderodyhpc-aws-parallelcluster-monitoring,install-monitoring.sh
-additional_iam_policies = arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess,arn:aws:iam::aws:policy/AmazonSSMFullAccess,arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
-tags = {"Grafana" : "true"}
+#get GitHub repo to clone and the installation script
+monitoring_url=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
+monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
+monitoring_tarball="${monitoring_dir_name}.tar.gz"
+setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 3 )
+monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
-[vpc odyvpc]
-master_subnet_id = subnet-b9ec6be5
-vpc_id = vpc-a73ee9dd
+case ${cfn_node_type} in
+    MasterServer)
+        wget ${monitoring_url} -O ${monitoring_tarball}
+        mkdir -p ${monitoring_home}
+        tar xvf ${monitoring_tarball} -C ${monitoring_home} --strip-components 1
+    ;;
+    ComputeFleet)
+    
+    ;;
+esac
 
-[aliases]
-ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
-
+#Execute the monitoring installation script
+bash -x "${monitoring_home}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
+exit $?
