@@ -24,7 +24,7 @@ case ${cfn_node_type} in
 		cd /home/centos
 		wget ${monitoring_url} -O ${monitoring_tarball}
 ###		mkdir -p ${monitoring_home}
-		tar -xvf /home/centos/coderodyhpc-aws-parallelcluster-monitoring.tar.gz
+		tar -xvf /home/centos/coderodyhpc-aws-parallelcluster-monitoring.tar.gz -C ${monitoring_home} --strip-components 1
 		echo ${cfn_base_os} >> /home/centos/tonto
 	;;
 	ComputeFleet)
