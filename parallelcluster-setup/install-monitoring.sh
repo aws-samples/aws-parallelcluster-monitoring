@@ -21,7 +21,7 @@ case "${cfn_cluster_user}" in
 		chmod +x /usr/local/bin/docker-compose
 	;;
 	
-	centos8)
+	centos)
 		dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 		dnf install docker-ce --nobest -y
 		systemctl enable --now docker
