@@ -22,7 +22,7 @@ case ${cfn_node_type} in
 		echo >> /home/centos/tonto
 		echo ${monitoring_url} >> /home/centos/tonto
 		cd /home/centos
-		wget ${monitoring_url} 
+		wget ${monitoring_url} -O ${monitoring_tarball}
 ###		mkdir -p ${monitoring_home}
 		tar -xvf /home/centos/coderodyhpc-aws-parallelcluster-monitoring.tar.gz
 		echo ${cfn_base_os} >> /home/centos/tonto
