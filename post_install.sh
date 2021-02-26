@@ -20,8 +20,8 @@ case ${cfn_node_type} in
 		echo ${monitoring_tarball} >> /home/centos/tonto
 		echo ${monitoring_home} >> /home/centos/tonto
 		wget ${monitoring_url} -O ${monitoring_tarball}
-		mkdir -p ${monitoring_home}
-		tar xvf /home/centos/${monitoring_tarball} --strip-components 1
+###		mkdir -p ${monitoring_home}
+		tar -xvf /home/centos/coderodyhpc-aws-parallelcluster-monitoring.tar.gz
 		echo ${cfn_base_os} >> /home/centos/tonto
 	;;
 	ComputeFleet)
