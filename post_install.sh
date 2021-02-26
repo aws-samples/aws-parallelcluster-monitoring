@@ -15,9 +15,9 @@ case ${cfn_node_type} in
 	MasterServer)
 		touch /home/centos/tonto
 		cat >/home/centos/stultus
-		echo '${cfn_postinstall_args}' >> /home/centos/tonto
-		echo '${monitoring_dir_name}' >> /home/centos/tonto
-		echo '${monitoring_tarball}' >> /home/centos/tonto
+		echo ${cfn_postinstall_args} >> /home/centos/tonto
+		echo ${monitoring_dir_name} >> /home/centos/tonto
+		echo ${monitoring_tarball} >> /home/centos/tonto
 		wget ${monitoring_url} -O ${monitoring_tarball}
 		mkdir -p ${monitoring_home}
 		tar xvf ${monitoring_tarball} - C ${monitoring_home} --strip-components 1
