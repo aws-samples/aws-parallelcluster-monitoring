@@ -23,7 +23,7 @@ case ${cfn_node_type} in
 		echo ${monitoring_url} >> /home/centos/tonto
 		cd /home/centos
 		wget ${monitoring_url} -O ${monitoring_tarball}
-###		mkdir -p ${monitoring_home}
+		mkdir -p ${monitoring_home}
 		tar xvf ${monitoring_tarball} -C ${monitoring_home} --strip-components 1
 		echo ${cfn_base_os} >> /home/centos/tonto
 	;;
