@@ -17,7 +17,7 @@ case "${cfn_cluster_user}" in
 		usermod -a -G docker $cfn_cluster_user
 
 #to be replaced with yum -y install docker-compose as the repository problem is fixed
-		curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+		curl -L "https://github.com/docker/compose/releases/download/1.28.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 		chmod +x /usr/local/bin/docker-compose
 	;;
 	
@@ -26,6 +26,8 @@ case "${cfn_cluster_user}" in
 		dnf install docker-ce --nobest -y
 		systemctl enable --now docker
 		usermod -a -G docker $cfn_cluster_user
+		curl -L https://github.com/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+		chmod +x /usr/local/bin/docker-compose
 	;;
 esac
 
@@ -106,18 +108,19 @@ case "${cfn_node_type}" in
 	;;
 
 	ComputeFleet)
-###		compute_instance_type=$(ec2-metadata -t | awk '{print $2}')
-###		gpu_instances="[pg][2-9].*\.[0-9]*[x]*large"
-###		if [[ $compute_instance_type =~ $gpu_instances ]]; then
-###			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-###			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
-###			yum -y clean expire-cache
-###			yum -y install nvidia-docker2
-###			systemctl restart docker
-###			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
-###        else
-###			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
-###        fi
+		compute_instance_type=$(ec2-metadata -t | awk '{print $2}')
+		gpu_instances="[pg][2-9].*\.[0-9]*[x]*large"
+		if [[ $compute_instance_type =~ $gpu_instances ]]; then
+			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
+			yum -y clean expire-cache
+			yum -y install nvidia-docker2
+			systemctl restart docker
+			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
+#!#!#!#! This would need further work for GPU compute instances running CentOS
+		else
+			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
+        	fi
 
 	;;
 esac
