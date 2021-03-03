@@ -22,12 +22,25 @@ case "${cfn_cluster_user}" in
 	;;
 	
 	centos)
-		dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-		dnf install docker-ce --nobest -y
-		systemctl enable --now docker
-		usermod -a -G docker $cfn_cluster_user
-		curl -L https://github.com/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-		chmod +x /usr/local/bin/docker-compose
+		version=$(rpm --eval %{centos_ver})
+		case "${version}" in
+		8)
+			dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+			dnf install docker-ce --nobest -y
+			systemctl enable --now docker
+			usermod -a -G docker $cfn_cluster_user
+			curl -L https://github.com/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+			chmod +x /usr/local/bin/docker-compose
+		;;
+		7)
+			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+			yum install docker-ce docker-ce-cli containerd.io -y
+			systemctl start docker
+			usermod -a -G docker $cfn_cluster_user
+			curl -L https://github.com/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+			chmod +x /usr/local/bin/docker-compose
+		;;
+		esac
 	;;
 esac
 
@@ -113,11 +126,15 @@ case "${cfn_node_type}" in
 		if [[ $compute_instance_type =~ $gpu_instances ]]; then
 			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
-			yum -y clean expire-cache
-			yum -y install nvidia-docker2
+			if [[${cfn_cluster_user} == centos]] && [[${version} == 8]]; then
+				dnf -y clean expire-cache
+				dnf -y install nvidia-docker2
+			else
+				yum -y clean expire-cache
+				yum -y install nvidia-docker2
+			fi
 			systemctl restart docker
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
-#!#!#!#! This would need further refinement for GPU compute instances running CentOS
 		else
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
         	fi
