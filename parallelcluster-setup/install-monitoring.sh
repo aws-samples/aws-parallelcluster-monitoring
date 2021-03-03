@@ -9,14 +9,40 @@
 #source the AWS ParallelCluster profile
 . /etc/parallelcluster/cfnconfig
 
-yum -y install docker
-service docker start
-chkconfig docker on
-usermod -a -G docker $cfn_cluster_user
+case "${cfn_cluster_user}" in
+	ec2-user)
+		yum -y install docker
+		service docker start
+		chkconfig docker on
+		usermod -a -G docker $cfn_cluster_user
 
 #to be replaced with yum -y install docker-compose as the repository problem is fixed
-curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
+		curl -L "https://github.com/docker/compose/releases/download/1.28.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+		chmod +x /usr/local/bin/docker-compose
+	;;
+	
+	centos)
+		version=$(rpm --eval %{centos_ver})
+		case "${version}" in
+		8)
+			dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+			dnf install docker-ce --nobest -y
+			systemctl enable --now docker
+			usermod -a -G docker $cfn_cluster_user
+			curl -L https://github.com/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+			chmod +x /usr/local/bin/docker-compose
+		;;
+		7)
+			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+			yum install docker-ce docker-ce-cli containerd.io -y
+			systemctl start docker
+			usermod -a -G docker $cfn_cluster_user
+			curl -L https://github.com/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+			chmod +x /usr/local/bin/docker-compose
+		;;
+		esac
+	;;
+esac
 
 monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
@@ -100,12 +126,18 @@ case "${cfn_node_type}" in
 		if [[ $compute_instance_type =~ $gpu_instances ]]; then
 			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
-			yum -y clean expire-cache
-			yum -y install nvidia-docker2
+			if [[${cfn_cluster_user} == centos]] && [[${version} == 8]]; then
+				dnf -y clean expire-cache
+				dnf -y install nvidia-docker2
+			else
+				yum -y clean expire-cache
+				yum -y install nvidia-docker2
+			fi
 			systemctl restart docker
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
-        else
+		else
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
-        fi
+        	fi
+
 	;;
 esac
