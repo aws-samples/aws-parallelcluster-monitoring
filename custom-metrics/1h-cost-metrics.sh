@@ -29,7 +29,7 @@ fi
 
 ####################### S3 #########################
 
-s3_cost_gb_month=$(aws --region us-east-1 pricing get-products \
+s3_cost_gb_month=$(aws --region ${$cfn_region} pricing get-products \
   --service-code AmazonS3 \
   --filters 'Type=TERM_MATCH,Field=location,Value='"${aws_region_long_name}" \
             'Type=TERM_MATCH,Field=storageClass,Value=General Purpose' \
@@ -42,7 +42,7 @@ echo "s3_cost $s3" | curl --data-binary @- http://127.0.0.1:9091/metrics/job/cos
 
 ####################### Master #########################
 master_node_h_price=$(aws pricing get-products \
-  --region us-east-1 \
+  --region ${$cfn_region} \
   --service-code AmazonEC2 \
   --filters 'Type=TERM_MATCH,Field=instanceType,Value='$masterInstanceType \
             'Type=TERM_MATCH,Field=location,Value='"${aws_region_long_name}" \
@@ -72,7 +72,7 @@ fsx_throughput=$(aws cloudformation describe-stacks --stack-name $stack_name --r
 
 if [[ $fsx_type = "SCRATCH_2" ]] || [[ $fsx_type = "SCRATCH_1" ]]; then
   fsx_cost_gb_month=$(aws pricing get-products \
-                      --region us-east-1 \
+                      --region ${$cfn_region} \
                       --service-code AmazonFSx \
                       --filters 'Type=TERM_MATCH,Field=location,Value='"${aws_region_long_name}" \
                       'Type=TERM_MATCH,Field=fileSystemType,Value=Lustre' \
@@ -83,7 +83,7 @@ if [[ $fsx_type = "SCRATCH_2" ]] || [[ $fsx_type = "SCRATCH_1" ]]; then
 
 elif [ $fsx_type = "PERSISTENT_1" ]; then
   fsx_cost_gb_month=$(aws pricing get-products \
-                      --region us-east-1 \
+                      --region ${$cfn_region} \
                       --service-code AmazonFSx \
                       --filters 'Type=TERM_MATCH,Field=location,Value='"${aws_region_long_name}" \
                       'Type=TERM_MATCH,Field=fileSystemType,Value=Lustre' \
@@ -111,7 +111,7 @@ do
   #ebs_volume_iops=$(aws ec2 describe-volumes --volume-ids $ebs_volume_id | jq -r '.Volumes | to_entries[].value.Iops')
   ebs_volume_size=$(aws ec2 describe-volumes --volume-ids $ebs_volume_id | jq -r '.Volumes | to_entries[].value.Size')
   
-  ebs_cost_gb_month=$(aws --region us-east-1 pricing get-products \
+  ebs_cost_gb_month=$(aws --region ${$cfn_region} pricing get-products \
     --service-code AmazonEC2 \
     --query 'PriceList' \
     --output text \
