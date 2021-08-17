@@ -303,7 +303,7 @@
       "targets": [
         {
           "alias": "",
-          "dimensions": {},
+          "dimensions": {"FileSystemId": "__FSX_ID__"},
           "expression": "",
           "id": "fsxRead",
           "matchExact": false,
@@ -318,7 +318,7 @@
         },
         {
           "alias": "",
-          "dimensions": {},
+          "dimensions": {"FileSystemId": "__FSX_ID__"},
           "expression": "",
           "hide": false,
           "id": "fsxWrite",
@@ -350,8 +350,8 @@
             "include": {
               "names": [
                 "Time",
-                "__FSX_ID__ DataReadBytes",
-                "__FSX_ID__ DataWriteBytes"
+                "DataReadBytes",
+                "DataWriteBytes"
               ]
             }
           }
@@ -459,7 +459,7 @@
       "targets": [
         {
           "alias": "",
-          "dimensions": {},
+          "dimensions": {"FileSystemId": "__FSX_ID__"},
           "expression": "",
           "id": "fsxIOPsRead",
           "matchExact": false,
@@ -474,7 +474,7 @@
         },
         {
           "alias": "",
-          "dimensions": {},
+          "dimensions": {"FileSystemId": "__FSX_ID__"},
           "expression": "",
           "hide": false,
           "id": "fsxIOPsWrite",
@@ -506,8 +506,8 @@
             "include": {
               "names": [
                 "Time",
-                "__FSX_ID__ DataReadOperations",
-                "__FSX_ID__ DataWriteOperations"
+                "DataReadOperations",
+                "DataWriteOperations"
               ]
             }
           }
