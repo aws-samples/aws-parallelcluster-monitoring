@@ -11,6 +11,7 @@
 
 export AWS_DEFAULT_REGION=$cfn_region
 aws_region_long_name=$(python /usr/local/bin/aws-region.py $cfn_region)
+aws_region_long_name=${aws_region_long_name/Europe/EU}
 
 masterInstanceType=$(ec2-metadata -t | awk '{print $2}')
 masterInstanceId=$(ec2-metadata -i | awk '{print $2}')
@@ -58,18 +59,26 @@ echo "master_node_cost $master_node_h_price" | curl --data-binary @- http://127.
   
 
 ####################### FSX #########################
-fsx_size_gb=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
-              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
-              | awk -F "," '{print $3}')
-              
-fsx_type=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
-              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
-              | awk -F "," '{print $9}')
-            
-fsx_throughput=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
-              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
-              | awk -F "," '{print $10}')
+#fsx_size_gb=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
+#              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
+#              | awk -F "," '{print $3}')
+#
+#fsx_type=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
+#              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
+#              | awk -F "," '{print $9}')
+#            
+#fsx_throughput=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
+#              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
+#              | awk -F "," '{print $10}')
 
+fsx_id=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region \
+              | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "FSXOptions"))[0].ParameterValue' \
+              | awk -F "," '{print $2}')
+fsx_summary=$(aws fsx describe-file-systems --region $cfn_region --file-system-ids $fsx_id)
+fsx_size_gb=$(echo $fsx_summary | jq -r '.FileSystems[0].StorageCapacity')
+fsx_type=$(echo $fsx_summary | jq -r '.FileSystems[0].LustreConfiguration.DeploymentType')
+fsx_throughput=$(echo $fsx_summary | jq -r '.FileSystems[0].LustreConfiguration.PerUnitStorageThroughput')
+              
 if [[ $fsx_type = "SCRATCH_2" ]] || [[ $fsx_type = "SCRATCH_1" ]]; then
   fsx_cost_gb_month=$(aws pricing get-products \
                       --region us-east-1 \
