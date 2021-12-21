@@ -21,6 +21,10 @@ chmod +x /usr/local/bin/docker-compose
 monitoring_dir_name=${cfn_postinstall_args[1]}
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
+echo "$> variable monitoring_dir_name -> ${monitoring_dir_name}"
+echo "$> variable monitoring_home -> ${monitoring_home}"
+
+
 case "${cfn_node_type}" in
 	HeadNode)
 
@@ -98,6 +102,8 @@ case "${cfn_node_type}" in
 	ComputeFleet)
 		compute_instance_type=$(ec2-metadata -t | awk '{print $2}')
 		gpu_instances="[pg][2-9].*\.[0-9]*[x]*large"
+		echo "$> Compute Instances Type EC2 -> ${compute_instance_type}"
+		echo "$> GPUS Instances EC2 -> ${gpu_instances}"
 		if [[ $compute_instance_type =~ $gpu_instances ]]; then
 			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
