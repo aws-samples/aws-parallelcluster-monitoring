@@ -10,10 +10,10 @@
 . /etc/parallelcluster/cfnconfig
 
 #get GitHub repo to clone and the installation script
-monitoring_url=$(echo ${cfn_postinstall_args}| cut -d ',' -f 1 )
-monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
+monitoring_url=${cfn_postinstall_args[0]}
+monitoring_dir_name=${cfn_postinstall_args[1]}
 monitoring_tarball="${monitoring_dir_name}.tar.gz"
-setup_command=$(echo ${cfn_postinstall_args}| cut -d ',' -f 3 )
+setup_command=${cfn_postinstall_args[2]}
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
 case ${cfn_node_type} in
