@@ -31,6 +31,12 @@ scrape_configs:
       - port: 9400
         refresh_interval: 10s
         filters:
+          - name: instance-state-name
+            values:
+              - running
+          - name: tag:Name
+            values:
+              - Compute
           - name: instance-type
             values:
               - p2.xlarge
@@ -57,15 +63,11 @@ scrape_configs:
         target_label: instance_name
       - source_labels: [__meta_ec2_tag_Application]
         target_label: instance_grafana
-        regex: __Application__
-        action: keep
       - source_labels: [__meta_ec2_instance_id]
         target_label: instance_id
       - source_labels: [__meta_ec2_availability_zone]
         target_label: instance_az
       - source_labels: [__meta_ec2_instance_state]
-        regex: running
-        action: keep
         target_label: instance_state
       - source_labels: [__meta_ec2_instance_type]
         target_label: instance_type
