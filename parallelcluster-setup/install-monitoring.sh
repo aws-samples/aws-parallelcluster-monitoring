@@ -26,7 +26,7 @@ echo "$> variable monitoring_home -> ${monitoring_home}"
 
 
 case "${cfn_node_type}" in
-	HeadNode)
+	HeadNode | MasterServer)
 
 		#cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		#cfn_cluster_cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cfn_cluster_cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")

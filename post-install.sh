@@ -17,7 +17,7 @@ setup_command=${cfn_postinstall_args[2]}
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
 case ${cfn_node_type} in
-    HeadNode)
+    HeadNode | MasterServer)
         wget ${monitoring_url} -O ${monitoring_tarball}
         mkdir -p ${monitoring_home}
         tar xvf ${monitoring_tarball} -C ${monitoring_home} --strip-components 1
