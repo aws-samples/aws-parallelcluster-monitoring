@@ -13,6 +13,31 @@ There are 6 dashboards that can be used as they are or customized as you need.
 ## Quickstart
 Create a cluster using [AWS ParallelCluster](https://www.hpcworkshops.com/03-hpc-aws-parallelcluster-workshop.html) and include the following configuration:
 
+### PC 3.X
+
+Update your cluster's config by adding the following snippet in the `HeadNode` section:
+
+```yaml
+CustomActions:
+  OnNodeConfigured:
+    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
+    Args:
+      - https://github.com/aws-samples/aws-parallelcluster-monitoring/tarball/main
+      - aws-parallelcluster-monitoring
+      - install-monitoring.sh
+Iam:
+  AdditionalIamPolicies:
+    - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess
+    - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
+    - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+    - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+Tags:
+  - Key: Grafana
+    Value: true
+```
+
+### PC 2.X
+
 ```ini
 [cluster yourcluster]
 ...
