@@ -9,12 +9,15 @@
 #source the AWS ParallelCluster profile
 . /etc/parallelcluster/cfnconfig
 
-yum -y install docker
-service docker start
-chkconfig docker on
-usermod -a -G docker $cfn_cluster_user
+sudo apt -y install apt-transport-https ca-certificates software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+sudo apt -y install docker-ce
+sudo service docker start
+sudo systemctl enable docker.service
+sudo usermod -a -G docker $cfn_cluster_user
 
-#to be replaced with yum -y install docker-compose as the repository problem is fixed
+#to be replaced with apt -y install docker-compose as the repository problem is fixed
 curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
@@ -31,17 +34,18 @@ case "${cfn_node_type}" in
 		#cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		#cfn_cluster_cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cfn_cluster_cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cfn_fsx_fs_id=$(cat /etc/chef/dna.json | grep \"cfn_fsx_fs_id\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
-		master_instance_id=$(ec2-metadata -i | awk '{print $2}')
+		master_instance_id=$(sudo curl -s http://169.254.169.254/latest/meta-data/instance-id)
 		cfn_max_queue_size=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "MaxSize"))[0].ParameterValue')
 		s3_bucket=$(echo $cfn_postinstall | sed "s/s3:\/\///g;s/\/.*//")
 		cluster_s3_bucket=$(cat /etc/chef/dna.json | grep \"cluster_s3_bucket\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_s3_key=$(cat /etc/chef/dna.json | grep \"cluster_config_s3_key\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_version=$(cat /etc/chef/dna.json | grep \"cluster_config_version\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
-		log_group_names="\/aws\/parallelcluster\/$(echo ${stack_name} | cut -d "-" -f2-)"
+		# log_group_names="\/aws\/parallelcluster\/$(echo ${stack_name} | cut -d "-" -f2-)"
+		log_group_names=$(sudo aws logs describe-log-groups --log-group-name-prefix "/aws/parallelcluster/$SUDO_USER" --query 'reverse(sort_by(logGroups,&creationTime))[0].logGroupName' --output text)
 
 		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version ${monitoring_home}/parallelcluster-setup/cluster-config.json
 
-		yum -y install golang-bin
+		sudo apt-get -y install golang-go
 
 		chown $cfn_cluster_user:$cfn_cluster_user -R /home/$cfn_cluster_user
 		chmod +x ${monitoring_home}/custom-metrics/*
@@ -75,7 +79,7 @@ case "${cfn_node_type}" in
 		nginx_dir="${monitoring_home}/nginx"
 		nginx_ssl_dir="${nginx_dir}/ssl"
 		mkdir -p ${nginx_ssl_dir}
-		echo -e "\nDNS.1=$(ec2-metadata -p | awk '{print $2}')" >> "${nginx_dir}/openssl.cnf"
+		echo -e "\nDNS.1=$(sudo curl http://169.254.169.254/latest/meta-data/public-ipv4)" >> "${nginx_dir}/openssl.cnf"
 		openssl req -new -x509 -nodes -newkey rsa:4096 -days 3650 -keyout "${nginx_ssl_dir}/nginx.key" -out "${nginx_ssl_dir}/nginx.crt" -config "${nginx_dir}/openssl.cnf"
 
 		#give $cfn_cluster_user ownership
@@ -101,15 +105,15 @@ case "${cfn_node_type}" in
 	;;
 
 	ComputeFleet)
-		compute_instance_type=$(ec2-metadata -t | awk '{print $2}')
+		compute_instance_type=$(sudo curl http://169.254.169.254/latest/meta-data/instance-type)
 		gpu_instances="[pg][2-9].*\.[0-9]*[x]*large"
 		echo "$> Compute Instances Type EC2 -> ${compute_instance_type}"
 		echo "$> GPUS Instances EC2 -> ${gpu_instances}"
 		if [[ $compute_instance_type =~ $gpu_instances ]]; then
 			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/yum.repos.d/nvidia-docker.repo
-			yum -y clean expire-cache
-			yum -y install nvidia-docker2
+			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/apt.repos.d/nvidia-docker.repo
+			apt -y clean expire-cache
+			apt -y install nvidia-docker2
 			systemctl restart docker
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
         else
