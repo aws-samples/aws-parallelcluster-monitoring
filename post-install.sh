@@ -9,7 +9,7 @@
 #Load AWS Parallelcluster environment variables
 . /etc/parallelcluster/cfnconfig
 
-version=${1:-v0.9}
+version=${1:-v0.10}
 monitoring_dir_name=aws-parallelcluster-monitoring
 monitoring_tarball="${monitoring_dir_name}.tar.gz"
 
