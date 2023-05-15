@@ -14,5 +14,6 @@ services:
         volumes:
             - '/:/host:ro,rslave'
         image: quay.io/prometheus/node-exporter
+        user: root
         command:
             - '--path.rootfs=/host'

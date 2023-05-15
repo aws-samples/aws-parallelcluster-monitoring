@@ -30,5 +30,5 @@ case ${cfn_node_type} in
 esac
 
 #Execute the monitoring installation script
-bash -x "${monitoring_home}/parallelcluster-setup/${setup_command}"
+sudo bash -x "${monitoring_home}/parallelcluster-setup/${setup_command}"
 exit $?

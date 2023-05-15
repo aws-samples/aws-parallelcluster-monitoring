@@ -12,6 +12,7 @@ services:
         pid: host
         restart: unless-stopped
         image: prom/pushgateway
+        user: root
     prometheus:
         container_name: prometheus
         network_mode: host
@@ -21,6 +22,7 @@ services:
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
             - 'prometheus-data:/prometheus'
         image: prom/prometheus
+        user: root
         command:
             - '--config.file=/etc/prometheus/prometheus.yml'
             - '--storage.tsdb.path=/prometheus'
@@ -40,6 +42,7 @@ services:
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/grafana:/etc/grafana/provisioning'
             - 'grafana-data:/var/lib/grafana'
         image: grafana/grafana
+        user: root
     prometheus-node-exporter:
         container_name: node-exporter
         network_mode: host
@@ -48,6 +51,7 @@ services:
         volumes:
             - '/:/host:ro,rslave'
         image: quay.io/prometheus/node-exporter
+        user: root
         command:
             - '--path.rootfs=/host'
     nginx:
@@ -60,6 +64,7 @@ services:
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/nginx/ssl:/etc/ssl/'
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/www:/usr/share/nginx/html'
         image: nginx
+        user: root
 volumes:
     prometheus-data:
     grafana-data:
