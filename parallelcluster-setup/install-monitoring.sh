@@ -41,7 +41,7 @@ case "${cfn_node_type}" in
 		cluster_config_s3_key=$(cat /etc/chef/dna.json | grep \"cluster_config_s3_key\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_version=$(cat /etc/chef/dna.json | grep \"cluster_config_version\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		# log_group_names="\/aws\/parallelcluster\/$(echo ${stack_name} | cut -d "-" -f2-)"
-		log_group_names=$(sudo aws logs describe-log-groups --log-group-name-prefix "/aws/parallelcluster/$SUDO_USER" --query 'reverse(sort_by(logGroups,&creationTime))[0].logGroupName' --output text)
+		log_group_names=$(sudo aws logs describe-log-groups --log-group-name-prefix "/aws/parallelcluster/$stack_name" --query 'reverse(sort_by(logGroups,&creationTime))[0].logGroupName' --output text)
 
 		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version ${monitoring_home}/parallelcluster-setup/cluster-config.json
 
