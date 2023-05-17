@@ -9,18 +9,6 @@
 #source the AWS ParallelCluster profile
 . /etc/parallelcluster/cfnconfig
 
-sudo apt -y install apt-transport-https ca-certificates software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-sudo apt -y install docker-ce
-sudo service docker start
-sudo systemctl enable docker.service
-sudo usermod -a -G docker $cfn_cluster_user
-
-#to be replaced with apt -y install docker-compose as the repository problem is fixed
-curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-
 monitoring_dir_name=aws-parallelcluster-monitoring
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
@@ -45,8 +33,6 @@ case "${cfn_node_type}" in
 		log_group_name="\/aws\/parallelcluster\/${names[3]}"
 
 		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version ${monitoring_home}/parallelcluster-setup/cluster-config.json
-
-		sudo apt-get -y install golang-go
 
 		chown $cfn_cluster_user:$cfn_cluster_user -R /home/$cfn_cluster_user
 		chmod +x ${monitoring_home}/custom-metrics/*
@@ -111,11 +97,6 @@ case "${cfn_node_type}" in
 		echo "$> Compute Instances Type EC2 -> ${compute_instance_type}"
 		echo "$> GPUS Instances EC2 -> ${gpu_instances}"
 		if [[ $compute_instance_type =~ $gpu_instances ]]; then
-			distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-			curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.repo | tee /etc/apt.repos.d/nvidia-docker.repo
-			apt -y clean expire-cache
-			apt -y install nvidia-docker2
-			systemctl restart docker
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.gpu.yml -p monitoring-compute up -d
         else
 			/usr/local/bin/docker-compose -f /home/${cfn_cluster_user}/${monitoring_dir_name}/docker-compose/docker-compose.compute.yml -p monitoring-compute up -d
