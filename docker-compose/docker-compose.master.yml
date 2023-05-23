@@ -36,6 +36,7 @@ services:
         pid: host
         restart: unless-stopped
         environment:
+            - 'GF_AUTH_ANONYMOUS_ENABLED=true'
             - 'GF_SECURITY_ADMIN_PASSWORD=Grafana4PC!'
             - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
         volumes:
