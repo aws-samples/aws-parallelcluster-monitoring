@@ -163,7 +163,7 @@
             "type": "prometheus",
             "uid": "P1809F7CD0C75ACF3"
           },
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\"}[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_cpu_seconds_total{instance_name=\"Compute\", mode!=\"idle\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -174,7 +174,7 @@
             "type": "prometheus",
             "uid": "P1809F7CD0C75ACF3"
           },
-          "expr": "sum(rate(node_network_transmit_bytes_total[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_network_transmit_bytes_total{instance_name=\"Compute\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "refId": "B"
@@ -184,7 +184,7 @@
             "type": "prometheus",
             "uid": "P1809F7CD0C75ACF3"
           },
-          "expr": "sum(rate(node_network_receive_bytes_total[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_network_receive_bytes_total{instance_name=\"Compute\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "refId": "C"
