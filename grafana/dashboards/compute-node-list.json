@@ -3,10 +3,7 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": {
-          "type": "datasource",
-          "uid": "grafana"
-        },
+        "datasource": "-- Grafana --",
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -16,7 +13,7 @@
     ]
   },
   "editable": true,
-  "fiscalYearStartMonth": 0,
+  "gnetId": null,
   "graphTooltip": 0,
   "iteration": 1592242343557,
   "links": [
@@ -30,14 +27,17 @@
   "panels": [
     {
       "columns": [],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "P1809F7CD0C75ACF3"
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
       },
       "fontSize": "100%",
       "gridPos": {
-        "h": 23,
-        "w": 24,
+        "h": 24,
+        "w": 9,
         "x": 0,
         "y": 0
       },
@@ -95,6 +95,7 @@
         {
           "alias": "Instance Type",
           "align": "auto",
+          "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
             "rgba(237, 129, 40, 0.89)",
@@ -111,6 +112,7 @@
         {
           "alias": "CPU load",
           "align": "auto",
+          "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
             "rgba(237, 129, 40, 0.89)",
@@ -127,6 +129,7 @@
         {
           "alias": "Transmit Rate",
           "align": "auto",
+          "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
             "rgba(237, 129, 40, 0.89)",
@@ -143,6 +146,7 @@
         {
           "alias": "Receive Rate",
           "align": "auto",
+          "colorMode": null,
           "colors": [
             "rgba(245, 54, 54, 0.9)",
             "rgba(237, 129, 40, 0.89)",
@@ -159,59 +163,45 @@
       ],
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "expr": "sum(rate(node_cpu_seconds_total{instance_name=\"Compute\", mode!=\"idle\"}[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "expr": "sum(rate(node_network_transmit_bytes_total{instance_name=\"Compute\"}[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_network_transmit_bytes_total[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "refId": "B"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "expr": "sum(rate(node_network_receive_bytes_total{instance_name=\"Compute\"}[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_network_receive_bytes_total[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "refId": "C"
         }
       ],
+      "timeFrom": null,
+      "timeShift": null,
       "title": "All Available Nodes",
       "transform": "table",
       "type": "table-old"
     }
   ],
-  "refresh": "",
-  "schemaVersion": 38,
+  "schemaVersion": 25,
   "style": "dark",
   "tags": [],
   "templating": {
     "list": [
       {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "P1809F7CD0C75ACF3"
-        },
+        "datasource": null,
         "filters": [
           {
             "condition": "",
             "key": "instance_id",
             "operator": "!=",
-            "value": "i-067e05b9e0cea6ecc"
+            "value": "__INSTANCE_ID__"
           }
         ],
         "hide": 2,
@@ -242,6 +232,5 @@
   "timezone": "",
   "title": "Compute Node List",
   "uid": "SugNQvuWk",
-  "version": 1,
-  "weekStart": ""
+  "version": 1
 }
