@@ -50,7 +50,7 @@
       "fontSize": "110%",
       "gridPos": {
         "h": 9,
-        "w": 8,
+        "w": 24,
         "x": 0,
         "y": 1
       },
@@ -232,320 +232,6 @@
       "title": "Cluster Storage",
       "transform": "table",
       "type": "table-old"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "cloudwatch",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 9,
-        "w": 8,
-        "x": 8,
-        "y": 1
-      },
-      "hiddenSeries": false,
-      "id": 52,
-      "interval": "",
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
-        "hideEmpty": false,
-        "hideZero": false,
-        "max": true,
-        "min": true,
-        "rightSide": false,
-        "show": true,
-        "total": true,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "7.0.3",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
-          "expression": "",
-          "id": "fsxRead",
-          "matchExact": false,
-          "metricName": "DataReadBytes",
-          "namespace": "AWS/FSx",
-          "period": "",
-          "refId": "A",
-          "region": "__AWS_REGION__",
-          "statistics": [
-            "Sum"
-          ]
-        },
-        {
-          "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
-          "expression": "",
-          "hide": false,
-          "id": "fsxWrite",
-          "matchExact": false,
-          "metricName": "DataWriteBytes",
-          "namespace": "AWS/FSx",
-          "period": "",
-          "refId": "B",
-          "region": "__AWS_REGION__",
-          "statistics": [
-            "Sum"
-          ]
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "FSx Total throughput ",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "Time",
-                "DataReadBytes",
-                "DataWriteBytes"
-              ]
-            }
-          }
-        }
-      ],
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "$$hashKey": "object:9663",
-          "decimals": 1,
-          "format": "Bps",
-          "label": "Total throughput (bytes/sec)",
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "$$hashKey": "object:9664",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "cloudwatch",
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": null
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 9,
-        "w": 8,
-        "x": 16,
-        "y": 1
-      },
-      "hiddenSeries": false,
-      "id": 53,
-      "interval": "",
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
-        "max": true,
-        "min": true,
-        "show": true,
-        "total": true,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "7.0.3",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
-          "expression": "",
-          "id": "fsxIOPsRead",
-          "matchExact": false,
-          "metricName": "DataReadOperations",
-          "namespace": "AWS/FSx",
-          "period": "",
-          "refId": "A",
-          "region": "__AWS_REGION__",
-          "statistics": [
-            "Sum"
-          ]
-        },
-        {
-          "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
-          "expression": "",
-          "hide": false,
-          "id": "fsxIOPsWrite",
-          "matchExact": false,
-          "metricName": "DataWriteOperations",
-          "namespace": "AWS/FSx",
-          "period": "",
-          "refId": "B",
-          "region": "__AWS_REGION__",
-          "statistics": [
-            "Sum"
-          ]
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "FSx Total IOPs",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "Time",
-                "DataReadOperations",
-                "DataWriteOperations"
-              ]
-            }
-          }
-        }
-      ],
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "$$hashKey": "object:9663",
-          "decimals": 1,
-          "format": "iops",
-          "label": "Total IOPs (Operations/sec)",
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "$$hashKey": "object:9664",
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
     },
     {
       "collapsed": false,
@@ -1069,7 +755,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\",instance_id!=\"__INSTANCE_ID__\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1121,7 +807,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})/count(count(node_cpu_seconds_total{instance_id!=\"__INSTANCE_ID__\"}) by (instance_id))",
+          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\",instance_id!=\"__INSTANCE_ID__\"})/count(count(node_cpu_seconds_total{instance_name=\"Compute\",instance_id!=\"__INSTANCE_ID__\"}) by (instance_id))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1173,7 +859,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_cpu_seconds_total{instance_name=\"Compute\",mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1225,7 +911,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))/count(count(node_cpu_seconds_total{instance_id!=\"__INSTANCE_ID__\"}) by (instance_id))",
+          "expr": "sum(rate(node_cpu_seconds_total{instance_name=\"Compute\",mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))/count(count(node_cpu_seconds_total{instance_name=\"Compute\",instance_id!=\"__INSTANCE_ID__\"}) by (instance_id))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1709,13 +1395,13 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "count(node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})",
           "interval": "",
           "legendFormat": "Total cores",
           "refId": "B"
         },
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_cpu_seconds_total{instance_name=\"Compute\",mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))",
           "legendFormat": "Load in cores",
           "refId": "A"
         }

@@ -37,7 +37,7 @@
       "fontSize": "100%",
       "gridPos": {
         "h": 24,
-        "w": 9,
+        "w": 24,
         "x": 0,
         "y": 0
       },
@@ -163,20 +163,20 @@
       ],
       "targets": [
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\"}[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_cpu_seconds_total{instance_name=\"Compute\", mode!=\"idle\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(node_network_transmit_bytes_total[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_network_transmit_bytes_total{instance_name=\"Compute\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "refId": "B"
         },
         {
-          "expr": "sum(rate(node_network_receive_bytes_total[1m])) by (instance_id, instance_type, instance_az)",
+          "expr": "sum(rate(node_network_receive_bytes_total{instance_name=\"Compute\"}[1m])) by (instance_id, instance_type, instance_az)",
           "format": "table",
           "instant": true,
           "refId": "C"
