@@ -14,6 +14,3 @@ CN=ngnix
 [v3_req]
 keyUsage=keyEncipherment, dataEncipherment, digitalSignature
 extendedKeyUsage=serverAuth
-subjectAltName=@alt_names
-
-[alt_names]

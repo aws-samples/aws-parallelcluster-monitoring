@@ -67,7 +67,7 @@ case "${cfn_node_type}" in
 		nginx_dir="${monitoring_home}/nginx"
 		nginx_ssl_dir="${nginx_dir}/ssl"
 		mkdir -p ${nginx_ssl_dir}
-		echo -e "\nDNS.1=$(sudo curl http://169.254.169.254/latest/meta-data/public-ipv4)" >> "${nginx_dir}/openssl.cnf"
+		# echo -e "\nDNS.1=$(sudo curl http://169.254.169.254/latest/meta-data/public-ipv4)" >> "${nginx_dir}/openssl.cnf"
 		openssl req -new -x509 -nodes -newkey rsa:4096 -days 3650 -keyout "${nginx_ssl_dir}/nginx.key" -out "${nginx_ssl_dir}/nginx.crt" -config "${nginx_dir}/openssl.cnf"
 
 		#give $cfn_cluster_user ownership
