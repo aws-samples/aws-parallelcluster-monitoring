@@ -112,7 +112,7 @@ Tags:
     Value: 'true'
 ```
 
-3. Connect to `https://headnode_public_ip` or `http://headnode_public_ip` (all `http` connections will be automatically redirected to `https`) and authenticate with the default [Grafana password](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docker-compose/docker-compose.master.yml#L43). A landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
+3. Connect to `https://headnode_public_ip` or `http://headnode_public_ip` (all `http` connections will be automatically redirected to `https`) and authenticate with the username `admin` and default [Grafana password](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docker-compose/docker-compose.headnode.yml#L37). A landing page will be presented to you with links to the Prometheus database service and the Grafana dashboards.
 
 ![Login Screen](docs/Login1.png?raw=true "Login Screen")
 ![Login Screen](docs/Login2.png?raw=true "Login Screen")

@@ -71,9 +71,9 @@ case "${cfn_node_type}" in
 		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/compute-node-list.json
 		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/compute-node-details.json
 
-		sed -i "s/__MONITORING_DIR__/${monitoring_dir_name}/g"  ${monitoring_home}/docker-compose/docker-compose.master.yml
+		sed -i "s/__MONITORING_DIR__/${monitoring_dir_name}/g"  ${monitoring_home}/docker-compose/docker-compose.headnode.yml
 
-		# Generate selfsigned certificate for Nginx over ssl
+		# Generate self-signed certificate for Nginx over ssl
 		nginx_dir="${monitoring_home}/nginx"
 		nginx_ssl_dir="${nginx_dir}/ssl"
 		mkdir -p ${nginx_ssl_dir}
@@ -84,10 +84,10 @@ case "${cfn_node_type}" in
 		chown -R $cfn_cluster_user:$cfn_cluster_user "${nginx_ssl_dir}/nginx.key"
 		chown -R $cfn_cluster_user:$cfn_cluster_user "${nginx_ssl_dir}/nginx.crt"
 
-		/usr/local/bin/docker-compose --env-file /etc/parallelcluster/cfnconfig -f ${monitoring_home}/docker-compose/docker-compose.master.yml -p monitoring-master up -d
+		docker-compose --env-file /etc/parallelcluster/cfnconfig -f ${monitoring_home}/docker-compose/docker-compose.headnode.yml -p monitoring-master up -d
 
 		# Download and build prometheus-slurm-exporter
-		##### Plese note this software package is under GPLv3 License #####
+		##### Please note this software package is under GPLv3 License #####
 		# More info here: https://github.com/vpenso/prometheus-slurm-exporter/blob/master/LICENSE
 		cd ${monitoring_home}
 		git clone https://github.com/vpenso/prometheus-slurm-exporter.git
