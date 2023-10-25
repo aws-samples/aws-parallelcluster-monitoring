@@ -23,7 +23,8 @@ compute_nodes_total_cost=0
 
 for queue in $queues; do 
 
-  instance_type=$(cat "${cluster_config_file}" | jq -r --arg queue $queue '.cluster.queue_settings | to_entries[] | select(.key==$queue).value.compute_resource_settings | to_entries[]| .value.instance_type')
+  # instance_type=$(cat "${cluster_config_file}" | jq -r --arg queue $queue '.cluster.queue_settings | to_entries[] | select(.key==$queue).value.compute_resource_settings | to_entries[]| .value.instance_type')
+  instance_type='hpc7g.16xlarge'
 
   compute_node_h_price=$(aws pricing get-products \
     --region us-east-1 \
