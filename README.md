@@ -3,7 +3,7 @@
 This is a sample solution based on Grafana for monitoring various component of an HPC cluster built with AWS ParallelCluster.
 There are 6 dashboards that can be used as they are or customized as you need.
 * [ParallelCluster Summary](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/ParallelCluster.json) - this is the main dashboard that shows general monitoring info and metrics for the whole cluster. It includes Slurm metrics and Storage performance metrics.
-* [HeadNode Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/master-node-details.json) - this dashboard shows detailed metric for the HeadNode, including CPU, Memory, Network and Storage usage.
+* [HeadNode Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/head-node-details.json) - this dashboard shows detailed metric for the HeadNode, including CPU, Memory, Network and Storage usage.
 * [Compute Node List](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-list.json) - this dashboard show the list of the available compute nodes. Each entry is a link to a more detailed page.
 * [Compute Node Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/compute-node-details.json) - similarly to the HeadNode details this dashboard show the same metric for the compute nodes.
 * [GPU Nodes Details](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/grafana/dashboards/gpu.json) - This dashboard shows GPUs releated metrics collected using nvidia-dcgm container.
@@ -92,6 +92,15 @@ security_group=$(aws ec2 create-security-group --group-name grafana-sg --descrip
 aws ec2 authorize-security-group-ingress --group-id ${security_group} --protocol tcp --port 443 --cidr 0.0.0.0/0
 aws ec2 authorize-security-group-ingress --group-id ${security_group} --protocol tcp --port 80 —-cidr 0.0.0.0/0
 ```
+
+**Alternatively** you can use [SSM Port Forwarding](https://aws.amazon.com/blogs/aws/new-port-forwarding-using-aws-system-manager-sessions-manager/) to connect:
+
+```bash
+instance_id=$(pcluster describe-cluster -n arm64 | jq '.headNode.instanceId')
+aws ssm start-session --target $instance_id --document-name AWS-StartPortForwardingSession --parameters "portNumber=['443'],localPortNumber=['8080']"
+```
+
+Then connect to `https://localhost:8080` in your browser. Note you must have the [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed and you must run this command on your local machine. In addition the cluster must have the `AmazonSSMManagedInstanceCore` policy.
 
 2. Create a cluster with the post install script [post-install.sh](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/post-install.sh), the Security Group you created above as [AdditionalSecurityGroup](https://docs.aws.amazon.com/parallelcluster/latest/ug/Scheduling-v3.html#yaml-Scheduling-SlurmQueues-Networking-AdditionalSecurityGroups) on the HeadNode, and a few additional IAM Policies. You can find a complete AWS ParallelCluster template [here](parallelcluster-setup/pcluster.yaml). Please note that, at the moment, the installation script has only been tested using [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2/).
 

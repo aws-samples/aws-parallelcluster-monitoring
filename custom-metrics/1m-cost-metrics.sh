@@ -6,18 +6,18 @@
 #
 #
 
-#source the AWS ParallelCluster profile
+# Source the AWS ParallelCluster profile
 . /etc/parallelcluster/cfnconfig
 
 export AWS_DEFAULT_REGION=$cfn_region
 aws_region_long_name=$(python /usr/local/bin/aws-region.py $cfn_region)
 aws_region_long_name=${aws_region_long_name/Europe/EU}
 
-monitoring_dir_name=$(echo ${cfn_postinstall_args}| cut -d ',' -f 2 )
+monitoring_dir_name=aws-parallelcluster-monitoring
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
 queues=$(/opt/slurm/bin/sinfo --noheader -O partition  | sed 's/\*//g')
-cluster_config_file="${monitoring_home}/parallelcluster-setup/cluster-config.json"
+cluster_config_file="${monitoring_home}/parallelcluster-setup/cluster-config.yaml"
 
 compute_nodes_total_cost=0
 

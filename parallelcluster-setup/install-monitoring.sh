@@ -29,19 +29,17 @@ echo "$> variable monitoring_home -> ${monitoring_home}"
 
 case "${cfn_node_type}" in
 	HeadNode | MasterServer)
-
-		#cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
-		#cfn_cluster_cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cfn_cluster_cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
+		cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
+		cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cfn_fsx_fs_id=$(cat /etc/chef/dna.json | grep \"cfn_fsx_fs_id\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		headnode_instance_id=$(ec2-metadata -i | awk '{print $2}')
 		cfn_max_queue_size=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "MaxSize"))[0].ParameterValue')
-		s3_bucket=$(echo $cfn_postinstall | sed "s/s3:\/\///g;s/\/.*//")
 		cluster_s3_bucket=$(cat /etc/chef/dna.json | grep \"cluster_s3_bucket\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_s3_key=$(cat /etc/chef/dna.json | grep \"cluster_config_s3_key\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cluster_config_version=$(cat /etc/chef/dna.json | grep \"cluster_config_version\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
-		log_group_names="\/aws\/parallelcluster\/$(echo ${stack_name} | cut -d "-" -f2-)"
+		log_group_names=$(cat /etc/chef/dna.json | grep \"log_group_name\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 
-		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version ${monitoring_home}/parallelcluster-setup/cluster-config.json
+		aws s3api get-object --bucket $cluster_s3_bucket --key $cluster_config_s3_key --region $cfn_region --version-id $cluster_config_version ${monitoring_home}/parallelcluster-setup/cluster-config.yaml
 
 		yum -y install golang-bin
 
@@ -56,7 +54,6 @@ case "${cfn_node_type}" in
 
 
 		# replace tokens
-		sed -i "s/_S3_BUCKET_/${s3_bucket}/g"               	${monitoring_home}/grafana/dashboards/ParallelCluster.json
 		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/ParallelCluster.json
 		sed -i "s/__FSX_ID__/${cfn_fsx_fs_id}/g"            	${monitoring_home}/grafana/dashboards/ParallelCluster.json
 		sed -i "s/__AWS_REGION__/${cfn_region}/g"           	${monitoring_home}/grafana/dashboards/ParallelCluster.json
@@ -67,7 +64,7 @@ case "${cfn_node_type}" in
 		sed -i "s/__Application__/${stack_name}/g"          	${monitoring_home}/prometheus/prometheus.yml
 		sed -i "s/__AWS_REGION__/${cfn_region}/g"          		${monitoring_home}/prometheus/prometheus.yml
 
-		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/master-node-details.json
+		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/head-node-details.json
 		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/compute-node-list.json
 		sed -i "s/__INSTANCE_ID__/${headnode_instance_id}/g"  	${monitoring_home}/grafana/dashboards/compute-node-details.json
 
