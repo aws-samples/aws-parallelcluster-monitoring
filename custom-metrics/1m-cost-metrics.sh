@@ -22,8 +22,8 @@ cluster_config_file="${monitoring_home}/parallelcluster-setup/cluster-config.yam
 compute_nodes_total_cost=0
 
 for queue in $queues; do 
-
-  instance_type=$(cat "${cluster_config_file}" | jq -r --arg queue $queue '.cluster.queue_settings | to_entries[] | select(.key==$queue).value.compute_resource_settings | to_entries[]| .value.instance_type')
+  # grab the instance type from the 1st queue
+  instance_type=$(cat pcluster.yaml | yq '.Scheduling.SlurmQueues[0].ComputeResources[0].Instances[0].InstanceType')
 
   compute_node_h_price=$(aws pricing get-products \
     --region us-east-1 \

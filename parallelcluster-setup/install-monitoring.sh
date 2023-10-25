@@ -81,7 +81,7 @@ case "${cfn_node_type}" in
 		chown -R $cfn_cluster_user:$cfn_cluster_user "${nginx_ssl_dir}/nginx.key"
 		chown -R $cfn_cluster_user:$cfn_cluster_user "${nginx_ssl_dir}/nginx.crt"
 
-		docker-compose --env-file /etc/parallelcluster/cfnconfig -f ${monitoring_home}/docker-compose/docker-compose.headnode.yml -p monitoring-master up -d
+		docker-compose --env-file /etc/parallelcluster/cfnconfig -f ${monitoring_home}/docker-compose/docker-compose.headnode.yml -p monitoring-headnode up -d
 
 		# Download and build prometheus-slurm-exporter
 		##### Please note this software package is under GPLv3 License #####
