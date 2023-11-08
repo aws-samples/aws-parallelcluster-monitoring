@@ -20,7 +20,6 @@ services:
         volumes:
             - '/home/$cfn_cluster_user/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
             - 'prometheus-data:/prometheus'
-            - '$HOME/.aws/credentials:/root/.aws/credentials:ro'
         image: prom/prometheus
         command:
             - '--config.file=/etc/prometheus/prometheus.yml'
