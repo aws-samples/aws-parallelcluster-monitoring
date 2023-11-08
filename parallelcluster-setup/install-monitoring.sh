@@ -31,7 +31,7 @@ case "${cfn_node_type}" in
 	HeadNode | MasterServer)
 		cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
-		cfn_fsx_fs_id=$(cat /etc/chef/dna.json | grep \"cfn_fsx_fs_id\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
+		cfn_fsx_fs_id=$(cat /etc/chef/dna.json | grep \"fsx_fs_ids\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		headnode_instance_id=$(ec2-metadata -i | awk '{print $2}')
 		cfn_max_queue_size=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "MaxSize"))[0].ParameterValue')
 		cluster_s3_bucket=$(cat /etc/chef/dna.json | grep \"cluster_s3_bucket\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
