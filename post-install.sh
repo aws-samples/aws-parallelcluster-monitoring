@@ -14,7 +14,7 @@ monitoring_dir_name=aws-parallelcluster-monitoring
 monitoring_tarball="${monitoring_dir_name}.tar.gz"
 
 #get GitHub repo to clone and the installation script
-monitoring_url=https://github.com/aws-samples/aws-parallelcluster-monitoring/archive/refs/tags/${version}.tar.gz
+monitoring_url=https://github.com/gallanik/aws-parallelcluster-monitoring/archive/refs/tags/${version}.tar.gz
 setup_command=install-monitoring.sh
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
 
