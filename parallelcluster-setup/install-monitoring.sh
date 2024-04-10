@@ -77,6 +77,9 @@ case "${cfn_node_type}" in
 		# More info here: https://github.com/vpenso/prometheus-slurm-exporter/blob/master/LICENSE
 		cd ${monitoring_home}
 		git clone https://github.com/vpenso/prometheus-slurm-exporter.git
+		# the export and git config statements below for compatibility on Ubuntu 22.x
+		export HOME=/root
+		git config --global --add safe.directory ${monitoring_home}/prometheus-slurm-exporter
 		sed -i 's/NodeList,AllocMem,Memory,CPUsState,StateLong/NodeList: ,AllocMem: ,Memory: ,CPUsState: ,StateLong:/' prometheus-slurm-exporter/node.go
 		cd prometheus-slurm-exporter
 		GOPATH=/root/go-modules-cache HOME=/root go mod download
