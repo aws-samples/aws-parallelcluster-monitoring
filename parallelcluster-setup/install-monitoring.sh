@@ -22,7 +22,8 @@ case "${cfn_node_type}" in
 		#cfn_efs=$(cat /etc/chef/dna.json | grep \"cfn_efs\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		#cfn_cluster_cw_logging_enabled=$(cat /etc/chef/dna.json | grep \"cfn_cluster_cw_logging_enabled\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
 		cfn_fsx_fs_id=$(cat /etc/chef/dna.json | grep \"cfn_fsx_fs_id\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
-		master_instance_id=$(sudo curl -s http://169.254.169.254/latest/meta-data/instance-id)
+		TOKEN=$(sudo curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+		master_instance_id=$(sudo curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
 		cfn_max_queue_size=$(aws cloudformation describe-stacks --stack-name $stack_name --region $cfn_region | jq -r '.Stacks[0].Parameters | map(select(.ParameterKey == "MaxSize"))[0].ParameterValue')
 		s3_bucket=$(echo $cfn_postinstall | sed "s/s3:\/\///g;s/\/.*//")
 		cluster_s3_bucket=$(cat /etc/chef/dna.json | grep \"cluster_s3_bucket\" | awk '{print $2}' | sed "s/\",//g;s/\"//g")
@@ -92,7 +93,7 @@ case "${cfn_node_type}" in
 	;;
 
 	ComputeFleet)
-		compute_instance_type=$(sudo curl http://169.254.169.254/latest/meta-data/instance-type)
+		compute_instance_type=$(sudo curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type)
 		gpu_instances="[pg][2-9].*\.[0-9]*[x]*large"
 		echo "$> Compute Instances Type EC2 -> ${compute_instance_type}"
 		echo "$> GPUS Instances EC2 -> ${gpu_instances}"
