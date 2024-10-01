@@ -17,6 +17,7 @@ monitoring_tarball="${monitoring_dir_name}.tar.gz"
 monitoring_url=https://github.com/aws-samples/aws-parallelcluster-monitoring/tarball/${version}
 setup_command=install-monitoring.sh
 monitoring_home="/home/${cfn_cluster_user}/${monitoring_dir_name}"
+setup_command_path="${monitoring_home}/parallelcluster-setup"
 
 case ${cfn_node_type} in
     HeadNode | MasterServer)
@@ -29,6 +30,20 @@ case ${cfn_node_type} in
     ;;
 esac
 
-# Execute the monitoring installation script
-bash -x "${monitoring_home}/parallelcluster-setup/${setup_command}" >/tmp/monitoring-setup.log 2>&1
+OS=$(. /etc/os-release; echo $NAME)
+if [ "${OS}" = "Ubuntu" ]; then
+    systemctl stop apache2
+    systemctl disable apache2
+    sed \
+        -e "s/yum -y install docker/apt-get install docker.io -y/g" \
+        -e "s/yum -y install golang-bin/apt-get install golang-go -y/g" \
+        -e "s/ec2-metadata -i | awk '{print \$2}'/ec2metadata --instance-id/g" \
+        -e "s/ec2-metadata -p | awk '{print \$2}'/ec2metadata --public-hostname/g" \
+        -e "s/ec2-metadata -t | awk '{print \$2}'/ec2metadata --instance-type/g" \
+        "${setup_command_path}/${setup_command}" \
+        > "${setup_command_path}/tmp-${setup_command}"
+    bash -x "${setup_command_path}/tmp-${setup_command}" | tee /tmp/monitoring-setup.log 2>&1
+else
+    bash -x "${setup_command_path}/${setup_command}" | tee /tmp/monitoring-setup.log 2>&1
+fi
 exit $?
