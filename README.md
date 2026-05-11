@@ -39,14 +39,31 @@ CustomActions:
 Iam:
   AdditionalIamPolicies:
     - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-    - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess
-    - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
-    - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
-    - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+    - Policy: arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name>
 ```
 
-> **Tip**: For production, replace the 4 AWS-managed policies with the
-> [least-privilege policy](iam/README.md) included in this repo.
+Generate the least-privilege policy for your cluster:
+
+```bash
+./iam/render-policy.sh <cluster-name> <region> > /tmp/policy.json
+aws iam create-policy --policy-name pcluster-monitoring-<cluster-name> \
+    --policy-document file:///tmp/policy.json
+```
+
+See [iam/README.md](iam/README.md) for details on what the policy grants.
+
+> **Quick start alternative**: if you just want to test without creating a
+> custom policy, you can use these AWS-managed policies instead (overbroad
+> but functional):
+> ```yaml
+> Iam:
+>   AdditionalIamPolicies:
+>     - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+>     - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess
+>     - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
+>     - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+>     - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+> ```
 
 Full example: [parallelcluster-setup/pcluster.yaml](parallelcluster-setup/pcluster.yaml).
 
