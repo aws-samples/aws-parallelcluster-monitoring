@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh EC2 credentials for Prometheus ec2_sd
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/refresh-ec2-credentials.sh

@@ -1,0 +1,8 @@
+[Unit]
+Description=Collect Slurm job-to-node mapping for Prometheus
+After=slurmctld.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/slurm-job-nodes.sh
+User=root

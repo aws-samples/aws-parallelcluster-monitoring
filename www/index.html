@@ -3,91 +3,192 @@
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 SPDX-License-Identifier: MIT-0
 -->
-<html>
-  <head>
-    <title>AWS ParallelCluster</title>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ParallelCluster Monitoring</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        @font-face {
-            font-family: 'Amazon Ember';
-            src: url('https://a0.awsstatic.com/libra-css/fonts/amazon-ember/AmazonEmber_Rg.woff2');
+        :root {
+            --bg: #0f1419;
+            --surface: #1a2332;
+            --border: #2e3a4f;
+            --text: #e8eaed;
+            --text-dim: #9aa0a6;
+            --accent: #ff9900;
+            --accent-hover: #ffa82e;
+            --ok: #3fb950;
+            --card-hover: #243142;
         }
-
-        html {
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                         'Amazon Ember', sans-serif;
             min-height: 100vh;
-            background-color: #232F3E;
-            background-image: url(background.png);
-            background-size: 600px;
-            background-position: 105% 110%;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
         }
-
-        body {
-            color: #fff;
-            font-family: 'Amazon Ember', 'sans-serif';
+        header {
+            padding: 24px 40px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
-
-        #content {
-            max-width: 900px;
-            margin: 0 auto;
+        header svg { width: 56px; height: auto; }
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 400;
         }
-
-        #content #logo {
-            margin-top: 40px;
-            max-width: 300px;
+        header .subtitle {
+            color: var(--text-dim);
             margin-left: auto;
-            margin-right: auto;
+            font-size: 0.9rem;
+        }
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 48px 24px;
+        }
+        h2 {
+            font-weight: 400;
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 32px 0 16px 0;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .card {
             display: block;
+            padding: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.15s ease;
         }
-
-        #content #grafana-logo {
-            cursor: pointer;
-            max-width: 50px;
-            vertical-align: top;
+        .card:hover {
+            background: var(--card-hover);
+            border-color: var(--accent);
+            transform: translateY(-2px);
         }
-
-        #content h1 {
-            font-weight: normal;
+        .card .title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card .title .icon { font-size: 1.3rem; }
+        .card .desc {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 0;
+        }
+        .card.primary {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, var(--surface) 0%, #2a2318 100%);
+        }
+        .card.primary:hover { box-shadow: 0 4px 16px rgba(255, 153, 0, 0.2); }
+        .card.primary .title { color: var(--accent); }
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .link {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .link:hover { color: var(--accent); background: var(--surface); }
+        footer {
             text-align: center;
+            padding: 32px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 64px;
         }
-
-        #content #txt {
-            background-color: #fff;
-            border: 0;
-            font-size: 1.2em;
-            color: #000;
-            padding: 5px;
-            cursor: pointer;
-            width: 10%;
-            margin: 5px;
-            text-transform: uppercase;
-        }
-        
-        #content #grafana-txt {
-            background-color: #fff;
-            vertical-align: bottom;
-            border: 0;
-            font-size: 1.2em;
-            color: #000;
-            padding: 5px;
-            cursor: pointer;
-            margin: 5px;
-            text-transform: uppercase;
-        }
+        footer a { color: var(--text-dim); text-decoration: none; }
+        footer a:hover { color: var(--accent); }
     </style>
-  </head>
-  <body>
-    <div id="content">
-        <img src="aws-logo.svg" alt="AWS logo" id="logo">
-        <h1>AWS ParallelCluster</h1>
-        <p>AWS ParallelCluster is an AWS-supported open source cluster management tool that makes it easy for you to deploy and manage High Performance Computing (HPC) clusters on AWS. ParallelCluster uses a simple text file to model and provision all the resources needed for your HPC applications in an automated and secure manner. It also supports a variety of job schedulers such as AWS Batch, SGE, Torque, and Slurm for easy job submissions.</p>
-        <p>AWS ParallelCluster is built on the popular open source CfnCluster project and is released via the Python Package Index (PyPI). ParallelCluster's source code is hosted on the Amazon Web Services repository on GitHub. AWS ParallelCluster is available at no additional charge, and you pay only for the AWS resources needed to run your applications.</p>
-        <p>More information <a href="https://aws.amazon.com/hpc/parallelcluster/"><button id="txt">here</button></a></p>
-        <p>The official documentation <a href="https://docs.aws.amazon.com/parallelcluster/"><button id="txt">here</button></a></p>
-        <p>The GitHub repository <a href="https://github.com/aws/aws-parallelcluster"><button id="txt">here</button></a></p>
+</head>
+<body>
+    <header>
+        <svg viewBox="0 0 60 36" xmlns="http://www.w3.org/2000/svg">
+            <!-- Minimal AWS smile -->
+            <path d="M18 22c6 4 22 4 28 0" stroke="#ff9900" stroke-width="3"
+                  fill="none" stroke-linecap="round"/>
+            <path d="M26 26l4 3 4-3" stroke="#ff9900" stroke-width="3"
+                  fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1>ParallelCluster Monitoring</h1>
+        <span class="subtitle">Grafana + Prometheus + Slurm exporter</span>
+    </header>
 
-        <p><a href="/prometheus/"><button id="grafana-txt">Prometheus Server</button></a></p>
-        <p><a href="/grafana/"><button id="grafana-txt">Grafana Dashboards</button></a></p>
-    </div>
-  </body>
+    <main>
+        <h2>Dashboards</h2>
+        <div class="cards">
+            <a class="card primary" href="/grafana/">
+                <p class="title"><span class="icon">📊</span> Grafana</p>
+                <p class="desc">Cluster overview, per-node metrics, EFA bandwidth,
+                   cost estimates, CloudWatch logs. Log in with Cognito (if
+                   configured) or local admin.</p>
+            </a>
+            <a class="card" href="/prometheus/">
+                <p class="title"><span class="icon">🎯</span> Prometheus</p>
+                <p class="desc">Raw metrics, targets health, PromQL query
+                   browser, alerts, service discovery status.</p>
+            </a>
+        </div>
+
+        <h2>Quick links</h2>
+        <div class="cards">
+            <a class="card" href="/grafana/d/r9_U2AzGz/parallelcluster-summary">
+                <p class="title">Cluster Summary</p>
+                <p class="desc">High-level view: running jobs, node counts,
+                   aggregate CPU and memory, cost-to-date.</p>
+            </a>
+            <a class="card" href="/grafana/d/SugNQvuWk/compute-node-list">
+                <p class="title">Compute Node List</p>
+                <p class="desc">Sortable table of all compute nodes with CPU,
+                   memory, disk, load, network usage.</p>
+            </a>
+            <a class="card" href="/grafana/d/3NR7BmmMk/headnode-details">
+                <p class="title">HeadNode Details</p>
+                <p class="desc">Deep-dive on the head node: CPU breakdown,
+                   memory, disk I/O, network, sockets, file descriptors.</p>
+            </a>
+        </div>
+
+        <h2>Documentation</h2>
+        <div class="links">
+            <a class="link" href="https://aws.amazon.com/hpc/parallelcluster/">ParallelCluster overview</a>
+            <a class="link" href="https://docs.aws.amazon.com/parallelcluster/">Official docs</a>
+            <a class="link" href="https://github.com/aws-samples/aws-parallelcluster-monitoring">Monitoring repo</a>
+            <a class="link" href="https://prometheus.io/docs/prometheus/latest/querying/basics/">PromQL basics</a>
+        </div>
+    </main>
+
+    <footer>
+        AWS ParallelCluster Monitoring &middot;
+        <a href="https://github.com/aws-samples/aws-parallelcluster-monitoring">GitHub</a> &middot;
+        <a href="https://github.com/aws-samples/aws-parallelcluster-monitoring/issues">Report an issue</a>
+    </footer>
+</body>
 </html>

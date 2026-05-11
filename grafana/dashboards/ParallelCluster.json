@@ -199,7 +199,7 @@
       ],
       "targets": [
         {
-          "expr": "node_filesystem_size_bytes{instance_id=\"__INSTANCE_ID__\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"}-0",
+          "expr": "node_filesystem_size_bytes{instance_id=\"$head_instance_id\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"}-0",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -209,7 +209,7 @@
           "refId": "C"
         },
         {
-          "expr": "node_filesystem_avail_bytes {instance_id=\"__INSTANCE_ID__\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"}-0",
+          "expr": "node_filesystem_avail_bytes {instance_id=\"$head_instance_id\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"}-0",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -219,7 +219,7 @@
           "refId": "A"
         },
         {
-          "expr": "1-(node_filesystem_free_bytes{instance_id=\"__INSTANCE_ID__\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"} / node_filesystem_size_bytes{instance_id=\"__INSTANCE_ID__\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"})",
+          "expr": "1-(node_filesystem_free_bytes{instance_id=\"$head_instance_id\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"} / node_filesystem_size_bytes{instance_id=\"$head_instance_id\",fstype=~\"ext4|xfs|lustre|nfs|nfs4\"})",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -231,7 +231,7 @@
       ],
       "title": "Cluster Storage",
       "transform": "table",
-      "type": "table-old"
+      "type": "table"
     },
     {
       "aliasColors": {},
@@ -303,7 +303,9 @@
       "targets": [
         {
           "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
+          "dimensions": {
+            "FileSystemId": "$fsx_id"
+          },
           "expression": "",
           "id": "fsxRead",
           "matchExact": false,
@@ -311,14 +313,16 @@
           "namespace": "AWS/FSx",
           "period": "",
           "refId": "A",
-          "region": "__AWS_REGION__",
+          "region": "$aws_region",
           "statistics": [
             "Sum"
           ]
         },
         {
           "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
+          "dimensions": {
+            "FileSystemId": "$fsx_id"
+          },
           "expression": "",
           "hide": false,
           "id": "fsxWrite",
@@ -327,7 +331,7 @@
           "namespace": "AWS/FSx",
           "period": "",
           "refId": "B",
-          "region": "__AWS_REGION__",
+          "region": "$aws_region",
           "statistics": [
             "Sum"
           ]
@@ -357,7 +361,7 @@
           }
         }
       ],
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -459,7 +463,9 @@
       "targets": [
         {
           "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
+          "dimensions": {
+            "FileSystemId": "$fsx_id"
+          },
           "expression": "",
           "id": "fsxIOPsRead",
           "matchExact": false,
@@ -467,14 +473,16 @@
           "namespace": "AWS/FSx",
           "period": "",
           "refId": "A",
-          "region": "__AWS_REGION__",
+          "region": "$aws_region",
           "statistics": [
             "Sum"
           ]
         },
         {
           "alias": "",
-          "dimensions": {"FileSystemId": "__FSX_ID__"},
+          "dimensions": {
+            "FileSystemId": "$fsx_id"
+          },
           "expression": "",
           "hide": false,
           "id": "fsxIOPsWrite",
@@ -483,7 +491,7 @@
           "namespace": "AWS/FSx",
           "period": "",
           "refId": "B",
-          "region": "__AWS_REGION__",
+          "region": "$aws_region",
           "statistics": [
             "Sum"
           ]
@@ -513,7 +521,7 @@
           }
         }
       ],
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -615,7 +623,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "slurm_queue_configuring",
+          "expr": "0",
           "instant": false,
           "interval": "1",
           "intervalFactor": 1,
@@ -679,77 +687,77 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "slurm_queue_completing",
+          "expr": "slurm_cpus_per_state{state=\"comp\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Completing Jobs",
           "refId": "A"
         },
         {
-          "expr": "slurm_queue_running",
+          "expr": "slurm_cpus_per_state{state=\"alloc\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Running Jobs",
           "refId": "B"
         },
         {
-          "expr": "slurm_queue_pending",
+          "expr": "slurm_cpus_per_state{state=\"idle~\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Pending Jobs",
           "refId": "C"
         },
         {
-          "expr": "slurm_queue_completed",
+          "expr": "0",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Completed Jobs",
           "refId": "D"
         },
         {
-          "expr": "slurm_queue_timeout",
+          "expr": "0",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Timed out Jobs",
           "refId": "E"
         },
         {
-          "expr": "slurm_queue_failed",
+          "expr": "0",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Failed Jobs",
           "refId": "F"
         },
         {
-          "expr": "slurm_queue_node_fail",
+          "expr": "0",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Failed jobs (due to NodeFail)",
           "refId": "G"
         },
         {
-          "expr": "slurm_queue_suspended",
+          "expr": "0",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Suspended Jobs",
           "refId": "H"
         },
         {
-          "expr": "slurm_queue_cancelled",
+          "expr": "0",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Cancelled Jobs",
           "refId": "I"
         },
         {
-          "expr": "slurm_queue_preempted",
+          "expr": "0",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Preempted Jobs",
           "refId": "J"
         },
         {
-          "expr": "slurm_queue_completing + slurm_queue_running + slurm_queue_pending + slurm_queue_completed + slurm_queue_timeout + slurm_queue_failed + slurm_queue_node_fail + slurm_queue_suspended + slurm_queue_cancelled + slurm_queue_preempted",
+          "expr": "slurm_cpus_per_state{state=\"comp\"} + slurm_cpus_per_state{state=\"alloc\"} + slurm_cpus_per_state{state=\"idle~\"} + 0 + 0 + 0 + 0 + 0 + 0 + 0",
           "hide": true,
           "interval": "",
           "intervalFactor": 2,
@@ -767,7 +775,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -854,54 +862,54 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "slurm_nodes_alloc",
+          "expr": "slurm_node_count_per_state{state=\"alloc\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Allocated Nodes",
           "refId": "A"
         },
         {
-          "expr": "slurm_nodes_comp",
+          "expr": "slurm_node_count_per_state{state=\"comp\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Completing Nodes",
           "refId": "B"
         },
         {
-          "expr": "slurm_nodes_idle",
+          "expr": "slurm_node_count_per_state{state=\"idle\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "Idle Nodes",
           "refId": "C"
         },
         {
-          "expr": "slurm_nodes_down",
+          "expr": "slurm_node_count_per_state{state=\"down\"}",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Down Nodes",
           "refId": "E"
         },
         {
-          "expr": "slurm_nodes_drain",
+          "expr": "slurm_node_count_per_state{state=\"drain\"}",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "Draining Nodes",
           "refId": "F"
         },
         {
-          "expr": "slurm_nodes_err",
+          "expr": "slurm_node_count_per_state{state=\"error\"}",
           "interval": "",
           "legendFormat": "Nodes in *error* state",
           "refId": "G"
         },
         {
-          "expr": "slurm_nodes_fail",
+          "expr": "slurm_node_count_per_state{state=\"fail\"}",
           "interval": "",
           "legendFormat": "Nodes in *fail* state",
           "refId": "H"
         },
         {
-          "expr": "slurm_nodes_alloc + slurm_nodes_down + slurm_nodes_drain + slurm_nodes_idle + slurm_nodes_mix + slurm_nodes_comp + slurm_nodes_maint",
+          "expr": "slurm_node_count_per_state{state=\"alloc\"} + slurm_node_count_per_state{state=\"down\"} + slurm_node_count_per_state{state=\"drain\"} + slurm_node_count_per_state{state=\"idle\"} + slurm_node_count_per_state{state=\"mixed\"} + slurm_node_count_per_state{state=\"comp\"} + slurm_node_count_per_state{state=\"maintenance\"}",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 2,
@@ -919,7 +927,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -930,12 +938,11 @@
       "yaxes": [
         {
           "format": "short",
-          "min": "0",
+          "min": null,
           "decimals": "0",
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": null,
           "show": true
         },
         {
@@ -1001,7 +1008,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "slurm_queue_running",
+          "expr": "slurm_cpus_per_state{state=\"alloc\"}",
           "instant": false,
           "interval": "1",
           "intervalFactor": 1,
@@ -1069,7 +1076,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1121,7 +1128,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})/count(count(node_cpu_seconds_total{instance_id!=\"__INSTANCE_ID__\"}) by (instance_id))",
+          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"$head_instance_id\"})/count(count(node_cpu_seconds_total{instance_id!=\"$head_instance_id\"}) by (instance_id))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1173,7 +1180,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1225,7 +1232,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))/count(count(node_cpu_seconds_total{instance_id!=\"__INSTANCE_ID__\"}) by (instance_id))",
+          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"$head_instance_id\"}[1m]))/count(count(node_cpu_seconds_total{instance_id!=\"$head_instance_id\"}) by (instance_id))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1278,7 +1285,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1331,7 +1338,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"})/count(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"})/count(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1384,7 +1391,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"}) - sum(node_memory_MemAvailable_bytes{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"}) - sum(node_memory_MemAvailable_bytes{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1437,7 +1444,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "(sum(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"}) - sum(node_memory_MemAvailable_bytes{instance_id!=\"__INSTANCE_ID__\"}))/count(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "(sum(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"}) - sum(node_memory_MemAvailable_bytes{instance_id!=\"$head_instance_id\"}))/count(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1490,7 +1497,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_disk_written_bytes_total{instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_disk_written_bytes_total{instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1543,7 +1550,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_disk_written_bytes_total{instance_id!=\"__INSTANCE_ID__\"}[1m])) / count(node_disk_written_bytes_total{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(rate(node_disk_written_bytes_total{instance_id!=\"$head_instance_id\"}[1m])) / count(node_disk_written_bytes_total{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1596,7 +1603,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_disk_read_bytes_total{instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_disk_read_bytes_total{instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1649,7 +1656,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(rate(node_disk_read_bytes_total{instance_id!=\"__INSTANCE_ID__\"}[1m])) / count(node_disk_read_bytes_total{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(rate(node_disk_read_bytes_total{instance_id!=\"$head_instance_id\"}[1m])) / count(node_disk_read_bytes_total{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1709,13 +1716,13 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "count(node_cpu_seconds_total{mode=\"idle\",instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "Total cores",
           "refId": "B"
         },
         {
-          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_cpu_seconds_total{mode!=\"idle\",instance_id!=\"$head_instance_id\"}[1m]))",
           "legendFormat": "Load in cores",
           "refId": "A"
         }
@@ -1730,7 +1737,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1810,13 +1817,13 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "Total Memory",
           "refId": "B"
         },
         {
-          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"__INSTANCE_ID__\"}) - sum(node_memory_MemAvailable_bytes{instance_id!=\"__INSTANCE_ID__\"})",
+          "expr": "sum(node_memory_MemTotal_bytes{instance_id!=\"$head_instance_id\"}) - sum(node_memory_MemAvailable_bytes{instance_id!=\"$head_instance_id\"})",
           "interval": "",
           "legendFormat": "Used Memory",
           "refId": "A"
@@ -1832,7 +1839,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -1912,7 +1919,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(node_disk_read_bytes_total{instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_disk_read_bytes_total{instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "Read throughput",
           "refId": "A"
@@ -1928,7 +1935,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -2008,7 +2015,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(node_disk_written_bytes_total{instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(rate(node_disk_written_bytes_total{instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "Write throughput",
           "refId": "A"
@@ -2024,7 +2031,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -2113,7 +2120,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -2166,7 +2173,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"__INSTANCE_ID__\"}[1m]))/count(count(node_network_transmit_bytes_total{instance_id!=\"__INSTANCE_ID__\"}) by(instance_id))",
+          "expr": "sum(irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"$head_instance_id\"}[1m]))/count(count(node_network_transmit_bytes_total{instance_id!=\"$head_instance_id\"}) by(instance_id))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -2219,7 +2226,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -2272,7 +2279,7 @@
       "pluginVersion": "7.0.6",
       "targets": [
         {
-          "expr": "sum(irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"__INSTANCE_ID__\"}[1m]))/count(count(node_network_receive_bytes_total{instance_id!=\"__INSTANCE_ID__\"}) by(instance_id))",
+          "expr": "sum(irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"$head_instance_id\"}[1m]))/count(count(node_network_receive_bytes_total{instance_id!=\"$head_instance_id\"}) by(instance_id))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -2340,7 +2347,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "Transmit",
           "refId": "A"
@@ -2356,7 +2363,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -2442,7 +2449,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"__INSTANCE_ID__\"}[1m]))",
+          "expr": "sum(irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*',instance_id!=\"$head_instance_id\"}[1m]))",
           "interval": "",
           "legendFormat": "Receive",
           "refId": "A"
@@ -2458,7 +2465,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -2560,7 +2567,7 @@
         {
           "alias": "",
           "dimensions": {
-            "BucketName": "_S3_BUCKET_"
+            "BucketName": "$s3_bucket"
           },
           "expression": "",
           "id": "",
@@ -2569,7 +2576,7 @@
           "namespace": "AWS/S3",
           "period": "",
           "refId": "A",
-          "region": "__AWS_REGION__",
+          "region": "$aws_region",
           "statistics": [
             "Sum"
           ]
@@ -2585,7 +2592,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -2673,7 +2680,7 @@
         {
           "alias": "",
           "dimensions": {
-            "BucketName": "_S3_BUCKET_"
+            "BucketName": "$s3_bucket"
           },
           "expression": "",
           "id": "",
@@ -2682,7 +2689,7 @@
           "namespace": "AWS/S3",
           "period": "",
           "refId": "A",
-          "region": "__AWS_REGION__",
+          "region": "$aws_region",
           "statistics": [
             "Sum"
           ]
@@ -2698,7 +2705,7 @@
         "sort": 0,
         "value_type": "individual"
       },
-      "type": "graph",
+      "type": "timeseries",
       "xaxis": {
         "buckets": null,
         "mode": "time",
@@ -2731,11 +2738,41 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 25,
+  "schemaVersion": 39,
   "style": "dark",
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "head_instance_id",
+        "type": "query",
+        "datasource": "prometheus",
+        "query": "label_values(node_uname_info{instance_name=\"HeadNode\"}, instance_id)",
+        "refresh": 1,
+        "hide": 2,
+        "sort": 0
+      },
+      {
+        "name": "aws_region",
+        "type": "custom",
+        "query": "us-east-2",
+        "hide": 2
+      },
+      {
+        "name": "fsx_id",
+        "type": "textbox",
+        "label": "FSx Filesystem ID",
+        "query": "",
+        "hide": 0
+      },
+      {
+        "name": "s3_bucket",
+        "type": "textbox",
+        "label": "S3 Bucket",
+        "query": "",
+        "hide": 0
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
