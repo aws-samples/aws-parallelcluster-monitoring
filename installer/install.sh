@@ -1,0 +1,299 @@
+#!/bin/bash
+# shellcheck disable=SC2154  # cfn_* / stack_name vars come from /etc/parallelcluster/cfnconfig
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Main OS-aware installer. Sourced/run by post-install.sh on the
+# ParallelCluster HeadNode and ComputeFleet nodes.
+#
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=installer/common.sh
+. "${SCRIPT_DIR}/common.sh"
+
+# Source ParallelCluster environment (cfn_node_type, cfn_cluster_user, cfn_region, ...).
+[[ -r /etc/parallelcluster/cfnconfig ]] || die "/etc/parallelcluster/cfnconfig not found"
+# shellcheck disable=SC1091
+. /etc/parallelcluster/cfnconfig
+
+: "${cfn_node_type:?cfn_node_type not set}"
+: "${cfn_cluster_user:?cfn_cluster_user not set}"
+: "${cfn_region:?cfn_region not set}"
+
+MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
+MONITORING_HOME="/home/${cfn_cluster_user}/${MONITORING_DIR_NAME}"
+export MONITORING_HOME MONITORING_DIR_NAME
+
+log "Node type: ${cfn_node_type}"
+log "Monitoring home: ${MONITORING_HOME}"
+
+# ---------------------------------------------------------------------------
+# 1. Install docker + compose plugin for this OS.
+# ---------------------------------------------------------------------------
+detect_os
+os_script="$(pick_os_script "${SCRIPT_DIR}/os")"
+[[ -n "${os_script}" && -r "${os_script}" ]] \
+    || die "Unsupported OS: ${OS_ID} ${OS_VERSION_ID}. Supported: amzn2, amzn2023, ubuntu 22.04/24.04, rhel/rocky/alma/centos-stream 9.x"
+
+log "Running OS bootstrap: ${os_script}"
+# shellcheck disable=SC1090
+. "${os_script}"
+
+verify_docker
+
+# ---------------------------------------------------------------------------
+# 2. Node-type-specific configuration.
+# ---------------------------------------------------------------------------
+case "${cfn_node_type}" in
+
+    HeadNode|MasterServer)
+        log "Configuring HeadNode"
+
+        # Extract context from chef dna.json and CloudFormation.
+
+        chown "${cfn_cluster_user}:${cfn_cluster_user}" -R "/home/${cfn_cluster_user}"
+        chmod +x "${MONITORING_HOME}/custom-metrics/"*
+
+        cp -rp "${MONITORING_HOME}/custom-metrics/"* /usr/local/bin/
+
+        # Cost estimator cron (every minute). Single unified script replaces
+        # the old 1m + 1h split. Runs as root (needs EC2 describe + pricing API).
+        crontab -l 2>/dev/null > /tmp/crontab.tmp || true
+        {
+            echo 'MAILTO=""'
+            grep -v -E 'MAILTO|cost-metrics' /tmp/crontab.tmp || true
+            echo '* * * * * /usr/local/bin/cost-metrics.sh >/dev/null 2>&1'
+        } | crontab -
+        rm -f /tmp/crontab.tmp
+
+        # Token replacement in dashboards/config. (Phase 3 will replace all
+        # of this with Grafana template variables.)
+        # Dashboards now use Grafana template variables (Phase 3a) — no
+        # sed token replacement needed. Variables auto-resolve from
+        # Prometheus labels (head_instance_id) or user input (fsx_id,
+        # s3_bucket). Only prometheus.yml still needs region substitution.
+        sed -i "s/__AWS_REGION__/${cfn_region}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
+        sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" "${MONITORING_HOME}/compose/head.yml"
+
+        # Self-signed TLS cert for nginx.
+        # Includes multiple SANs so the cert is valid for:
+        #   - localhost (SSM port-forward)
+        #   - private IP (direct VPC access)
+        #   - private hostname (Slurm node name)
+        # Validity: 10 years. Users who want a trusted cert should put an
+        # ALB with ACM in front — see docs/public-access.md.
+        nginx_dir="${MONITORING_HOME}/nginx"
+        nginx_ssl_dir="${nginx_dir}/ssl"
+        mkdir -p "${nginx_ssl_dir}"
+
+        private_ip=$(hostname -I 2>/dev/null | awk '{print $1}') || private_ip=""
+        private_hostname=$(hostname -f 2>/dev/null) || private_hostname=""
+
+        {
+            echo ""
+            echo "DNS.1=localhost"
+            [[ -n "${private_hostname}" ]] && echo "DNS.2=${private_hostname}"
+            echo "IP.1=127.0.0.1"
+            [[ -n "${private_ip}" ]] && echo "IP.2=${private_ip}"
+        } >> "${nginx_dir}/openssl.cnf"
+
+        log "TLS cert SANs: localhost, ${private_hostname:-n/a}, 127.0.0.1, ${private_ip:-n/a}"
+        openssl req -new -x509 -nodes -newkey rsa:4096 -days 3650 \
+            -keyout "${nginx_ssl_dir}/nginx.key" \
+            -out "${nginx_ssl_dir}/nginx.crt" \
+            -config "${nginx_dir}/openssl.cnf" >/dev/null 2>&1
+        chown -R "${cfn_cluster_user}:${cfn_cluster_user}" "${nginx_ssl_dir}"
+
+        # -------------------------------------------------------------
+        # Grafana admin password: generate random, write to SSM SecureString,
+        # set up a systemd timer to materialize it into a mounted file.
+        # Idempotent: if the SSM parameter already exists we reuse it (so
+        # subsequent runs / updates don't break existing logins).
+        # -------------------------------------------------------------
+        GRAFANA_SSM_PARAM="/parallelcluster/${stack_name}/grafana/admin-password"
+        if aws ssm get-parameter --region "${cfn_region}" --name "${GRAFANA_SSM_PARAM}" --with-decryption >/dev/null 2>&1; then
+            log "Reusing existing Grafana password in ${GRAFANA_SSM_PARAM}"
+        else
+            log "Generating new Grafana admin password, storing in ${GRAFANA_SSM_PARAM}"
+            GRAFANA_PASSWORD=$(openssl rand -hex 16)
+            aws ssm put-parameter --region "${cfn_region}" \
+                --name "${GRAFANA_SSM_PARAM}" \
+                --type SecureString \
+                --value "${GRAFANA_PASSWORD}" \
+                --tags "Key=parallelcluster:cluster-name,Value=${stack_name}" \
+                --no-overwrite >/dev/null
+            unset GRAFANA_PASSWORD
+        fi
+
+        # Install the Grafana password refresh timer.
+        install -m 0755 "${MONITORING_HOME}/custom-metrics/refresh-grafana-password.sh" /usr/local/bin/
+        install -m 0644 "${MONITORING_HOME}/systemd/grafana-password-refresh.service" /etc/systemd/system/
+        install -m 0644 "${MONITORING_HOME}/systemd/grafana-password-refresh.timer" /etc/systemd/system/
+        systemctl daemon-reload
+        # Run once immediately so the file exists before Grafana starts.
+        /usr/local/bin/refresh-grafana-password.sh
+        systemctl enable --now grafana-password-refresh.timer
+        log "Grafana password refresh timer active"
+
+        # -------------------------------------------------------------
+                # -------------------------------------------------------------
+        # Optional: Cognito SSO for Grafana (Phase 2b.2).
+        # Users populate /parallelcluster/<cluster>/grafana/cognito with a
+        # JSON blob (SecureString):
+        #   {
+        #     "user_pool_id":   "us-east-2_ABC123",
+        #     "client_id":      "xxxxxxxxxxxxxxxx",
+        #     "client_secret":  "yyyyyyyyyyyyyyyy",
+        #     "domain":         "my-pool-auth",
+        #     "region":         "us-east-2",
+        #     "allowed_domains": "amazon.com"
+        #   }
+        # When present, Grafana is configured to use Cognito OAuth2.
+        # When absent, local admin/password login is the only auth path.
+        # -------------------------------------------------------------
+        COGNITO_SSM_PARAM="/parallelcluster/${stack_name}/grafana/cognito"
+        cognito_json=$(aws ssm get-parameter --region "${cfn_region}" \
+            --name "${COGNITO_SSM_PARAM}" --with-decryption \
+            --query 'Parameter.Value' --output text 2>/dev/null) || cognito_json=""
+
+        if [[ -n "${cognito_json}" ]]; then
+            log "Cognito SSO config found in ${COGNITO_SSM_PARAM}; enabling OAuth2"
+            # Extract fields via jq and write to a Grafana env-file that
+            # docker-compose loads. Put it under /run so nothing persistent
+            # on disk.
+            mkdir -p /run/grafana-secrets
+            chmod 0750 /run/grafana-secrets
+            chown 472:472 /run/grafana-secrets
+
+            cog_client=$(echo "${cognito_json}"  | jq -r .client_id)
+            cog_secret=$(echo "${cognito_json}"  | jq -r .client_secret)
+            cog_domain=$(echo "${cognito_json}"  | jq -r .domain)
+            cog_region=$(echo "${cognito_json}"  | jq -r '.region // "'"${cfn_region}"'"')
+            cog_allowed=$(echo "${cognito_json}" | jq -r '.allowed_domains // ""')
+
+            cat > /run/grafana-secrets/cognito.env <<COGENV
+# Grafana OAuth2 config — loaded by compose at container start
+GF_AUTH_GENERIC_OAUTH_ENABLED=true
+GF_AUTH_GENERIC_OAUTH_NAME=Cognito
+GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
+GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${cog_client}
+GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE=/run/grafana-secrets/cognito-client-secret
+GF_AUTH_GENERIC_OAUTH_SCOPES=openid email profile
+GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/oauth2/authorize
+GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/oauth2/token
+GF_AUTH_GENERIC_OAUTH_API_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/oauth2/userInfo
+GF_AUTH_GENERIC_OAUTH_ALLOWED_DOMAINS=${cog_allowed}
+GF_AUTH_SIGNOUT_REDIRECT_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/logout?client_id=${cog_client}
+COGENV
+            # Write the client secret to its own file so it doesn't appear in
+            # docker inspect / `env` output. Grafana's __FILE env var variant
+            # reads it at startup.
+            umask 0077
+            printf '%s' "${cog_secret}" > /run/grafana-secrets/cognito-client-secret
+            chmod 0640 /run/grafana-secrets/cognito-client-secret
+            chown 472:472 /run/grafana-secrets/cognito-client-secret
+            umask 0022
+            chmod 0640 /run/grafana-secrets/cognito.env
+            chown 472:472 /run/grafana-secrets/cognito.env
+            log "Cognito env file written to /run/grafana-secrets/cognito.env"
+            unset cog_secret cog_client
+        else
+            log "No Cognito config in ${COGNITO_SSM_PARAM}; using local admin login only"
+            # Create an empty file so docker-compose doesn't complain about
+            # a missing env_file.
+            mkdir -p /run/grafana-secrets
+            : > /run/grafana-secrets/cognito.env
+            chmod 0640 /run/grafana-secrets/cognito.env
+        fi
+
+                # Set up credential refresh for Prometheus ec2_sd_configs.
+        # ParallelCluster's Imds.Secured=true blocks IMDS from non-root
+        # processes (including containers). This timer runs as root on the
+        # host, fetches role creds from IMDS, and writes them to a file
+        # that's bind-mounted into the Prometheus container.
+        install -m 0755 "${MONITORING_HOME}/custom-metrics/refresh-ec2-credentials.sh" /usr/local/bin/
+        install -m 0644 "${MONITORING_HOME}/systemd/prometheus-creds-refresh.service" /etc/systemd/system/
+        install -m 0644 "${MONITORING_HOME}/systemd/prometheus-creds-refresh.timer" /etc/systemd/system/
+        systemctl daemon-reload
+        # Run once immediately so creds exist before Prometheus starts.
+        /usr/local/bin/refresh-ec2-credentials.sh
+        systemctl enable --now prometheus-creds-refresh.timer
+        log "EC2 credential refresh timer active"
+
+        # Start the monitoring stack.
+        cd "${MONITORING_HOME}"
+        docker compose --env-file /etc/parallelcluster/cfnconfig \
+            -f "${MONITORING_HOME}/compose/head.yml" \
+            -p monitoring-head up -d
+
+        # Slurm job-to-node textfile collector (Phase 3c).
+        # Runs every 30s, writes /var/lib/prometheus/node-exporter/slurm_jobs.prom
+        # which node_exporter scrapes via --collector.textfile.
+        mkdir -p /var/lib/prometheus/node-exporter
+        install -m 0755 "${MONITORING_HOME}/custom-metrics/slurm-job-nodes.sh" /usr/local/bin/
+        install -m 0644 "${MONITORING_HOME}/systemd/slurm-job-nodes.service" /etc/systemd/system/
+        install -m 0644 "${MONITORING_HOME}/systemd/slurm-job-nodes.timer" /etc/systemd/system/
+        systemctl daemon-reload
+        /usr/local/bin/slurm-job-nodes.sh || true  # first run (may fail if slurmctld not ready)
+        systemctl enable --now slurm-job-nodes.timer
+        log "Slurm job-node textfile collector active"
+
+                # Install the slurm exporter (prebuilt binary, no go build).
+        install_slurm_exporter
+        ;;
+
+    ComputeFleet)
+        log "Configuring ComputeFleet node"
+
+        if has_nvidia_gpu; then
+            log "NVIDIA GPU detected — installing nvidia-container-toolkit"
+            # Replaces deprecated nvidia-docker2.
+            case "${OS_ID}" in
+                amzn|rhel|rocky|almalinux|centos)
+                    curl -fsSL https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo \
+                        -o /etc/yum.repos.d/nvidia-container-toolkit.repo
+                    (dnf -y install nvidia-container-toolkit 2>/dev/null) \
+                        || yum -y install nvidia-container-toolkit
+                    ;;
+                ubuntu|debian)
+                    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+                        | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+                    curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+                        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+                        > /etc/apt/sources.list.d/nvidia-container-toolkit.list
+                    apt-get update
+                    DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-container-toolkit
+                    ;;
+            esac
+            nvidia-ctk runtime configure --runtime=docker
+            systemctl restart docker
+            docker compose -f "${MONITORING_HOME}/compose/compute.gpu.yml" \
+                -p monitoring-compute up -d
+        else
+            docker compose -f "${MONITORING_HOME}/compose/compute.yml" \
+                -p monitoring-compute up -d
+        fi
+        ;;
+
+    *)
+        warn "Unknown cfn_node_type=${cfn_node_type}, skipping"
+        ;;
+esac
+
+# Final summary: surface the Grafana password location so users know
+# how to retrieve it. This is printed AFTER everything is up so it's
+# the last thing in the log.
+if [[ "${cfn_node_type}" == "HeadNode" || "${cfn_node_type}" == "MasterServer" ]]; then
+    log "==========================================================="
+    log "Grafana admin password is in SSM Parameter Store:"
+    log "  ${GRAFANA_SSM_PARAM:-/parallelcluster/${stack_name}/grafana/admin-password}"
+    log "Retrieve with:"
+    log "  aws ssm get-parameter --region ${cfn_region} \\"
+    log "    --name /parallelcluster/${stack_name}/grafana/admin-password \\"
+    log "    --with-decryption --query Parameter.Value --output text"
+    log "==========================================================="
+fi
+log "Done."

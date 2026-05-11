@@ -1,0 +1,18 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Compute node monitoring stack (CPU-only).
+#
+services:
+  prometheus-node-exporter:
+    container_name: node-exporter
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+    image: quay.io/prometheus/node-exporter:v1.9.0
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.infiniband'

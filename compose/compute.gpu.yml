@@ -1,0 +1,38 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Compute node monitoring stack for NVIDIA GPU instances.
+# Requires nvidia-container-toolkit (installed by installer/install.sh).
+#
+services:
+  prometheus-node-exporter:
+    container_name: node-exporter
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+    image: quay.io/prometheus/node-exporter:v1.9.0
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.infiniband'
+
+  dcgm-exporter:
+    container_name: nvidia-dcgm
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
