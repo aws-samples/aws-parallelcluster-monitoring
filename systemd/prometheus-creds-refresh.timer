@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh EC2 credentials every 5 minutes
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

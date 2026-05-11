@@ -1,0 +1,88 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# HeadNode monitoring stack. Images are pinned; bump deliberately.
+#
+services:
+  pushgateway:
+    container_name: pushgateway
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    image: prom/pushgateway:v1.11.2
+
+  prometheus:
+    container_name: prometheus
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    environment:
+      # Credentials refreshed by host-side systemd timer (refresh-ec2-credentials.sh).
+      # Required because Imds.Secured=true blocks non-root IMDS access inside containers.
+      - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
+    volumes:
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
+      - 'prometheus-data:/prometheus'
+      - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
+    image: prom/prometheus:v3.1.0
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=/prometheus/'
+      - '--web.route-prefix=/'
+
+  grafana:
+    container_name: grafana
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    environment:
+      # Password is read from a file that a host-side systemd timer
+      # (refresh-grafana-password.sh) populates from SSM Parameter Store.
+      # Rotate the SSM parameter and the timer will pick up the new value.
+      - 'GF_SECURITY_ADMIN_PASSWORD__FILE=/run/grafana-secrets/admin-password'
+      - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
+      # Land every user on ParallelCluster Summary after login.
+      - 'GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/ParallelCluster.json'
+    env_file:
+      # Cognito OAuth2 config, materialized by installer from SSM.
+      # Empty file when Cognito is not configured (no-op).
+      - '/run/grafana-secrets/cognito.env'
+    volumes:
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/grafana:/etc/grafana/provisioning'
+      - 'grafana-data:/var/lib/grafana'
+      - '/run/grafana-secrets:/run/grafana-secrets:ro'
+    image: grafana/grafana:11.2.2
+
+  prometheus-node-exporter:
+    container_name: node-exporter
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+      - '/var/lib/prometheus/node-exporter:/textfile:ro'
+    image: quay.io/prometheus/node-exporter:v1.9.0
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.infiniband'
+      - '--collector.textfile'
+      - '--collector.textfile.directory=/textfile'
+
+  nginx:
+    container_name: nginx
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/nginx/conf.d:/etc/nginx/conf.d/'
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/nginx/ssl:/etc/ssl/'
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/www:/usr/share/nginx/html'
+    image: nginx:1.27-alpine
+
+volumes:
+  prometheus-data:
+  grafana-data:

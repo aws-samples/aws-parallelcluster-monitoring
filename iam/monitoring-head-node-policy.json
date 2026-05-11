@@ -1,0 +1,102 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EC2DescribeForPrometheusSdAndCostMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeVolumes"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "${Region}"
+        }
+      }
+    },
+    {
+      "Sid": "CloudFormationDescribeOwnStackOnly",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackResources"
+      ],
+      "Resource": [
+        "arn:${Partition}:cloudformation:${Region}:${AccountId}:stack/${ClusterName}/*",
+        "arn:${Partition}:cloudformation:${Region}:${AccountId}:stack/${ClusterName}-*/*"
+      ]
+    },
+    {
+      "Sid": "FSxDescribeForCostMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "fsx:DescribeFileSystems"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "${Region}"
+        }
+      }
+    },
+    {
+      "Sid": "PricingReadForCostMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "pricing:GetProducts",
+        "pricing:DescribeServices"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3ReadPostInstallBucketOnly",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:${Partition}:s3:::${PostInstallBucket}",
+        "arn:${Partition}:s3:::${PostInstallBucket}/*"
+      ]
+    },
+    {
+      "Sid": "SSMGrafanaPasswordForThisClusterOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:PutParameter",
+        "ssm:AddTagsToResource"
+      ],
+      "Resource": "arn:${Partition}:ssm:${Region}:${AccountId}:parameter/parallelcluster/${ClusterName}/grafana/*"
+    },
+    {
+      "Sid": "KMSForSSMSecureString",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "ssm.${Region}.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "CloudWatchLogsReadForClusterLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents"
+      ],
+      "Resource": [
+        "arn:${Partition}:logs:${Region}:${AccountId}:log-group:/aws/parallelcluster/${ClusterName}*"
+      ]
+    }
+  ]
+}

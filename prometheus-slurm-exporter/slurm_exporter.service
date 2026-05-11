@@ -1,13 +1,14 @@
 [Unit]
-Description=Prometheus SLURM Exporter
+Description=Prometheus SLURM Exporter (rivosinc)
+After=network-online.target slurmctld.service
+Wants=network-online.target
 
 [Service]
-Environment=PATH=/opt/slurm/bin:$PATH
+Environment=PATH=/opt/slurm/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/usr/bin/prometheus-slurm-exporter
 Restart=on-failure
 RestartSec=15
 Type=simple
-
 
 [Install]
 WantedBy=multi-user.target
