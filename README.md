@@ -1,13 +1,16 @@
-# Grafana Dashboard for AWS ParallelCluster
+# Grafana Dashboard for AWS ParallelCluster & AWS PCS
 
 A zero-setup monitoring solution for HPC clusters built with
-[AWS ParallelCluster](https://aws.amazon.com/hpc/parallelcluster/).
-Deploys Prometheus, Grafana, node_exporter, NVIDIA DCGM exporter, and a
-Slurm metrics exporter as containers — no manual configuration required.
+[AWS ParallelCluster](https://aws.amazon.com/hpc/parallelcluster/) or
+[AWS Parallel Computing Service (PCS)](https://aws.amazon.com/pcs/).
+Deploys Prometheus, Grafana, node_exporter, NVIDIA DCGM exporter, and
+Slurm metrics as containers — no manual configuration required.
 
 ## Features
 
-- **Zero-setup**: add 5 lines to your pcluster config, create the cluster, done
+- **Dual-platform**: works on both ParallelCluster and AWS PCS
+- **Zero-setup**: add a few lines to your config, create the cluster, done
+- **Slurm 25.11 native metrics** (PCS): scrapes OpenMetrics directly from slurmctld — no extra exporter
 - **Secure by default**: per-cluster random password in SSM, optional Cognito SSO
 - **GPU-ready**: NVIDIA DCGM exporter auto-deploys on GPU instances
 - **EFA-ready**: InfiniBand/EFA metrics collected automatically
@@ -17,32 +20,84 @@ Slurm metrics exporter as containers — no manual configuration required.
 
 ## Dashboards
 
-| Dashboard | Description |
-|-----------|-------------|
-| **ParallelCluster Summary** | Cluster overview: Slurm states, CPU/memory aggregates, storage |
-| **Compute Node List** | Fleet table with CPU/Mem/Disk gauges, job info, click-through |
-| **Compute Node Details** | Per-node deep-dive (CPU, memory, disk, network, EFA) |
-| **HeadNode Details** | Head node metrics |
-| **GPU Nodes** | NVIDIA metrics: utilization, temperature, power, memory, NVLink, PCIe |
-| **Cluster Costs** | Cost/hour breakdown (headnode, compute, EBS) + accumulated total |
+| Dashboard | Platform | Description |
+|-----------|----------|-------------|
+| **Cluster Summary** | Both | Cluster overview: Slurm states, CPU/memory aggregates |
+| **Compute Node List** | Both | Fleet table with CPU/Mem/Disk gauges, job info, click-through |
+| **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA) |
+| **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through |
+| **GPU Node Details** | Both | Per-GPU deep-dive: utilization, clocks, PCIe, NVLink, memory |
+| **HeadNode Details** | ParallelCluster | Head node metrics |
+| **Login Node List** | PCS | Login nodes table with click-through to node details |
+| **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS) + accumulated total |
 
-## Quickstart
+
+## Screenshots
+
+### Landing page
+Entry point served at `https://<host>/` with links to Grafana, Prometheus, and
+the most-used dashboards.
+
+![Landing page](docs/screenshots/landing-page.png)
+
+### Dashboard list
+All dashboards available in Grafana. On PCS the **Login Node List** replaces
+**HeadNode Details**; GPU dashboards (List + Details) are available on both
+platforms.
+
+![Dashboard list](docs/screenshots/dashboard-list.png)
+
+### Cluster Summary
+High-level cluster view: Slurm node states, CPU allocation, running/pending/
+completed/failed jobs, total GPUs, and average GPU utilization. Works on both
+ParallelCluster and PCS (PCS metrics are translated via Prometheus recording
+rules).
+
+![Cluster Summary](docs/screenshots/cluster-summary.png)
+
+### Compute Node List
+Sortable table of every compute node with live gauges for CPU, memory, disk,
+load, and uptime. Click any row to drill down into per-node details.
+
+![Compute Node List](docs/screenshots/compute-node-list.png)
+
+### Compute Node Details
+Per-node deep dive: CPU breakdown (user/system/iowait), memory, load average,
+disk I/O, network throughput, file descriptors, context switches, and more.
+EFA panels auto-populate on EFA-enabled hardware.
+
+![Compute Node Details](docs/screenshots/compute-node-details.png)
+
+### GPU Node List
+Fleet view of GPU nodes with model, utilization, temperature, power, and
+memory gauges. Click any row to open the detailed per-GPU dashboard.
+
+![GPU Node List](docs/screenshots/gpu-node-list.png)
+
+### Cluster Costs
+Real-time cost/hour and accumulated cost since cluster start, broken down by
+component (head/login node, compute, EBS). List prices via AWS Pricing API,
+cached for 24h.
+
+![Cluster Costs](docs/screenshots/cluster-costs.png)
+
+## Quickstart — ParallelCluster
 
 Add to your `pcluster.yaml` under **both** `HeadNode` and each `SlurmQueue`:
 
 ```yaml
 CustomActions:
   OnNodeConfigured:
-    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.0/post-install.sh
+    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.1/post-install.sh
     Args:
-      - v2.0
+      - v2.1
 Iam:
   AdditionalIamPolicies:
     - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
     - Policy: arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name>
 ```
 
-Generate the least-privilege policy for your cluster:
+Generate the least-privilege policy:
 
 ```bash
 ./iam/render-policy.sh <cluster-name> <region> > /tmp/policy.json
@@ -50,11 +105,9 @@ aws iam create-policy --policy-name pcluster-monitoring-<cluster-name> \
     --policy-document file:///tmp/policy.json
 ```
 
-See [iam/README.md](iam/README.md) for details on what the policy grants.
+See [iam/README.md](iam/README.md) for details.
 
-> **Quick start alternative**: if you just want to test without creating a
-> custom policy, you can use these AWS-managed policies instead (overbroad
-> but functional):
+> **Quick start alternative**: use these AWS-managed policies instead (overbroad but functional):
 > ```yaml
 > Iam:
 >   AdditionalIamPolicies:
@@ -65,68 +118,102 @@ See [iam/README.md](iam/README.md) for details on what the policy grants.
 >     - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
 > ```
 
-Full example: [parallelcluster-setup/pcluster.yaml](parallelcluster-setup/pcluster.yaml).
+## Quickstart — AWS PCS
+
+### 1. Enable Slurm OpenMetrics on your cluster
+
+```bash
+aws pcs update-cluster --cluster-identifier <cluster-id> \
+    --slurm-configuration 'slurmCustomSettings=[{parameterName=MetricsType,parameterValue=metrics/openmetrics},{parameterName=CommunicationParameters,parameterValue=enable_http}]'
+```
+
+Ensure your security group allows port 6817 from the login node to the slurmctld endpoint.
+
+### 2. Configure launch templates
+
+**Login node** launch template (runs the monitoring stack):
+- Tag: `Name=HeadNode`, `monitoring-role=login`
+- `MetadataOptions.InstanceMetadataTags=enabled`
+- User data (MIME multipart):
+
+```bash
+#!/bin/bash
+curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.1/post-install.sh \
+    -o /tmp/post-install.sh
+bash /tmp/post-install.sh v2.1
+```
+
+**Compute node** launch template (runs node_exporter + dcgm-exporter):
+- Tag: `Name=Compute`
+- `MetadataOptions.InstanceMetadataTags=enabled`
+- Same user data as above
+
+### 3. IAM instance profile permissions
+
+The instance profile needs:
+- `pcs:GetCluster`, `pcs:ListComputeNodeGroups`
+- `ec2:DescribeInstances`, `ec2:DescribeVolumes`
+- `ssm:GetParameter`, `ssm:PutParameter`
+- `pricing:GetProducts`
 
 ### Access Grafana
 
 ```bash
-# SSM port-forward (recommended — no public exposure)
-aws ssm start-session --target <head-node-instance-id> --region <region> \
+aws ssm start-session --target <login-node-instance-id> --region <region> \
     --document-name AWS-StartPortForwardingSession \
     --parameters 'portNumber=["443"],localPortNumber=["8443"]'
 ```
 
 Browse: `https://localhost:8443/grafana/`
 
-Retrieve your password:
+Retrieve password:
 ```bash
 aws ssm get-parameter --region <region> \
-    --name /parallelcluster/<cluster-name>/grafana/admin-password \
+    --name /<platform>/<cluster-name>/grafana/admin-password \
     --with-decryption --query Parameter.Value --output text
 ```
+
+Where `<platform>` is `parallelcluster` or `pcs`.
 
 For public access with a trusted certificate, see [docs/public-access.md](docs/public-access.md).
 
 ### Testing from a fork
 
 ```yaml
-CustomActions:
-  OnNodeConfigured:
-    Script: https://raw.githubusercontent.com/<you>/aws-parallelcluster-monitoring/<branch>/post-install.sh
-    Args:
-      - <tag-or-branch>
-      - <you>/aws-parallelcluster-monitoring
+# ParallelCluster
+Args:
+  - <tag-or-branch>
+  - <you>/aws-parallelcluster-monitoring
+
+# PCS (in user data)
+bash /tmp/post-install.sh <tag-or-branch> <you>/aws-parallelcluster-monitoring
 ```
 
 ## Supported platforms
 
-| OS | Status | Notes |
-|---|---|---|
-| Amazon Linux 2023 | ✅ recommended | ParallelCluster 3.8+ default |
-| Amazon Linux 2 | ✅ | EOL June 2026 |
-| Ubuntu 22.04 / 24.04 | ✅ | |
-| RHEL / Rocky / Alma 9 | ✅ | Uses docker-ce upstream repo |
-
-Supported ParallelCluster versions: **3.10 – 3.15**.
+| Platform | Slurm Source | Notes |
+|----------|-------------|-------|
+| ParallelCluster 3.10–3.15 | rivosinc/prometheus-slurm-exporter | AL2, AL2023, Ubuntu 22/24, RHEL 9 |
+| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 |
 
 ## Architecture
 
 ```
-HeadNode                              Compute Nodes
-┌─────────────────────────────┐       ┌──────────────────────┐
-│ nginx (TLS)                 │       │ node_exporter :9100   │
-│ grafana :3000               │       │ dcgm-exporter :9400   │
-│ prometheus :9090            │◄──────│   (GPU nodes only)    │
-│ pushgateway :9091           │       └──────────────────────┘
-│ node_exporter :9100         │
-│ slurm_exporter :9092        │
-│ cost-metrics (cron)         │
-│ slurm-job-nodes (timer)     │
-└─────────────────────────────┘
+ParallelCluster HeadNode / PCS Login Node
+┌─────────────────────────────────────┐       Compute Nodes
+│ nginx (TLS)                         │       ┌──────────────────────┐
+│ grafana :3000                       │       │ node_exporter :9100   │
+│ prometheus :9090                    │◄──────│ dcgm-exporter :9400   │
+│ pushgateway :9091                   │       │   (GPU nodes only)    │
+│ node_exporter :9100                 │       └──────────────────────┘
+│ slurm_exporter :9092 (PC only)     │
+│ cost-metrics (cron)                 │       Slurm Controller
+│ slurm-job-nodes (timer, PC only)   │       ┌──────────────────────┐
+│                                     │◄──────│ :6817/metrics/*       │
+│ Prometheus recording rules          │       │   (PCS only)          │
+│   (PCS: native → compat names)     │       └──────────────────────┘
+└─────────────────────────────────────┘
 ```
-
-Prometheus discovers compute nodes via EC2 service discovery. No static
-configuration needed — nodes are scraped automatically as they join/leave.
 
 ## Components
 
@@ -138,7 +225,7 @@ configuration needed — nodes are scraped automatically as they join/leave.
 | Node Exporter | v1.9.0 |
 | NGINX | 1.27-alpine |
 | NVIDIA DCGM Exporter | 4.5.2-4.8.1-ubuntu22.04 |
-| prometheus-slurm-exporter | 1.8.0 ([rivosinc](https://github.com/rivosinc/prometheus-slurm-exporter)) |
+| prometheus-slurm-exporter | 1.8.0 (ParallelCluster only) |
 | Docker Compose v2 | 2.29.7 |
 
 All images pinned — `latest` is never used.
@@ -161,8 +248,9 @@ All images pinned — `latest` is never used.
 
 ## Roadmap
 
-- **Phase 4** (next): Amazon Managed Prometheus / Managed Grafana path,
-  CDK module, Slurm 25.11 native `/metrics` endpoints, CI pipeline
+- Amazon Managed Prometheus / Managed Grafana path
+- CDK module for automated deployment
+- CI pipeline (shellcheck, hadolint, smoke tests)
 
 ## License
 

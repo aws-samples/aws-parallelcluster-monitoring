@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2154  # cfn_* / stack_name vars come from /etc/parallelcluster/cfnconfig
+# shellcheck disable=SC2154  # PLATFORM_USER from installer/platform/platform.sh
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 # RHEL 9 / Rocky 9 / Alma 9 / CentOS Stream 9.
@@ -15,4 +15,4 @@ dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker
 
 systemctl enable docker
 systemctl start docker
-usermod -a -G docker "${cfn_cluster_user}"
+usermod -a -G docker "${PLATFORM_USER}"

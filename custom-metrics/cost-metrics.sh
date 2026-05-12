@@ -1,11 +1,11 @@
 #!/bin/bash
-# shellcheck disable=SC2154  # cfn_* / stack_name come from sourced cfnconfig
 #
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #
 # Cluster cost estimator. Runs every minute via cron.
-# Pushes cost metrics to the local pushgateway.
+# Pushes cost metrics to the local pushgateway. Works on ParallelCluster
+# (legacy cfnconfig path) and PCS (IMDS tag discovery).
 #
 # Metrics:
 #   cluster_cost_per_hour{component="compute|headnode|ebs|total"}
@@ -13,9 +13,27 @@
 #
 set -uo pipefail
 
-# shellcheck disable=SC1091
-. /etc/parallelcluster/cfnconfig
-export AWS_DEFAULT_REGION="${cfn_region}"
+# Platform detection
+if [[ -r /etc/parallelcluster/cfnconfig ]]; then
+    # shellcheck disable=SC1091
+    . /etc/parallelcluster/cfnconfig
+    # shellcheck disable=SC2154
+    # shellcheck disable=SC2154
+    cluster_tag_key="parallelcluster:cluster-name"
+    # shellcheck disable=SC2154
+    cluster_name="${stack_name}"
+    # shellcheck disable=SC2154
+    region="${region}"
+else
+    _tok=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+        http://169.254.169.254/latest/api/token 2>/dev/null)
+    cluster_name=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+        http://169.254.169.254/latest/meta-data/tags/instance/aws:pcs:cluster-id 2>/dev/null)
+    region=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+        http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null)
+    cluster_tag_key="aws:pcs:cluster-id"
+fi
+export AWS_DEFAULT_REGION="${region}"
 
 CACHE_DIR="/var/lib/prometheus/cost-cache"
 PRICE_CACHE="${CACHE_DIR}/prices.env"
@@ -29,7 +47,7 @@ fetch_price() {
     local itype="$1"
     aws pricing get-products --region us-east-1 --service-code AmazonEC2 \
         --filters "Type=TERM_MATCH,Field=instanceType,Value=${itype}" \
-                  "Type=TERM_MATCH,Field=regionCode,Value=${cfn_region}" \
+                  "Type=TERM_MATCH,Field=regionCode,Value=${region}" \
                   'Type=TERM_MATCH,Field=preInstalledSw,Value=NA' \
                   'Type=TERM_MATCH,Field=operatingSystem,Value=Linux' \
                   'Type=TERM_MATCH,Field=tenancy,Value=Shared' \
@@ -46,9 +64,9 @@ build_price_cache() {
 
     # Get compute instance types currently running
     local compute_types
-    compute_types=$(aws ec2 describe-instances --region "${cfn_region}" \
-        --filters "Name=tag:parallelcluster:cluster-name,Values=${stack_name}" \
-                  "Name=tag:parallelcluster:node-type,Values=Compute" \
+    compute_types=$(aws ec2 describe-instances --region "${region}" \
+        --filters "Name=tag:${cluster_tag_key},Values=${cluster_name}" \
+                  "Name=tag:Name,Values=Compute" \
                   "Name=instance-state-name,Values=running" \
         --query 'Reservations[].Instances[].InstanceType' --output text 2>/dev/null \
         | tr '\t' '\n' | sort -u)
@@ -84,17 +102,17 @@ while IFS=$'\t' read -r itype count; do
     price=$(get_price "${itype}")
     cost=$(echo "scale=4; ${count} * ${price}" | bc 2>/dev/null || echo "0")
     compute_cost=$(echo "scale=4; ${compute_cost} + ${cost}" | bc 2>/dev/null || echo "0")
-done < <(aws ec2 describe-instances --region "${cfn_region}" \
-    --filters "Name=tag:parallelcluster:cluster-name,Values=${stack_name}" \
-              "Name=tag:parallelcluster:node-type,Values=Compute" \
+done < <(aws ec2 describe-instances --region "${region}" \
+    --filters "Name=tag:${cluster_tag_key},Values=${cluster_name}" \
+              "Name=tag:Name,Values=Compute" \
               "Name=instance-state-name,Values=running" \
     --query 'Reservations[].Instances[].InstanceType' --output text 2>/dev/null \
     | tr '\t' '\n' | sort | uniq -c | awk '{print $2"\t"$1}')
 
 # ─── EBS cost (estimate: gp3 ~$0.08/GB/month = $0.000111/GB/hour) ────────────
 ebs_gb_hour="0.000111"
-num_instances=$(aws ec2 describe-instances --region "${cfn_region}" \
-    --filters "Name=tag:parallelcluster:cluster-name,Values=${stack_name}" \
+num_instances=$(aws ec2 describe-instances --region "${region}" \
+    --filters "Name=tag:${cluster_tag_key},Values=${cluster_name}" \
               "Name=instance-state-name,Values=running" \
     --query 'length(Reservations[].Instances[])' --output text 2>/dev/null || echo "1")
 ebs_cost=$(echo "scale=4; ${num_instances} * 35 * ${ebs_gb_hour}" | bc 2>/dev/null || echo "0")

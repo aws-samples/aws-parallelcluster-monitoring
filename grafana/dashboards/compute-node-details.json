@@ -306,7 +306,7 @@
           "refId": "D"
         },
         {
-          "expr": "(1 - (node_memory_SwapFree_bytes{instance_id=\"$node_instance_id\"} / node_memory_SwapTotal_bytes{instance_id=\"$node_instance_id\"})) * 100",
+          "expr": "((1 - (node_memory_SwapFree_bytes{instance_id=\"$node_instance_id\"} / node_memory_SwapTotal_bytes{instance_id=\"$node_instance_id\"})) * 100) or on() vector(0)",
           "instant": true,
           "legendFormat": "Used SWAP",
           "refId": "E"

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT-0
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>ParallelCluster Monitoring</title>
+    <title>HPC Cluster Monitoring</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         :root {
@@ -137,7 +137,7 @@ SPDX-License-Identifier: MIT-0
             <path d="M26 26l4 3 4-3" stroke="#ff9900" stroke-width="3"
                   fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <h1>ParallelCluster Monitoring</h1>
+        <h1>HPC Cluster Monitoring</h1>
         <span class="subtitle">Grafana + Prometheus + Slurm exporter</span>
     </header>
 
@@ -159,26 +159,32 @@ SPDX-License-Identifier: MIT-0
 
         <h2>Quick links</h2>
         <div class="cards">
-            <a class="card" href="/grafana/d/r9_U2AzGz/parallelcluster-summary">
+            <a class="card" href="/grafana/d/r9_U2AzGz/cluster-summary">
                 <p class="title">Cluster Summary</p>
-                <p class="desc">High-level view: running jobs, node counts,
-                   aggregate CPU and memory, cost-to-date.</p>
+                <p class="desc">High-level view: node states, CPU allocation,
+                   running/pending jobs, GPU utilization.</p>
             </a>
             <a class="card" href="/grafana/d/SugNQvuWk/compute-node-list">
                 <p class="title">Compute Node List</p>
                 <p class="desc">Sortable table of all compute nodes with CPU,
                    memory, disk, load, network usage.</p>
             </a>
-            <a class="card" href="/grafana/d/3NR7BmmMk/headnode-details">
-                <p class="title">HeadNode Details</p>
-                <p class="desc">Deep-dive on the head node: CPU breakdown,
-                   memory, disk I/O, network, sockets, file descriptors.</p>
+            <a class="card" href="/grafana/d/gpu-node-list/gpu-node-list">
+                <p class="title">GPU Node List</p>
+                <p class="desc">Fleet view of GPU nodes: model, utilization,
+                   temperature, power, memory — click for details.</p>
+            </a>
+            <a class="card" href="/grafana/d/costs/cluster-costs">
+                <p class="title">Cluster Costs</p>
+                <p class="desc">Real-time cost breakdown: head node, compute,
+                   GPU, EBS. Accumulated total since cluster start.</p>
             </a>
         </div>
 
         <h2>Documentation</h2>
         <div class="links">
-            <a class="link" href="https://aws.amazon.com/hpc/parallelcluster/">ParallelCluster overview</a>
+            <a class="link" href="https://aws.amazon.com/hpc/parallelcluster/">ParallelCluster</a>
+            <a class="link" href="https://aws.amazon.com/pcs/">AWS PCS</a>
             <a class="link" href="https://docs.aws.amazon.com/parallelcluster/">Official docs</a>
             <a class="link" href="https://github.com/aws-samples/aws-parallelcluster-monitoring">Monitoring repo</a>
             <a class="link" href="https://prometheus.io/docs/prometheus/latest/querying/basics/">PromQL basics</a>
@@ -186,7 +192,7 @@ SPDX-License-Identifier: MIT-0
     </main>
 
     <footer>
-        AWS ParallelCluster Monitoring &middot;
+        AWS ParallelCluster &amp; PCS Monitoring &middot;
         <a href="https://github.com/aws-samples/aws-parallelcluster-monitoring">GitHub</a> &middot;
         <a href="https://github.com/aws-samples/aws-parallelcluster-monitoring/issues">Report an issue</a>
     </footer>

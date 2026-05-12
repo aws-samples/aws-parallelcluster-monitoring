@@ -1,0 +1,104 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Prometheus configuration for AWS PCS clusters.
+# Differences vs ParallelCluster:
+#   - No slurm_exporter container — we scrape Slurm's native OpenMetrics
+#     endpoint on the slurmctld (port 6817) exposed by PCS when
+#     MetricsType=metrics/openmetrics + CommunicationParameters=enable_http
+#     are set on the cluster.
+#   - No DCGM port 9400 filter (added later when GPU support lands)
+#
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # Slurm native OpenMetrics (requires Slurm 25.11+ on PCS).
+  # __SLURMCTLD_IP__ is substituted by the installer.
+  - job_name: 'slurm_openmetrics'
+    scrape_interval: 30s
+    metrics_path: /metrics/nodes
+    static_configs:
+      - targets: ['__SLURMCTLD_IP__:6817']
+        labels: {slurm_endpoint: 'nodes'}
+
+  - job_name: 'slurm_openmetrics_jobs'
+    scrape_interval: 30s
+    metrics_path: /metrics/jobs
+    static_configs:
+      - targets: ['__SLURMCTLD_IP__:6817']
+        labels: {slurm_endpoint: 'jobs'}
+
+  - job_name: 'slurm_openmetrics_partitions'
+    scrape_interval: 30s
+    metrics_path: /metrics/partitions
+    static_configs:
+      - targets: ['__SLURMCTLD_IP__:6817']
+        labels: {slurm_endpoint: 'partitions'}
+
+  - job_name: 'slurm_openmetrics_scheduler'
+    scrape_interval: 30s
+    metrics_path: /metrics/scheduler
+    static_configs:
+      - targets: ['__SLURMCTLD_IP__:6817']
+        labels: {slurm_endpoint: 'scheduler'}
+
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['localhost:9091']
+
+  - job_name: 'prometheus_server'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # EC2 service discovery for node_exporter (port 9100) and
+  # DCGM exporter (port 9400, GPU nodes only).
+  #
+  # Filters target PCS instances only (by tag aws:pcs:cluster-id).
+  # Keeping the DCGM filter small — any modern GPU/accelerator instance
+  # type will be scraped; non-GPU types are ignored at connect time.
+  - job_name: 'ec2_instances'
+    scrape_interval: 5s
+    ec2_sd_configs:
+      - port: 9100
+        region: __AWS_REGION__
+        refresh_interval: 10s
+        filters:
+          - name: tag:aws:pcs:cluster-id
+            values: ['__PCS_CLUSTER_ID__']
+          - name: instance-state-name
+            values: [running]
+      - port: 9400
+        region: __AWS_REGION__
+        refresh_interval: 10s
+        filters:
+          - name: tag:aws:pcs:cluster-id
+            values: ['__PCS_CLUSTER_ID__']
+          - name: instance-state-name
+            values: [running]
+    relabel_configs:
+      - source_labels: [__meta_ec2_tag_aws_pcs_compute_node_group_id]
+        target_label: node_group_id
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance_id
+      - source_labels: [__meta_ec2_availability_zone]
+        target_label: instance_az
+      - source_labels: [__meta_ec2_instance_state]
+        target_label: instance_state
+      - source_labels: [__meta_ec2_instance_type]
+        target_label: instance_type
+      - source_labels: [__meta_ec2_vpc_id]
+        target_label: instance_vpc
+      # Dashboards filter by instance_name='HeadNode' or 'Compute'.
+      # For PCS: the launch template should tag Name=HeadNode on login
+      # and Name=Compute on compute nodes (legacy convention).
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name

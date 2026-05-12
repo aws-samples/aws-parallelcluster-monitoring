@@ -1,0 +1,45 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Recording rules that translate AWS PCS native Slurm OpenMetrics to the
+# metric names the existing dashboards expect (rivosinc exporter names
+# used by ParallelCluster).
+#
+# This lets the same dashboards work for both platforms.
+#
+groups:
+  - name: pcs_slurm_compat
+    interval: 30s
+    rules:
+      # slurm_node_count_per_state{state="idle|alloc|mix|down|drain"}
+      # Source: slurm_nodes_{alloc,idle,mixed,down,drain}
+      - record: slurm_node_count_per_state
+        expr: slurm_nodes_idle
+        labels: {state: idle}
+      - record: slurm_node_count_per_state
+        expr: slurm_nodes_alloc
+        labels: {state: alloc}
+      - record: slurm_node_count_per_state
+        expr: slurm_nodes_mixed
+        labels: {state: mix}
+      - record: slurm_node_count_per_state
+        expr: slurm_nodes_down
+        labels: {state: down}
+      - record: slurm_node_count_per_state
+        expr: slurm_nodes_drain
+        labels: {state: drain}
+
+      # slurm_cpus_per_state{state="idle|alloc"}
+      # Source: sum of slurm_node_cpus_{idle,alloc}
+      - record: slurm_cpus_per_state
+        expr: sum(slurm_node_cpus_idle)
+        labels: {state: idle}
+      - record: slurm_cpus_per_state
+        expr: sum(slurm_node_cpus_alloc)
+        labels: {state: alloc}
+
+      # slurm_job_node — rivosinc-style metric mapping job_id → node_name.
+      # PCS doesn't expose this directly in openmetrics (jobs endpoint
+      # gives counts, not per-job labels). Left as TODO: may need a
+      # separate textfile collector on the login node that runs squeue.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2154  # cfn_* / stack_name vars come from /etc/parallelcluster/cfnconfig
+# Platform detection (parallelcluster|pcs) in installer/platform/platform.sh
 #
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
@@ -14,20 +14,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=installer/common.sh
 . "${SCRIPT_DIR}/common.sh"
 
-# Source ParallelCluster environment (cfn_node_type, cfn_cluster_user, cfn_region, ...).
-[[ -r /etc/parallelcluster/cfnconfig ]] || die "/etc/parallelcluster/cfnconfig not found"
-# shellcheck disable=SC1091
-. /etc/parallelcluster/cfnconfig
-
-: "${cfn_node_type:?cfn_node_type not set}"
-: "${cfn_cluster_user:?cfn_cluster_user not set}"
-: "${cfn_region:?cfn_region not set}"
+# Detect platform (ParallelCluster or PCS) and source its config.
+# shellcheck source=installer/platform/platform.sh
+. "${SCRIPT_DIR}/platform/platform.sh"
+detect_platform
 
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
-MONITORING_HOME="/home/${cfn_cluster_user}/${MONITORING_DIR_NAME}"
+MONITORING_HOME="/home/${PLATFORM_USER}/${MONITORING_DIR_NAME}"
 export MONITORING_HOME MONITORING_DIR_NAME
 
-log "Node type: ${cfn_node_type}"
+log "Platform: ${PLATFORM}"
+log "Node type: ${PLATFORM_NODE_TYPE}"
+log "Cluster: ${PLATFORM_CLUSTER_NAME}"
 log "Monitoring home: ${MONITORING_HOME}"
 
 # ---------------------------------------------------------------------------
@@ -47,14 +45,14 @@ verify_docker
 # ---------------------------------------------------------------------------
 # 2. Node-type-specific configuration.
 # ---------------------------------------------------------------------------
-case "${cfn_node_type}" in
+case "${PLATFORM_NODE_TYPE}" in
 
-    HeadNode|MasterServer)
+    head|login)
         log "Configuring HeadNode"
 
         # Extract context from chef dna.json and CloudFormation.
 
-        chown "${cfn_cluster_user}:${cfn_cluster_user}" -R "/home/${cfn_cluster_user}"
+        chown "${PLATFORM_USER}:${PLATFORM_USER}" -R "/home/${PLATFORM_USER}"
         chmod +x "${MONITORING_HOME}/custom-metrics/"*
 
         cp -rp "${MONITORING_HOME}/custom-metrics/"* /usr/local/bin/
@@ -75,8 +73,25 @@ case "${cfn_node_type}" in
         # sed token replacement needed. Variables auto-resolve from
         # Prometheus labels (head_instance_id) or user input (fsx_id,
         # s3_bucket). Only prometheus.yml still needs region substitution.
-        sed -i "s/__AWS_REGION__/${cfn_region}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
+        # Pick the right Prometheus config for the platform.
+        if [[ "${PLATFORM}" == "pcs" ]]; then
+            cp "${MONITORING_HOME}/prometheus/prometheus-pcs.yml" \
+               "${MONITORING_HOME}/prometheus/prometheus.yml"
+            sed -i "s|__SLURMCTLD_IP__|${PCS_SLURMCTLD_IP}|g"     "${MONITORING_HOME}/prometheus/prometheus.yml"
+            sed -i "s|__PCS_CLUSTER_ID__|${PCS_CLUSTER_ID}|g"     "${MONITORING_HOME}/prometheus/prometheus.yml"
+        fi
+        sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
         sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" "${MONITORING_HOME}/compose/head.yml"
+
+        # Deploy platform-specific dashboards alongside the shared ones.
+        if [[ -d "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}" ]]; then
+            cp -f "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}/"*.json                   "${MONITORING_HOME}/grafana/dashboards/" 2>/dev/null || true
+        fi
+        # Remove the other platform's dashboards (avoid confusion).
+        case "${PLATFORM}" in
+            parallelcluster) rm -f "${MONITORING_HOME}/grafana/dashboards/pcs/"*.json 2>/dev/null ;;
+            pcs)             rm -f "${MONITORING_HOME}/grafana/dashboards/pcluster/"*.json 2>/dev/null ;;
+        esac
 
         # Self-signed TLS cert for nginx.
         # Includes multiple SANs so the cert is valid for:
@@ -105,7 +120,7 @@ case "${cfn_node_type}" in
             -keyout "${nginx_ssl_dir}/nginx.key" \
             -out "${nginx_ssl_dir}/nginx.crt" \
             -config "${nginx_dir}/openssl.cnf" >/dev/null 2>&1
-        chown -R "${cfn_cluster_user}:${cfn_cluster_user}" "${nginx_ssl_dir}"
+        chown -R "${PLATFORM_USER}:${PLATFORM_USER}" "${nginx_ssl_dir}"
 
         # -------------------------------------------------------------
         # Grafana admin password: generate random, write to SSM SecureString,
@@ -113,17 +128,17 @@ case "${cfn_node_type}" in
         # Idempotent: if the SSM parameter already exists we reuse it (so
         # subsequent runs / updates don't break existing logins).
         # -------------------------------------------------------------
-        GRAFANA_SSM_PARAM="/parallelcluster/${stack_name}/grafana/admin-password"
-        if aws ssm get-parameter --region "${cfn_region}" --name "${GRAFANA_SSM_PARAM}" --with-decryption >/dev/null 2>&1; then
+        GRAFANA_SSM_PARAM="/${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/admin-password"
+        if aws ssm get-parameter --region "${PLATFORM_REGION}" --name "${GRAFANA_SSM_PARAM}" --with-decryption >/dev/null 2>&1; then
             log "Reusing existing Grafana password in ${GRAFANA_SSM_PARAM}"
         else
             log "Generating new Grafana admin password, storing in ${GRAFANA_SSM_PARAM}"
             GRAFANA_PASSWORD=$(openssl rand -hex 16)
-            aws ssm put-parameter --region "${cfn_region}" \
+            aws ssm put-parameter --region "${PLATFORM_REGION}" \
                 --name "${GRAFANA_SSM_PARAM}" \
                 --type SecureString \
                 --value "${GRAFANA_PASSWORD}" \
-                --tags "Key=parallelcluster:cluster-name,Value=${stack_name}" \
+                --tags "Key=${PLATFORM}:cluster-name,Value=${PLATFORM_CLUSTER_NAME}" \
                 --no-overwrite >/dev/null
             unset GRAFANA_PASSWORD
         fi
@@ -154,8 +169,8 @@ case "${cfn_node_type}" in
         # When present, Grafana is configured to use Cognito OAuth2.
         # When absent, local admin/password login is the only auth path.
         # -------------------------------------------------------------
-        COGNITO_SSM_PARAM="/parallelcluster/${stack_name}/grafana/cognito"
-        cognito_json=$(aws ssm get-parameter --region "${cfn_region}" \
+        COGNITO_SSM_PARAM="/${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/cognito"
+        cognito_json=$(aws ssm get-parameter --region "${PLATFORM_REGION}" \
             --name "${COGNITO_SSM_PARAM}" --with-decryption \
             --query 'Parameter.Value' --output text 2>/dev/null) || cognito_json=""
 
@@ -171,7 +186,7 @@ case "${cfn_node_type}" in
             cog_client=$(echo "${cognito_json}"  | jq -r .client_id)
             cog_secret=$(echo "${cognito_json}"  | jq -r .client_secret)
             cog_domain=$(echo "${cognito_json}"  | jq -r .domain)
-            cog_region=$(echo "${cognito_json}"  | jq -r '.region // "'"${cfn_region}"'"')
+            cog_region=$(echo "${cognito_json}"  | jq -r '.region // "'"${PLATFORM_REGION}"'"')
             cog_allowed=$(echo "${cognito_json}" | jq -r '.allowed_domains // ""')
 
             cat > /run/grafana-secrets/cognito.env <<COGENV
@@ -224,10 +239,17 @@ COGENV
         log "EC2 credential refresh timer active"
 
         # Start the monitoring stack.
+        # Generate a compose env file with the variables head.yml references.
+        # We must export cfn_cluster_user (legacy name used throughout the
+        # compose file) regardless of platform to avoid rewriting the file.
+        cat > /tmp/compose.env <<ENVFILE
+cfn_cluster_user=${PLATFORM_USER}
+ENVFILE
         cd "${MONITORING_HOME}"
-        docker compose --env-file /etc/parallelcluster/cfnconfig \
+        docker compose --env-file /tmp/compose.env \
             -f "${MONITORING_HOME}/compose/head.yml" \
             -p monitoring-head up -d
+        rm -f /tmp/compose.env
 
         # Slurm job-to-node textfile collector (Phase 3c).
         # Runs every 30s, writes /var/lib/prometheus/node-exporter/slurm_jobs.prom
@@ -241,11 +263,15 @@ COGENV
         systemctl enable --now slurm-job-nodes.timer
         log "Slurm job-node textfile collector active"
 
-                # Install the slurm exporter (prebuilt binary, no go build).
-        install_slurm_exporter
+        # Slurm metrics source:
+        #   - ParallelCluster: rivosinc/prometheus-slurm-exporter (port 9092)
+        #   - PCS: native OpenMetrics on slurmctld:6817 (no extra process)
+        if [[ "${PLATFORM}" == "parallelcluster" ]]; then
+            install_slurm_exporter
+        fi
         ;;
 
-    ComputeFleet)
+    compute)
         log "Configuring ComputeFleet node"
 
         if has_nvidia_gpu; then
@@ -279,20 +305,20 @@ COGENV
         ;;
 
     *)
-        warn "Unknown cfn_node_type=${cfn_node_type}, skipping"
+        warn "Unknown node type: ${PLATFORM_NODE_TYPE}, skipping"
         ;;
 esac
 
 # Final summary: surface the Grafana password location so users know
 # how to retrieve it. This is printed AFTER everything is up so it's
 # the last thing in the log.
-if [[ "${cfn_node_type}" == "HeadNode" || "${cfn_node_type}" == "MasterServer" ]]; then
+if [[ "${PLATFORM_NODE_TYPE}" == "head" || "${PLATFORM_NODE_TYPE}" == "login" ]]; then
     log "==========================================================="
     log "Grafana admin password is in SSM Parameter Store:"
-    log "  ${GRAFANA_SSM_PARAM:-/parallelcluster/${stack_name}/grafana/admin-password}"
+    log "  ${GRAFANA_SSM_PARAM:-/${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/admin-password}"
     log "Retrieve with:"
-    log "  aws ssm get-parameter --region ${cfn_region} \\"
-    log "    --name /parallelcluster/${stack_name}/grafana/admin-password \\"
+    log "  aws ssm get-parameter --region ${PLATFORM_REGION} \\"
+    log "    --name /parallelcluster/${PLATFORM_CLUSTER_NAME}/grafana/admin-password \\"
     log "    --with-decryption --query Parameter.Value --output text"
     log "==========================================================="
 fi

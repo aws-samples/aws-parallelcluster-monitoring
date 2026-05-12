@@ -68,7 +68,7 @@
     },
     {
       "type": "stat",
-      "title": "HeadNode $/hr",
+      "title": "Head/Login Node $/hr",
       "gridPos": {
         "h": 6,
         "w": 4,
@@ -181,7 +181,7 @@
         },
         {
           "expr": "cluster_cost_per_hour{component=\"headnode\"}",
-          "legendFormat": "HeadNode",
+          "legendFormat": "Head/Login",
           "refId": "C"
         },
         {

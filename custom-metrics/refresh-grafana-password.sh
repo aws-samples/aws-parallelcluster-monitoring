@@ -20,16 +20,34 @@
 #
 set -euo pipefail
 
-# shellcheck source=/dev/null
-. /etc/parallelcluster/cfnconfig
-
-: "${stack_name:?stack_name not set}"
-: "${cfn_region:?cfn_region not set}"
+# Platform detection — ParallelCluster uses cfnconfig, PCS reads IMDS tag.
+if [[ -r /etc/parallelcluster/cfnconfig ]]; then
+    # shellcheck source=/dev/null
+    . /etc/parallelcluster/cfnconfig
+    # shellcheck disable=SC2154
+    PLATFORM="parallelcluster"
+    # shellcheck disable=SC2154
+    CLUSTER_NAME="${stack_name}"
+    # shellcheck disable=SC2154
+    REGION="${cfn_region}"
+else
+    PLATFORM="pcs"
+    _tok=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+        http://169.254.169.254/latest/api/token 2>/dev/null)
+    CLUSTER_NAME=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+        http://169.254.169.254/latest/meta-data/tags/instance/aws:pcs:cluster-id 2>/dev/null)
+    REGION=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+        http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null)
+    [[ -z "$CLUSTER_NAME" || -z "$REGION" ]] && {
+        echo "ERROR: unable to detect platform (no cfnconfig, no PCS tags)" >&2
+        exit 1
+    }
+fi
 
 SECRET_DIR="/run/grafana-secrets"
 SECRET_FILE="${SECRET_DIR}/admin-password"
 LAST_APPLIED="${SECRET_DIR}/.last-applied"
-SSM_PARAM="/parallelcluster/${stack_name}/grafana/admin-password"
+SSM_PARAM="/${PLATFORM}/${CLUSTER_NAME}/grafana/admin-password"
 
 mkdir -p "${SECRET_DIR}"
 chmod 0750 "${SECRET_DIR}"
@@ -37,7 +55,7 @@ chmod 0750 "${SECRET_DIR}"
 chown 472:472 "${SECRET_DIR}" 2>/dev/null || true
 
 password=$(aws ssm get-parameter \
-    --region "${cfn_region}" \
+    --region "${REGION}" \
     --name "${SSM_PARAM}" \
     --with-decryption \
     --query 'Parameter.Value' \

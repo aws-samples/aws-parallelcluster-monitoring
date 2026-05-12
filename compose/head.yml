@@ -23,6 +23,7 @@ services:
       - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
     volumes:
       - '/home/${cfn_cluster_user}/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/prometheus/rules:/etc/prometheus/rules:ro'
       - 'prometheus-data:/prometheus'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
     image: prom/prometheus:v3.1.0
