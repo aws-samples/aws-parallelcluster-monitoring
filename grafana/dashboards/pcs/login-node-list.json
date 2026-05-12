@@ -1,0 +1,193 @@
+{
+  "uid": "pcs-login-node-list",
+  "title": "Login Node List",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "table",
+      "title": "Login Nodes",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"HeadNode\"}[5m]))) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"HeadNode\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"HeadNode\"} / node_memory_MemTotal_bytes{instance_name=\"HeadNode\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"HeadNode\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"HeadNode\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance_name=\"HeadNode\",mountpoint=\"/\",fstype=~\"ext4|xfs\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"HeadNode\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "D",
+          "expr": "((time() - node_boot_time_seconds{instance_name=\"HeadNode\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"HeadNode\"}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "links": [
+            {
+              "title": "View node details",
+              "url": "/d/qI8VfvXZz/?var-node=${__data.fields.nodename}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "CPU %"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Mem %"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Disk %"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value #D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Uptime"
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "instance_id": false,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "nodename": "Node Name",
+              "instance_type": "Instance Type",
+              "instance_id": "Instance ID"
+            },
+            "indexByName": {
+              "nodename": 0,
+              "instance_type": 1,
+              "instance_id": 2
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Node Name",
+            "desc": false
+          }
+        ]
+      }
+    }
+  ]
+}

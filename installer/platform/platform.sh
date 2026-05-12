@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Platform detection for the monitoring installer.
+#
+# Exports a uniform set of variables regardless of whether the node is
+# running on ParallelCluster or PCS:
+#
+#   PLATFORM              parallelcluster | pcs
+#   PLATFORM_NODE_TYPE    head | compute | login
+#   PLATFORM_CLUSTER_NAME <string>   (unique cluster identifier)
+#   PLATFORM_REGION       <aws-region>
+#   PLATFORM_USER         <local-user>   (ec2-user, ubuntu, etc)
+#
+# Plus any platform-specific extras set by the sub-modules.
+#
+
+detect_platform() {
+    # ParallelCluster: writes /etc/parallelcluster/cfnconfig
+    if [[ -r /etc/parallelcluster/cfnconfig ]]; then
+        # shellcheck disable=SC1091
+        . "$(dirname "${BASH_SOURCE[0]}")/parallelcluster.sh"
+        _load_parallelcluster
+        return 0
+    fi
+
+    # PCS: /etc/aws-pcs/ directory present, or instance has aws:pcs:* tags
+    if [[ -d /etc/aws-pcs ]] || imds_has_pcs_tag; then
+        # shellcheck disable=SC1091
+        . "$(dirname "${BASH_SOURCE[0]}")/pcs.sh"
+        _load_pcs
+        return 0
+    fi
+
+    die "Cannot detect platform: neither /etc/parallelcluster/cfnconfig nor PCS markers found"
+}
+
+imds_has_pcs_tag() {
+    local token
+    token=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+        http://169.254.169.254/latest/api/token 2>/dev/null) || return 1
+    curl -sf -H "X-aws-ec2-metadata-token: $token" \
+        http://169.254.169.254/latest/meta-data/tags/instance 2>/dev/null \
+        | grep -q '^aws:pcs:' && return 0
+    return 1
+}

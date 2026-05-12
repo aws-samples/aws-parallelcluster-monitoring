@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2154  # cfn_* / stack_name vars come from /etc/parallelcluster/cfnconfig
+# shellcheck disable=SC2154  # PLATFORM_USER from installer/platform/platform.sh
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 # Amazon Linux 2023 package installation.
@@ -27,4 +27,4 @@ chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 
 systemctl enable docker
 systemctl start docker
-usermod -a -G docker "${cfn_cluster_user}"
+usermod -a -G docker "${PLATFORM_USER}"
