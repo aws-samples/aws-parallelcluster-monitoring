@@ -1,49 +1,124 @@
 # Changelog
 
-## v1.0 — Phase 1 modernization (unreleased)
+## v2.1 — 2026-05-12
 
-This release restores compatibility with current ParallelCluster and operating
-system versions. No breaking changes to end-user configuration.
+AWS PCS support, GPU Node List dashboard, dashboard polish. Layers on top
+of v2.0; ParallelCluster behaviour unchanged.
 
 ### Added
-- OS-aware installer (`installer/install.sh` + `installer/os/*.sh`) supporting
-  Amazon Linux 2, Amazon Linux 2023, Ubuntu 22.04, Ubuntu 24.04, and RHEL /
-  Rocky / Alma / CentOS Stream 9.
+- **AWS PCS** (Parallel Computing Service) support end-to-end:
+  - Platform detection module (`installer/platform/{platform,pcs,parallelcluster}.sh`)
+    exporting a uniform `PLATFORM`, `PLATFORM_NODE_TYPE`, `PLATFORM_CLUSTER_NAME`,
+    `PLATFORM_REGION`, `PLATFORM_USER`. Detects PCS via `/etc/aws-pcs/`
+    or `aws:pcs:*` IMDS instance tags.
+  - `prometheus/prometheus-pcs.yml`: scrapes Slurm's native OpenMetrics
+    endpoints on `slurmctld:6817` (`/metrics/{nodes,jobs,partitions,scheduler}`).
+    Requires Slurm 25.11+ with `MetricsType=metrics/openmetrics` +
+    `CommunicationParameters=enable_http`. No extra exporter process.
+  - `prometheus/rules/pcs-compat.yml`: recording rules that translate
+    `slurm_nodes_{idle,alloc,mixed,down,drain}` →
+    `slurm_node_count_per_state{state=...}` so the existing dashboards
+    work unchanged on PCS.
+  - PCS-specific dashboard: `grafana/dashboards/pcs/login-node-list.json`.
+- **GPU Node List** dashboard (`gpu-node-list.json`): fleet table view
+  with click-through into the per-GPU `gpu.json` detail dashboard.
+  Available on both platforms.
+- Platform-specific dashboard layout: `grafana/dashboards/pcluster/`
+  and `grafana/dashboards/pcs/` directories. Installer copies the right
+  set based on detected platform.
+- Documentation screenshots in `docs/screenshots/`.
+- Dual-platform Quickstart in README.
+
+### Changed
+- README rewritten for dual-platform install.
+- Cost-metrics and Grafana-password-refresh scripts detect platform via
+  IMDS `aws:pcs:cluster-id` tag in addition to the legacy `cfnconfig`
+  path.
+- `compose/head.yml` mounts `prometheus/rules/` so recording rules load.
+- `ParallelCluster.json` rebuilt against the dual-platform metric set
+  (now uses `slurm_node_count_per_state` exclusively, no legacy field
+  dependencies).
+
+### Fixed
+- HeadNode dashboard moved into `grafana/dashboards/pcluster/` so it
+  doesn't surface on PCS clusters where it has no data.
+
+## v2.0 — 2026-05-11
+
+Ground-up rewrite. Validated on ParallelCluster 3.15 + Amazon Linux 2023.
+No breaking changes to end-user pcluster.yaml structure.
+
+### Added
+- OS-aware installer (`installer/install.sh` + `installer/os/*.sh`)
+  supporting Amazon Linux 2, Amazon Linux 2023, Ubuntu 22.04, Ubuntu 24.04,
+  and RHEL / Rocky / Alma / CentOS Stream 9.
 - Docker Compose v2 plugin installation on every supported OS.
-- GPU detection via `lspci` / `/dev/nvidia0` — no longer depends on parsing
-  the EC2 instance-type string (works with p4de, p5, p5e, p5en, g5, g6, g6e,
-  and future families).
-- `nvidia-container-toolkit` installation on GPU compute nodes (replaces
-  deprecated `nvidia-docker2`).
-- Current GPU and accelerator instance types in `prometheus.yml`
-  ec2_sd_configs filter (p4de, p5, p5e, p5en, g5, g6, g6e).
+- GPU detection via `lspci` / `/dev/nvidia0` — no longer depends on
+  parsing the EC2 instance-type string (works with p4de, p5, p5e, p5en,
+  g5, g6, g6e, and future families).
+- `nvidia-container-toolkit` installation on GPU compute nodes
+  (replaces deprecated `nvidia-docker2`).
+- Per-cluster Grafana admin password in SSM Parameter Store
+  (SecureString) at `/parallelcluster/<cluster>/grafana/admin-password`,
+  materialized into a tmpfs file by `refresh-grafana-password.sh`.
+  Handles the post-init `grafana cli admin reset-admin-password` flow
+  so the SSM-managed password actually wins after the DB is initialized.
+- Optional Cognito SSO via SSM SecureString JSON at
+  `/parallelcluster/<cluster>/grafana/cognito` →
+  `/run/grafana-secrets/cognito.env` env-file. See `cognito/README.md`.
+- Least-privilege IAM policy (`iam/monitoring-head-node-policy.json` +
+  `iam/render-policy.sh`) replacing four AWS-managed policies. Region-
+  scoped, resource-scoped to the cluster's own stack and SSM path.
+- `Imds.Secured=true` compatibility: host-side systemd timer
+  (`refresh-ec2-credentials.sh`) writes IMDS role credentials to
+  `/run/prometheus-ec2-creds/credentials` (tmpfs, 0640, owner
+  `root:65534`) bind-mounted read-only into the Prometheus container.
+  Architecture in `docs/imds-secured-design.md`.
+- Slurm job-to-node textfile collector (`slurm-job-nodes.sh` + systemd
+  timer) producing `slurm_job_node{jobid,nodename,user,jobname,state}`
+  for the Compute Node List dashboard.
+- Self-signed nginx TLS certificate with multi-SAN (localhost, private
+  IP, private hostname). 4096-bit RSA, 10-year validity. Optional
+  ALB+ACM path documented in `docs/public-access.md`.
 
 ### Changed
 - `prometheus-slurm-exporter`: replaced unmaintained GPLv3
-  `vpenso/prometheus-slurm-exporter` with Apache-2.0
-  `rivosinc/prometheus-slurm-exporter` v1.8.0.
-- Pinned every container image to an explicit version tag; removed every
-  `:latest` reference.
-- Removed the `version:` key from all compose files (ignored by Compose v2).
-- Compose files moved from `docker-compose/` to `compose/` and renamed
-  `master` → `head` to match ParallelCluster terminology.
-- `post-install.sh` default version bumped to `v1.0`.
-- Cron `MAILTO=""` set to silence cost-scraper email spam (closes #15).
-- `aws-region.py` migrated from deprecated `pkg_resources` to `pathlib`.
+  `vpenso/prometheus-slurm-exporter` (built from source on every cluster
+  boot) with Apache-2.0 `rivosinc/prometheus-slurm-exporter` v1.8.0
+  prebuilt binary downloaded from GitHub releases.
+- Pinned every container image to an explicit version tag; removed
+  every `:latest` reference. Grafana 11.2.2, Prometheus v3.1.0,
+  node_exporter v1.9.0, pushgateway v1.11.2, nginx 1.27-alpine,
+  DCGM exporter 4.5.2.
+- Removed the `version:` key from all compose files (ignored by
+  Compose v2).
+- Compose files moved from `docker-compose/` to `compose/` and
+  renamed `master` → `head` to match ParallelCluster terminology.
+- Cost-metrics: collapsed `1m-cost-metrics.sh` + `1h-cost-metrics.sh`
+  into a single `cost-metrics.sh`. Pricing API responses cached for
+  24 hours. Cron `MAILTO=""` set to silence email spam (closes #15).
+- Dashboards now use Grafana template variables; the old sed token
+  replacement for `<HOSTNAME>`, `<INSTANCE_ID>`, etc. is gone.
+- `aws-region.py` migrated from deprecated `pkg_resources` to
+  `pathlib`.
 
 ### Fixed
-- S3 cost tier detection referenced an undefined `$VAR` variable (fell
-  through to the `Inf` tier for all buckets > 50 TB).
+- S3 cost tier detection referenced an undefined `$VAR` variable
+  (fell through to the `Inf` tier for all buckets > 50 TB).
 - FSx cost script now handles the `PERSISTENT_2` deployment type.
-- EBS cost script defaults to `gp3` (the PC 3.x default) instead of `gp2`.
-- `install-monitoring.sh` was Amazon-Linux-only (`yum install docker` hardcoded)
-  and failed on Ubuntu and AL2023.
-- Slurm exporter no longer built from source on every cluster boot; prebuilt
-  binary downloaded from GitHub releases instead. Removes the `golang-bin`
-  install and the `go mod download && go build` step.
+- EBS cost script defaults to `gp3` (the PC 3.x default) instead of
+  `gp2`.
+- `install-monitoring.sh` was Amazon-Linux-only (`yum install docker`
+  hardcoded) and failed on Ubuntu and AL2023.
 
 ### Removed
 - `parallelcluster-setup/install-monitoring.sh` (replaced by
   `installer/install.sh`).
 - `docker-compose/` directory (replaced by `compose/`).
-- In-tree `git clone` + `go build` of the slurm exporter on the HeadNode.
+- In-tree `git clone` + `go build` of the slurm exporter on the
+  HeadNode. Removes the `golang-bin` install and the
+  `go mod download && go build` step.
+
+## v0.9 and earlier
+
+See git history for pre-modernization releases.
