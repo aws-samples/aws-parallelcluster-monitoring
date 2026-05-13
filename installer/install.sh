@@ -79,6 +79,8 @@ case "${PLATFORM_NODE_TYPE}" in
                "${MONITORING_HOME}/prometheus/prometheus.yml"
             sed -i "s|__SLURMCTLD_IP__|${PCS_SLURMCTLD_IP}|g"     "${MONITORING_HOME}/prometheus/prometheus.yml"
             sed -i "s|__PCS_CLUSTER_ID__|${PCS_CLUSTER_ID}|g"     "${MONITORING_HOME}/prometheus/prometheus.yml"
+        else
+            sed -i "s|__PC_CLUSTER_NAME__|${PLATFORM_CLUSTER_NAME}|g" "${MONITORING_HOME}/prometheus/prometheus.yml"
         fi
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
         sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" "${MONITORING_HOME}/compose/head.yml"
