@@ -49,6 +49,20 @@ scrape_configs:
       - targets: ['__SLURMCTLD_IP__:6817']
         labels: {slurm_endpoint: 'scheduler'}
 
+  # Per-user / per-account metrics. Slurm's docs explicitly warn this
+  # endpoint is unbounded — every (user, state) and (account, state)
+  # combination is a separate time series. On a large multi-tenant
+  # cluster you can easily land in 100k+ series. Scrape it less often
+  # and only enable it if you actually use the user/account dashboards.
+  # Comment this whole block out if you see Prometheus memory blow up.
+  - job_name: 'slurm_openmetrics_jobs_users_accts'
+    scrape_interval: 120s
+    scrape_timeout: 60s
+    metrics_path: /metrics/jobs-users-accts
+    static_configs:
+      - targets: ['__SLURMCTLD_IP__:6817']
+        labels: {slurm_endpoint: 'jobs-users-accts'}
+
   - job_name: 'pushgateway'
     honor_labels: true
     static_configs:

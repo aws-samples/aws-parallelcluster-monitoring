@@ -1,5 +1,75 @@
 # Changelog
 
+## v2.3 — 2026-05-13
+
+Slurm coverage expansion. New dashboard plus partition/user/account/scheduler
+metrics on the existing Cluster Summary. No breaking changes.
+
+### Added
+- New **Slurm Detail** dashboard (`grafana/dashboards/slurm-detail.json`):
+  - Per-partition table (nodes alloc/idle/down, CPUs alloc/idle, CPU load)
+  - Pending-jobs-by-reason timeseries + bar gauge (`slurm_pending_reason_total`)
+  - Top users table (CPUs/mem allocated, jobs running/pending)
+  - Top accounts table (same shape)
+  - Account quota utilization (CPU/mem/job limits vs allocated)
+  - Scheduler health: controller threads, DBD agent queue size, backfill
+    cycles, last backfill depth
+  - Top RPC message types and top users by RPC count
+    (`slurm_rpc_msg_type_*`, `slurm_rpc_user_*`)
+  - Slurm license usage (only renders if licenses configured)
+- **Cluster Summary** additions (existing dashboard):
+  - Idle node-hours (last 24h) — quantifies wasted compute time
+  - Idle CPU-hours (last 24h)
+  - Top 5 users by allocated CPUs (bar gauge)
+  - Top 5 partitions by allocated CPUs (bar gauge)
+  - Dashboard link to "Slurm Detail" in the top-right of the page
+- PCS scrape: added `/metrics/jobs-users-accts` endpoint scrape
+  (every 120s — Slurm docs warn this endpoint is unbounded, see
+  `prometheus/prometheus-pcs.yml` for tuning notes).
+- PCS compat rules expanded: 16 recording rules now translate native
+  Slurm 25.11 metric names (`slurm_user_jobs_*`, `slurm_account_jobs_*`,
+  `slurm_partition_*`, `slurm_bf_*`, `slurm_sched_*`) to the rivosinc
+  names the dashboards expect.
+
+### Notes
+- All 66 PromQL expressions across the modified dashboards pass
+  `promtool check rules` validation.
+- The new user/account panels on PCS depend on the unbounded
+  `/metrics/jobs-users-accts` endpoint. If your slurmctld has 100k+
+  users or accounts, comment out that scrape job in
+  `prometheus/prometheus-pcs.yml`.
+- Some scheduler panels (`Controller Threads`, `DBD Agent Queue`)
+  show "No data" on PCS — Slurm's openmetrics plugin does not yet
+  expose these as native metrics.
+
+## v2.2 — 2026-05-13
+
+Bug fixes and refactors on top of v2.1. No breaking changes.
+
+### Fixed
+- `slurm-job-nodes` textfile collector now finds `squeue`/`scontrol`
+  on PCS AMIs (probes `/opt/slurm/bin` and `/opt/aws-pcs/slurm/bin`,
+  falls back to PATH).
+- `post-install.sh` default ref bumped from `v2.0` to `v2.1` to match
+  documented version.
+
+### Changed
+- `prometheus.yml`: replaced 60-line GPU/accelerator instance-type
+  allowlist with `parallelcluster:node-type` tag filter (present since
+  PC 3.0). Discovery scoped to current cluster via
+  `parallelcluster:cluster-name`.
+- Example `pcluster.yaml` refreshed: pinned to v2.1, points at
+  `iam/render-policy.sh` output, drops overbroad managed policies from
+  compute fleet.
+
+### Refactored
+- `installer/common.sh`: dropped dead `*_IMAGE` env vars (compose files
+  are the source of truth).
+
+### Documentation
+- `CHANGELOG.md` rewritten from v2.0/v2.1 commit messages.
+- README Quickstart now includes Cognito SSO section.
+
 ## v2.1 — 2026-05-12
 
 AWS PCS support, GPU Node List dashboard, dashboard polish. Layers on top

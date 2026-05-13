@@ -2,18 +2,27 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #
-# Recording rules that translate AWS PCS native Slurm OpenMetrics to the
-# metric names the existing dashboards expect (rivosinc exporter names
-# used by ParallelCluster).
+# Recording rules that translate AWS PCS native Slurm OpenMetrics into
+# the metric names the dashboards (built around rivosinc/prometheus-
+# slurm-exporter) expect. This lets one set of dashboards work on both
+# platforms.
 #
-# This lets the same dashboards work for both platforms.
+# PCS native names come from Slurm 25.11's openmetrics plugin:
+#   /metrics/nodes        → slurm_nodes_*, slurm_node_*
+#   /metrics/jobs         → slurm_jobs_* (mostly already compatible)
+#   /metrics/partitions   → slurm_partitions, slurm_partition_*
+#   /metrics/scheduler    → slurm_sched_*, slurm_bf_*
+#   /metrics/jobs-users-accts → slurm_user_jobs_*, slurm_account_jobs_*
+#
+# Reference: https://slurm.schedmd.com/metrics.html
 #
 groups:
-  - name: pcs_slurm_compat
+  # ─────────────────────────────────────────────────────────────────────
+  # Node states — used by Cluster Summary and Partition tables.
+  # ─────────────────────────────────────────────────────────────────────
+  - name: pcs_slurm_nodes
     interval: 30s
     rules:
-      # slurm_node_count_per_state{state="idle|alloc|mix|down|drain"}
-      # Source: slurm_nodes_{alloc,idle,mixed,down,drain}
       - record: slurm_node_count_per_state
         expr: slurm_nodes_idle
         labels: {state: idle}
@@ -30,8 +39,7 @@ groups:
         expr: slurm_nodes_drain
         labels: {state: drain}
 
-      # slurm_cpus_per_state{state="idle|alloc"}
-      # Source: sum of slurm_node_cpus_{idle,alloc}
+      # CPU totals across the cluster (rivosinc names)
       - record: slurm_cpus_per_state
         expr: sum(slurm_node_cpus_idle)
         labels: {state: idle}
@@ -39,10 +47,85 @@ groups:
         expr: sum(slurm_node_cpus_alloc)
         labels: {state: alloc}
 
-      # slurm_job_node — rivosinc-style metric mapping job_id → node_name.
-      # PCS's openmetrics jobs endpoint gives aggregate counts, not
-      # per-job labels, so we can't synthesize this with a recording
-      # rule. Instead, the slurm-job-nodes.sh textfile collector
-      # (installed on both ParallelCluster head nodes and PCS login
-      # nodes) shells out to `squeue` every 30s and produces the
-      # metric directly. See custom-metrics/slurm-job-nodes.sh.
+  # ─────────────────────────────────────────────────────────────────────
+  # Per-partition metrics — used by Slurm Detail dashboard.
+  # PCS exposes slurm_partition_jobs / slurm_partition_nodes /
+  # slurm_partition_cpus (gauge with `partition` label).
+  # rivosinc uses slurm_partition_node_count{partition,state} and
+  # slurm_partition_alloc_cpus{partition,state}.
+  # ─────────────────────────────────────────────────────────────────────
+  - name: pcs_slurm_partitions
+    interval: 30s
+    rules:
+      # Translate rivosinc's labelled-by-state metric. PCS only exposes
+      # totals per partition (no per-state breakdown for nodes), so we
+      # fall back to total-as-alloc which keeps the dashboard tables
+      # rendering. Idle/down breakdowns will be empty on PCS until the
+      # upstream exposes them.
+      - record: slurm_partition_node_count
+        expr: slurm_partition_nodes
+        labels: {state: total}
+      - record: slurm_partition_alloc_cpus
+        expr: slurm_partition_cpus_alloc
+        labels: {state: alloc}
+      - record: slurm_partition_idle_cpus
+        expr: slurm_partition_cpus_idle
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Scheduler metrics — used by Slurm Detail dashboard.
+  # PCS exposes slurm_sched_* / slurm_bf_* — rivosinc uses
+  # slurm_backfill_* / slurm_daemon_thread_count.
+  # ─────────────────────────────────────────────────────────────────────
+  - name: pcs_slurm_scheduler
+    interval: 30s
+    rules:
+      - record: slurm_backfill_cycle_count
+        expr: slurm_bf_cycle_cnt
+      - record: slurm_backfill_last_depth
+        expr: slurm_bf_last_depth_cycle
+      # PCS doesn't expose daemon thread count or DBD agent queue
+      # directly through openmetrics yet. The corresponding panels on
+      # the Slurm Detail dashboard will show 'No data' on PCS.
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Per-user / per-account — only present if the unbounded
+  # /metrics/jobs-users-accts endpoint is being scraped.
+  #
+  # PCS exposes:
+  #   slurm_user_jobs_pending{username=...}
+  #   slurm_user_jobs_running{username=...}
+  #   slurm_account_jobs_pending{account=...}
+  #   slurm_account_jobs_running{account=...}
+  #
+  # rivosinc shape:
+  #   slurm_user_state_total{username, state}
+  #   slurm_account_job_state_total{account, state}
+  #
+  # We synthesize the labelled gauges from the per-state native ones so
+  # the existing dashboard expressions work unchanged.
+  # ─────────────────────────────────────────────────────────────────────
+  - name: pcs_slurm_user_account
+    interval: 60s
+    rules:
+      - record: slurm_user_state_total
+        expr: slurm_user_jobs_pending
+        labels: {state: pending}
+      - record: slurm_user_state_total
+        expr: slurm_user_jobs_running
+        labels: {state: running}
+      - record: slurm_account_job_state_total
+        expr: slurm_account_jobs_pending
+        labels: {state: pending}
+      - record: slurm_account_job_state_total
+        expr: slurm_account_jobs_running
+        labels: {state: running}
+
+  # ─────────────────────────────────────────────────────────────────────
+  # slurm_job_node — rivosinc-style mapping of job_id → node_name.
+  #
+  # PCS's openmetrics jobs endpoint gives aggregate counts, not per-job
+  # labels. The slurm-job-nodes.sh textfile collector (installed on
+  # both ParallelCluster head nodes and PCS login nodes) shells out to
+  # `squeue` every 30s and produces this metric directly. See
+  # custom-metrics/slurm-job-nodes.sh.
+  # ─────────────────────────────────────────────────────────────────────

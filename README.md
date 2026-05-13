@@ -22,7 +22,8 @@ Slurm metrics as containers — no manual configuration required.
 
 | Dashboard | Platform | Description |
 |-----------|----------|-------------|
-| **Cluster Summary** | Both | Cluster overview: Slurm states, CPU/memory aggregates |
+| **Cluster Summary** | Both | Cluster overview: Slurm states, CPU/memory aggregates, idle node-hours, top users / partitions |
+| **Slurm Detail** | Both | Per-partition / per-user / per-account breakdown, queue health, scheduler RPC stats, license usage |
 | **Compute Node List** | Both | Fleet table with CPU/Mem/Disk gauges, job info, click-through |
 | **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA) |
 | **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through |
