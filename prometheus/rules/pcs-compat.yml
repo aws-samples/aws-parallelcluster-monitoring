@@ -40,6 +40,9 @@ groups:
         labels: {state: alloc}
 
       # slurm_job_node — rivosinc-style metric mapping job_id → node_name.
-      # PCS doesn't expose this directly in openmetrics (jobs endpoint
-      # gives counts, not per-job labels). Left as TODO: may need a
-      # separate textfile collector on the login node that runs squeue.
+      # PCS's openmetrics jobs endpoint gives aggregate counts, not
+      # per-job labels, so we can't synthesize this with a recording
+      # rule. Instead, the slurm-job-nodes.sh textfile collector
+      # (installed on both ParallelCluster head nodes and PCS login
+      # nodes) shells out to `squeue` every 30s and produces the
+      # metric directly. See custom-metrics/slurm-job-nodes.sh.

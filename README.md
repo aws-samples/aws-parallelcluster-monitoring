@@ -208,8 +208,8 @@ ParallelCluster HeadNode / PCS Login Node
 │ node_exporter :9100                 │       └──────────────────────┘
 │ slurm_exporter :9092 (PC only)     │
 │ cost-metrics (cron)                 │       Slurm Controller
-│ slurm-job-nodes (timer, PC only)   │       ┌──────────────────────┐
-│                                     │◄──────│ :6817/metrics/*       │
+│ slurm-job-nodes (timer)             │       │ :6817/metrics/*       │
+│   (head + PCS login)                │◄──────│   (PCS only)          │
 │ Prometheus recording rules          │       │   (PCS only)          │
 │   (PCS: native → compat names)     │       └──────────────────────┘
 └─────────────────────────────────────┘
