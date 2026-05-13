@@ -7,10 +7,17 @@ set -uo pipefail
 
 REGION="us-east-2"
 
+# pcluster 3.15.0 needs Python 3.11; venv if present, system otherwise
+if [[ -x /tmp/pcluster-venv/bin/pcluster ]]; then
+    PCLUSTER=/tmp/pcluster-venv/bin/pcluster
+else
+    PCLUSTER="$(command -v pcluster || true)"
+fi
+
 # ─── ParallelCluster ──────────────────────────────────────────────────
 PC_CLUSTER="monitoring-test-pc"
 echo "[1/3] Deleting ParallelCluster $PC_CLUSTER..."
-pcluster delete-cluster -n "$PC_CLUSTER" --region "$REGION" 2>/dev/null || true
+[[ -n "$PCLUSTER" ]] && "$PCLUSTER" delete-cluster -n "$PC_CLUSTER" --region "$REGION" 2>/dev/null || true
 # Wait a bit before we delete EFS (PC's compute nodes may still hold mounts)
 echo "  (giving pcluster CFN delete a head start...)"
 sleep 30
@@ -95,7 +102,7 @@ fi
 # ─── Wait for PC cluster fully gone before EFS ────────────────────────
 echo "  waiting for PC cluster $PC_CLUSTER deletion..."
 for _ in $(seq 1 60); do
-    s=$(pcluster describe-cluster -n "$PC_CLUSTER" --region "$REGION" --query 'clusterStatus' --output text 2>/dev/null || echo "GONE")
+    s=$([[ -n "$PCLUSTER" ]] && "$PCLUSTER" describe-cluster -n "$PC_CLUSTER" --region "$REGION" --query 'clusterStatus' --output text 2>/dev/null || echo "GONE")
     case "$s" in
         GONE|"") break ;;
         DELETE_IN_PROGRESS) sleep 30 ;;

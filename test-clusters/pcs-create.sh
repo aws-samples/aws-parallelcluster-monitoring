@@ -21,6 +21,25 @@ CLUSTER="monitoring-test-pcs"
 
 mkdir -p .state
 
+# ─── 0. PCS cluster security group (created first; cluster needs it) ──
+SG_NAME="monitoring-test-pcs-instances"
+PCS_SG=$(aws ec2 describe-security-groups --region "$REGION" \
+    --filters "Name=vpc-id,Values=$VPC" "Name=group-name,Values=$SG_NAME" \
+    --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || echo "None")
+if [[ "$PCS_SG" == "None" || -z "$PCS_SG" ]]; then
+    PCS_SG=$(aws ec2 create-security-group --region "$REGION" \
+        --group-name "$SG_NAME" --description "PCS monitoring test instances" --vpc-id "$VPC" \
+        --tag-specifications "ResourceType=security-group,Tags=[{Key=aws-parallelcluster-monitoring-test,Value=pcs}]" \
+        --query 'GroupId' --output text)
+    # Allow self (intra-cluster slurm + slurmctld + everything)
+    aws ec2 authorize-security-group-ingress --region "$REGION" \
+        --group-id "$PCS_SG" --source-group "$PCS_SG" --protocol -1 --port -1 >/dev/null
+    # Allow EFS (NFS) from this SG
+    aws ec2 authorize-security-group-ingress --region "$REGION" \
+        --group-id "$EFS_SG_ID" --source-group "$PCS_SG" --protocol tcp --port 2049 >/dev/null
+fi
+echo "PCS instance SG: $PCS_SG"
+
 # ─── 1. Create the PCS cluster (slurm controller) ─────────────────────
 existing_id=$(aws pcs list-clusters --region "$REGION" \
     --query "clusters[?name=='$CLUSTER'].id | [0]" --output text 2>/dev/null || echo "")
@@ -34,7 +53,7 @@ else
         --cluster-name "$CLUSTER" \
         --scheduler 'type=SLURM,version=25.11' \
         --size SMALL \
-        --networking "subnetIds=$PRIVATE_SUBNET" \
+        --networking "subnetIds=$PRIVATE_SUBNET,securityGroupIds=$PCS_SG" \
         --slurm-configuration 'slurmCustomSettings=[{parameterName=MetricsType,parameterValue=metrics/openmetrics},{parameterName=CommunicationParameters,parameterValue=enable_http}]' \
         --tags "aws-parallelcluster-monitoring-test=pcs" \
         --query 'cluster.id' --output text)
@@ -57,54 +76,68 @@ SLURM_INFO=$(aws pcs get-cluster --region "$REGION" --cluster-identifier "$CLUST
 echo "slurmctld IP: $SLURM_INFO"
 
 # ─── 2. Build user-data for each launch template ──────────────────────
-# Mounts FSx + EFS, then runs the monitoring post-install with a tag/role hint.
+# Uses a plain shell script via cloud-init's text/x-shellscript handler.
+# Simpler than cloud-config runcmd with all the escape pitfalls; cloud-init
+# runs the script as root after networking is up.
 make_userdata() {
     local role="$1"  # login|compute
-    cat <<EOF | base64
+    local name_tag
+    case "$role" in
+        login)   name_tag="HeadNode" ;;
+        compute) name_tag="Compute"  ;;
+        *)       name_tag="Unknown"  ;;
+    esac
+
+    cat <<USERDATA | base64
 #!/bin/bash
 set -eux
+exec > >(tee -a /var/log/cloud-init-monitoring.log) 2>&1
 
-# Wait for cloud-init network
-sleep 10
-
-# Mount FSx Lustre at /shared
-dnf -y install lustre-client || amazon-linux-extras install -y lustre || true
-mkdir -p /shared
-echo "${FSX_DNS}@tcp:/${FSX_MOUNT} /shared lustre defaults,_netdev 0 0" >> /etc/fstab
-mount /shared || true
-
-# Mount EFS at /home (preserve existing /home contents)
+# ── Install amazon-efs-utils (PCS AMI usually has it; idempotent if present) ─
 dnf -y install amazon-efs-utils || true
-mkdir -p /mnt/efs-home
-echo "${EFS_ID}.efs.${REGION}.amazonaws.com:/ /mnt/efs-home nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,_netdev 0 0" >> /etc/fstab
-mount /mnt/efs-home || true
-# Move existing /home into EFS only on the login node and only once
-if [[ "$role" == "login" ]] && [[ -d /home/ec2-user ]] && [[ ! -d /mnt/efs-home/ec2-user ]]; then
-    rsync -a /home/ /mnt/efs-home/ || true
-fi
-mkdir -p /mnt/efs-home
-mount --bind /mnt/efs-home /home || true
 
-# Tag for monitoring identification (compose & dashboards expect Name=Compute or Name=HeadNode)
+# ── Mount FSx Lustre at /shared ──────────────────────────────────────
+mkdir -p /shared
+grep -q "${FSX_DNS}@tcp" /etc/fstab || \
+    echo "${FSX_DNS}@tcp:/${FSX_MOUNT} /shared lustre defaults,_netdev 0 0" >> /etc/fstab
+mount /shared || true
+chmod 1777 /shared || true
+
+# ── Mount EFS at /home (preserves any existing /home content) ────────
+mkdir -p /tmp/home
+rsync -a /home/ /tmp/home/ || true
+grep -q "${EFS_ID}:" /etc/fstab || \
+    echo "${EFS_ID}:/ /home efs tls,_netdev" >> /etc/fstab
+mount -a -t efs defaults || true
+rsync -a --ignore-existing /tmp/home/ /home/ || true
+rm -rf /tmp/home
+
+# ── Tag the instance so monitoring dashboards filter correctly ───────
 TOKEN=\$(curl -sS -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
 INSTANCE_ID=\$(curl -sS -H "X-aws-ec2-metadata-token: \$TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
-case "$role" in
-    login)   aws ec2 create-tags --region $REGION --resources \$INSTANCE_ID --tags Key=Name,Value=HeadNode Key=monitoring-role,Value=login ;;
-    compute) aws ec2 create-tags --region $REGION --resources \$INSTANCE_ID --tags Key=Name,Value=Compute ;;
-esac
+aws ec2 create-tags --region ${REGION} --resources "\$INSTANCE_ID" --tags Key=Name,Value=${name_tag} Key=monitoring-role,Value=${role} || true
 
-# Pull and run the monitoring post-install
+# ── Mirror tag for the monitoring stack's PCS platform detection ─────
+# (PCS only sets aws:pcs:cluster-id on its own managed compute nodes;
+#  for login fleets launched manually the platform code reads our
+#  pcs-cluster-id mirror tag instead — see installer/platform/pcs.sh)
+if [[ "${role}" == "login" ]]; then
+    aws ec2 create-tags --region ${REGION} --resources "\$INSTANCE_ID" --tags Key=pcs-cluster-id,Value=${CLUSTER_ID} || true
+fi
+
+# ── Run the monitoring stack post-install ────────────────────────────
 curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh -o /tmp/post-install.sh
-bash /tmp/post-install.sh v2.4 2>&1 | tee /var/log/monitoring-install.log || true
-EOF
+bash /tmp/post-install.sh v2.4 2>&1 | tee /var/log/monitoring-install.log
+USERDATA
 }
 
 # ─── 3. IAM instance profile ──────────────────────────────────────────
 # Need pcs:GetCluster, ec2:Describe*, ssm:GetParameter, fsx:Describe*, pricing:*
-ROLE_NAME="monitoring-test-pcs-instance-role"
+ROLE_NAME="AWSPCS-monitoring-test-instance-role"
 existing_role=$(aws iam get-role --role-name "$ROLE_NAME" --query 'Role.Arn' --output text 2>/dev/null || echo "")
 if [[ -z "$existing_role" || "$existing_role" == "None" ]]; then
     echo "Creating IAM role $ROLE_NAME..."
+    # Trust both ec2 (the EC2 instance) and pcs (PCS register-compute-node-group action).
     aws iam create-role --role-name "$ROLE_NAME" \
         --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}' \
         --tags "Key=aws-parallelcluster-monitoring-test,Value=pcs" >/dev/null
@@ -118,9 +151,10 @@ if [[ -z "$existing_role" || "$existing_role" == "None" ]]; then
     do
         aws iam attach-role-policy --role-name "$ROLE_NAME" --policy-arn "$arn"
     done
-    # Inline policy for PCS-specific actions (not in any managed policy)
-    aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name pcs-describe \
-        --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["pcs:GetCluster","pcs:ListClusters","pcs:ListComputeNodeGroups","pcs:GetComputeNodeGroup","pcs:ListQueues","pcs:GetQueue","fsx:DescribeFileSystems"],"Resource":"*"}]}'
+    # Inline policy: PCS-specific actions PLUS pcs:RegisterComputeNodeGroupInstance
+    # which is REQUIRED for the compute-node-group instance profile.
+    aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name pcs-register-and-describe \
+        --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["pcs:RegisterComputeNodeGroupInstance","pcs:GetCluster","pcs:ListClusters","pcs:ListComputeNodeGroups","pcs:GetComputeNodeGroup","pcs:ListQueues","pcs:GetQueue","fsx:DescribeFileSystems","ec2:CreateTags"],"Resource":"*"}]}'
     aws iam create-instance-profile --instance-profile-name "$ROLE_NAME" >/dev/null 2>&1 || true
     aws iam add-role-to-instance-profile --instance-profile-name "$ROLE_NAME" --role-name "$ROLE_NAME" 2>/dev/null || true
     sleep 10  # IAM propagation
@@ -128,24 +162,8 @@ fi
 INSTANCE_PROFILE_ARN=$(aws iam get-instance-profile --instance-profile-name "$ROLE_NAME" --query 'InstanceProfile.Arn' --output text)
 echo "Instance profile: $INSTANCE_PROFILE_ARN"
 
-# ─── 4. Security group for PCS instances ──────────────────────────────
-SG_NAME="monitoring-test-pcs-instances"
-PCS_SG=$(aws ec2 describe-security-groups --region "$REGION" \
-    --filters "Name=vpc-id,Values=$VPC" "Name=group-name,Values=$SG_NAME" \
-    --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || echo "None")
-if [[ "$PCS_SG" == "None" || -z "$PCS_SG" ]]; then
-    PCS_SG=$(aws ec2 create-security-group --region "$REGION" \
-        --group-name "$SG_NAME" --description "PCS monitoring test instances" --vpc-id "$VPC" \
-        --tag-specifications "ResourceType=security-group,Tags=[{Key=aws-parallelcluster-monitoring-test,Value=pcs}]" \
-        --query 'GroupId' --output text)
-    # Allow self (intra-cluster slurm)
-    aws ec2 authorize-security-group-ingress --region "$REGION" \
-        --group-id "$PCS_SG" --source-group "$PCS_SG" --protocol -1 --port -1 >/dev/null
-    # Allow access from the Lustre SG and EFS SG
-    aws ec2 authorize-security-group-ingress --region "$REGION" \
-        --group-id "$EFS_SG_ID" --source-group "$PCS_SG" --protocol tcp --port 2049 >/dev/null
-fi
-echo "PCS instance SG: $PCS_SG"
+# ─── 4. SG already created at top of script ───────────────────────────
+# (PCS_SG is set early because the cluster create needs it.)
 
 # Slurmctld port 6817 — needs to allow login node → controller
 # (PCS cluster-scoped SG handles slurmctld→nodes by default, but the
@@ -188,7 +206,7 @@ JSON
             --launch-template-name "$name" \
             --launch-template-data "$lt_data" \
             --query 'LaunchTemplate.LaunchTemplateId' --output text)
-        echo "Created LT $name = $lt_id"
+        echo "Created LT $name = $lt_id" >&2
     else
         # Update by creating a new version, then set as default
         local v
@@ -198,7 +216,7 @@ JSON
             --query 'LaunchTemplateVersion.VersionNumber' --output text)
         aws ec2 modify-launch-template --region "$REGION" \
             --launch-template-id "$lt_id" --default-version "$v" >/dev/null
-        echo "Updated LT $name to version $v"
+        echo "Updated LT $name to version $v" >&2
     fi
     echo "$lt_id"
 }
@@ -209,22 +227,26 @@ LT_GPU=$(make_lt "monitoring-test-pcs-compute-gpu" "g4dn.xlarge" "compute")
 
 # ─── 6. Compute Node Groups (always-on) ───────────────────────────────
 make_node_group() {
-    local name="$1" lt_id="$2" min="$3" max="$4" purchase="$5"
+    local name="$1" lt_id="$2" min="$3" max="$4" purchase="$5" instance_type="$6"
     local existing
     existing=$(aws pcs list-compute-node-groups --region "$REGION" --cluster-identifier "$CLUSTER_ID" \
         --query "computeNodeGroups[?name=='$name'].id | [0]" --output text 2>/dev/null || echo "")
     if [[ -n "$existing" && "$existing" != "None" ]]; then
-        echo "Node group $name already exists: $existing"
+        echo "Node group $name already exists: $existing" >&2
         echo "$existing"; return
     fi
+    # Resolve "default" to a numeric version (PCS requires numeric).
+    local lt_version
+    lt_version=$(aws ec2 describe-launch-templates --region "$REGION" --launch-template-ids "$lt_id" \
+        --query 'LaunchTemplates[0].DefaultVersionNumber' --output text)
     aws pcs create-compute-node-group --region "$REGION" \
         --cluster-identifier "$CLUSTER_ID" \
         --compute-node-group-name "$name" \
         --subnet-ids "$PRIVATE_SUBNET" \
-        --custom-launch-template "id=$lt_id,version=\$Default" \
+        --custom-launch-template "id=$lt_id,version=$lt_version" \
         --iam-instance-profile-arn "$INSTANCE_PROFILE_ARN" \
         --scaling-configuration "minInstanceCount=$min,maxInstanceCount=$max" \
-        --instance-configs '[{"instanceType":"'"$( aws ec2 describe-launch-templates --region $REGION --launch-template-ids $lt_id --query 'LaunchTemplates[0].LaunchTemplateName' --output text | grep -o 'gpu\|cpu\|login' | sed -e s/cpu/t3.medium/ -e s/login/t3.medium/ -e s/gpu/g4dn.xlarge/ )"'"}]' \
+        --instance-configs "[{\"instanceType\":\"$instance_type\"}]" \
         --purchase-option "$purchase" \
         --query 'computeNodeGroup.id' --output text
 }
@@ -233,9 +255,9 @@ make_node_group() {
 # instance attached to the cluster, using the login launch template directly.
 
 # Compute (always on)
-NG_CPU=$(make_node_group "compute-cpu" "$LT_CPU" 2 4 ON_DEMAND)
+NG_CPU=$(make_node_group "compute-cpu" "$LT_CPU" 2 4 ONDEMAND "t3.medium")
 echo "CPU node group: $NG_CPU"
-NG_GPU=$(make_node_group "compute-gpu" "$LT_GPU" 2 4 ON_DEMAND)
+NG_GPU=$(make_node_group "compute-gpu" "$LT_GPU" 2 4 ONDEMAND "g4dn.xlarge")
 echo "GPU node group: $NG_GPU"
 
 # Wait for node groups ACTIVE
