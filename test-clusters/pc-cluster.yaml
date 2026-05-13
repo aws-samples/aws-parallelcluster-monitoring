@@ -1,0 +1,111 @@
+# ParallelCluster 3.15 test config.
+# Region us-east-2, reuses the HPC-Prod-Network VPC + private subnet A
+# and the existing 12TB FSx Lustre.
+#
+# 2× t3.medium compute always-on, 2× g4dn.xlarge GPU always-on.
+# Post-install pulls v2.4 of the monitoring stack from the public repo.
+#
+# /home is managed by ParallelCluster via SharedStorageType=efs (PC
+# creates and owns its own EFS). FSx Lustre is mounted at /shared.
+
+Region: us-east-2
+
+Image:
+  Os: alinux2023
+
+HeadNode:
+  InstanceType: t3.medium
+  Networking:
+    SubnetId: subnet-0c32d359f2a1f38bd  # public subnet A (so SSM port-forward works without NAT-only routing)
+  Ssh:
+    KeyName: Nicola-Ireland
+  LocalStorage:
+    RootVolume:
+      VolumeType: gp3
+      Size: 50
+  # PC 3.8+: tells ParallelCluster to use a managed EFS for /home, /opt/slurm,
+  # /opt/intel etc. instead of NFS-exporting them from the HeadNode EBS volume.
+  # Cleaner than mounting our own EFS on top of /home.
+  SharedStorageType: Efs
+  CustomActions:
+    OnNodeConfigured:
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh
+      Args:
+        - v2.4
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+      - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+
+Scheduling:
+  Scheduler: slurm
+  SlurmQueues:
+    - Name: cpu
+      AllocationStrategy: lowest-price
+      ComputeResources:
+        - Name: t3med
+          Instances:
+            - InstanceType: t3.medium
+          MinCount: 2
+          MaxCount: 4
+      Networking:
+        SubnetIds:
+          - subnet-00643c21d668273ca  # private subnet A
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            VolumeType: gp3
+      CustomActions:
+        OnNodeConfigured:
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh
+          Args:
+            - v2.4
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+    - Name: gpu
+      AllocationStrategy: lowest-price
+      ComputeResources:
+        - Name: g4dnxl
+          Instances:
+            - InstanceType: g4dn.xlarge
+          MinCount: 2
+          MaxCount: 4
+      Networking:
+        SubnetIds:
+          - subnet-00643c21d668273ca  # private subnet A
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            VolumeType: gp3
+      CustomActions:
+        OnNodeConfigured:
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh
+          Args:
+            - v2.4
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+# Reuse the existing 12TB FSx Lustre as /shared. /home is handled by
+# HeadNode.SharedStorageType=efs above (PC creates a managed EFS).
+SharedStorage:
+  - Name: fsx-shared
+    StorageType: FsxLustre
+    MountDir: /shared
+    FsxLustreSettings:
+      FileSystemId: fs-0473d212290c9a14d
+
+Tags:
+  - Key: aws-parallelcluster-monitoring-test
+    Value: pc
+
+Monitoring:
+  Logs:
+    CloudWatch:
+      Enabled: true
+      RetentionInDays: 7
