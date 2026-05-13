@@ -177,6 +177,44 @@ Where `<platform>` is `parallelcluster` or `pcs`.
 
 For public access with a trusted certificate, see [docs/public-access.md](docs/public-access.md).
 
+### Optional: Cognito SSO
+
+Replace the local `admin` login with corporate SSO via an Amazon
+Cognito User Pool. Users sign in through Cognito's hosted UI; the
+local admin remains as a fallback if Cognito is misconfigured.
+
+Quick setup (full instructions in [cognito/README.md](cognito/README.md)):
+
+```bash
+# 1. Create a Grafana app client in your existing Cognito user pool
+./cognito/setup-grafana-client.sh <pool-id> <grafana-host> [region]
+
+# 2. Store the config as an SSM SecureString
+aws ssm put-parameter \
+    --region <region> \
+    --name "/<platform>/<cluster>/grafana/cognito" \
+    --type SecureString \
+    --value '{
+        "user_pool_id":   "<pool-id>",
+        "client_id":      "<from-step-1>",
+        "client_secret":  "<from-step-1>",
+        "domain":         "<your-cognito-hosted-ui-domain>",
+        "region":         "<region>",
+        "allowed_domains": "example.com"
+    }'
+
+# 3. Re-run the installer (or recreate the cluster)
+sudo bash /home/ec2-user/aws-parallelcluster-monitoring/installer/install.sh
+sudo docker restart grafana
+```
+
+When the SSM parameter is present, Grafana shows a **Sign in with
+Cognito** button on the login page. The client secret is materialized
+to tmpfs (`/run/grafana-secrets/cognito-client-secret`, mode 0640,
+owned `472:472`) and read by Grafana via
+`GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE` so it never appears in
+container env or `docker inspect`.
+
 ### Testing from a fork
 
 ```yaml
