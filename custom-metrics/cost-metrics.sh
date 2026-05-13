@@ -27,8 +27,13 @@ if [[ -r /etc/parallelcluster/cfnconfig ]]; then
 else
     _tok=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
         http://169.254.169.254/latest/api/token 2>/dev/null)
+    # PCS-managed compute nodes get aws:pcs:cluster-id; login fleets
+    # launched outside PCS use the pcs-cluster-id mirror tag (PCS reserves
+    # the aws: prefix). See installer/platform/pcs.sh for the same logic.
     cluster_name=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
-        http://169.254.169.254/latest/meta-data/tags/instance/aws:pcs:cluster-id 2>/dev/null)
+        http://169.254.169.254/latest/meta-data/tags/instance/aws:pcs:cluster-id 2>/dev/null) \
+        || cluster_name=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+        http://169.254.169.254/latest/meta-data/tags/instance/pcs-cluster-id 2>/dev/null)
     region=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
         http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null)
     cluster_tag_key="aws:pcs:cluster-id"
