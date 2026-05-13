@@ -339,7 +339,7 @@
         },
         {
           "refId": "I",
-          "expr": "max by(instance_id, queue) (up{instance_name=\"Compute\",queue!=\"\"})",
+          "expr": "max by(instance_id, pc_queue) (up{instance_name=\"Compute\",pc_queue!=\"\"})",
           "format": "table",
           "instant": true
         }
@@ -404,7 +404,7 @@
               "jobid": "Job ID",
               "user": "User",
               "jobname": "Job Name",
-              "queue": "Queue"
+              "pc_queue": "Queue"
             },
             "indexByName": {
               "nodename": 0,
@@ -419,7 +419,7 @@
               "jobid": 1,
               "user": 2,
               "jobname": 3,
-              "queue": 6
+              "pc_queue": 6
             }
           }
         }

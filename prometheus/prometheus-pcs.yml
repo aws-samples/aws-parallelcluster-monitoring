@@ -116,7 +116,9 @@ scrape_configs:
       # and Name=Compute on compute nodes (legacy convention).
       - source_labels: [__meta_ec2_tag_Name]
         target_label: instance_name
-      # Surface the PCS compute-node-group ID as a 'queue' label so the
-      # same dashboards (which group/sort by queue on PC) work on PCS.
+      # Surface the PCS compute-node-group ID as 'pc_queue' so the same
+      # dashboards (which group/sort by queue on PC) work on PCS.
+      # (Avoiding the bare 'queue' label name because node_exporter
+      # already uses it on disk-IO metrics.)
       - source_labels: [__meta_ec2_tag_aws_pcs_compute_node_group_id]
-        target_label: queue
+        target_label: pc_queue
