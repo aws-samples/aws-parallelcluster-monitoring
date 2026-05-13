@@ -38,11 +38,14 @@ detect_platform() {
 }
 
 imds_has_pcs_tag() {
-    local token
+    local token tags
     token=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
         http://169.254.169.254/latest/api/token 2>/dev/null) || return 1
-    curl -sf -H "X-aws-ec2-metadata-token: $token" \
-        http://169.254.169.254/latest/meta-data/tags/instance 2>/dev/null \
-        | grep -q '^aws:pcs:' && return 0
+    tags=$(curl -sf -H "X-aws-ec2-metadata-token: $token" \
+        http://169.254.169.254/latest/meta-data/tags/instance 2>/dev/null) || return 1
+    # PCS-managed compute nodes get the aws:pcs:* tags from PCS itself.
+    # Login nodes launched directly against the cluster don't, so they
+    # use a user-set mirror tag (pcs-cluster-id) — see installer/platform/pcs.sh.
+    echo "$tags" | grep -qE '^aws:pcs:|^pcs-cluster-id$' && return 0
     return 1
 }

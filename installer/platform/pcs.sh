@@ -5,9 +5,19 @@
 #
 # AWS Parallel Computing Service (PCS) platform module.
 #
-# Identifies a PCS node from IMDS instance tags:
-#   aws:pcs:cluster-id
-#   aws:pcs:compute-node-group-id
+# Identifies a PCS node by the union of two tag sources:
+#
+# 1. Compute nodes launched by PCS itself carry these tags
+#    (set by PCS, not user-controllable, only present on ng instances):
+#      aws:pcs:cluster-id
+#      aws:pcs:compute-node-group-id
+#
+# 2. Login nodes are typically launched outside PCS (a plain EC2 instance
+#    against the cluster's SG), so they don't get the aws:pcs:* tags
+#    automatically. The launch template should set:
+#      monitoring-role=login
+#      pcs-cluster-id=<id>          (mirror of aws:pcs:cluster-id)
+#    The aws: tag namespace is reserved by AWS, hence the mirror.
 #
 # Reads cluster metadata (slurmctld endpoint) via the PCS API.
 #
@@ -23,22 +33,23 @@ _load_pcs() {
             "http://169.254.169.254/latest/meta-data/$1"
     }
 
-    # PCS identifies nodes via instance tags. Requires
-    # MetadataOptions.InstanceMetadataTags=enabled on the launch template.
-    local cluster_id ng_id region
-    cluster_id=$(_imds "tags/instance/aws:pcs:cluster-id") \
-        || die "Not a PCS node (missing aws:pcs:cluster-id tag — check MetadataOptions.InstanceMetadataTags=enabled on the launch template)"
-    ng_id=$(_imds "tags/instance/aws:pcs:compute-node-group-id") \
-        || die "Missing aws:pcs:compute-node-group-id tag"
+    # Try the PCS-managed tag first; fall back to the user-set mirror tag
+    # for login nodes that were launched directly against the cluster.
+    local cluster_id ng_id region node_type
+    cluster_id=$(_imds "tags/instance/aws:pcs:cluster-id" 2>/dev/null) \
+        || cluster_id=$(_imds "tags/instance/pcs-cluster-id" 2>/dev/null) \
+        || die "Cannot detect PCS cluster: instance has neither aws:pcs:cluster-id (set by PCS on managed nodes) nor pcs-cluster-id (mirror tag for login nodes). Check MetadataOptions.InstanceMetadataTags=enabled on the launch template, and that the user-data sets pcs-cluster-id for login-fleet instances launched outside PCS."
+
+    ng_id=$(_imds "tags/instance/aws:pcs:compute-node-group-id" 2>/dev/null || echo "")
+
     region=$(_imds "placement/region") || die "Could not read region"
 
-    # Node type: a user-provided 'monitoring-role' tag distinguishes the
-    # node group that runs the monitoring stack. Default: 'compute'.
-    local node_type
+    # Node type: 'monitoring-role' tag identifies which node runs the
+    # full monitoring stack (login). Default: compute.
     node_type=$(_imds "tags/instance/monitoring-role" 2>/dev/null || echo "compute")
 
-    # Slurmctld endpoint: discovered via PCS API on the login node where
-    # this script has aws cli access. Stored so compute nodes can read it.
+    # Slurmctld endpoint: needed by Prometheus to scrape native /metrics
+    # on PCS. Discovered via PCS API on the login node.
     local slurmctld_ip=""
     if [[ "${node_type}" == "login" ]]; then
         slurmctld_ip=$(aws pcs get-cluster --region "${region}" \
