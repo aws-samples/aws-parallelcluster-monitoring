@@ -2330,7 +2330,7 @@
         "name": "node",
         "type": "query",
         "datasource": "prometheus",
-        "query": "label_values(node_uname_info{instance_name=\"Compute\"}, nodename)",
+        "query": "label_values(node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}, nodename)",
         "refresh": 1,
         "multi": false,
         "includeAll": false,

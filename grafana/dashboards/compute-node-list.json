@@ -284,62 +284,56 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\"}[1m]))) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\"}[1m]))) * 100) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "B",
-          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"Compute\"} / node_memory_MemTotal_bytes{instance_name=\"Compute\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"Compute\",pc_queue!~\"gpu\"} / node_memory_MemTotal_bytes{instance_name=\"Compute\",pc_queue!~\"gpu\"})) * 100) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "C",
-          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\",pc_queue!~\"gpu\"} / node_filesystem_size_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\",pc_queue!~\"gpu\"})) * 100) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "D",
-          "expr": "(node_load1{instance_name=\"Compute\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "(node_load1{instance_name=\"Compute\",pc_queue!~\"gpu\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\",pc_queue!~\"gpu\"})) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "E",
-          "expr": "(sum by(instance_id) (rate(node_network_receive_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]) + rate(node_network_transmit_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]))) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "(sum by(instance_id) (rate(node_network_receive_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\",pc_queue!~\"gpu\"}[1m]) + rate(node_network_transmit_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\",pc_queue!~\"gpu\"}[1m]))) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "F",
-          "expr": "((time() - node_boot_time_seconds{instance_name=\"Compute\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((time() - node_boot_time_seconds{instance_name=\"Compute\",pc_queue!~\"gpu\"})) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "G",
-          "expr": "node_uname_info{instance_name=\"Compute\"}",
+          "expr": "node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "H",
-          "expr": "slurm_job_node * on(nodename) group_left(instance_id) node_uname_info{instance_name=\"Compute\"}",
-          "format": "table",
-          "instant": true
-        },
-        {
-          "refId": "I",
-          "expr": "max by(instance_id, pc_queue) (up{instance_name=\"Compute\",pc_queue!=\"\"})",
+          "expr": "slurm_job_node * on(nodename) group_left(instance_id) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
           "format": "table",
           "instant": true
         }
@@ -388,8 +382,7 @@
               "instance_az": true,
               "Value #G": true,
               "Value #H": true,
-              "state": true,
-              "Value #I": true
+              "state": true
             },
             "renameByName": {
               "nodename": "Node Name",
@@ -408,18 +401,18 @@
             },
             "indexByName": {
               "nodename": 0,
+              "jobid": 1,
+              "user": 2,
+              "jobname": 3,
               "instance_id": 4,
               "instance_type": 5,
+              "pc_queue": 6,
               "Value #A": 7,
               "Value #B": 8,
               "Value #C": 9,
               "Value #D": 10,
               "Value #E": 11,
-              "Value #F": 12,
-              "jobid": 1,
-              "user": 2,
-              "jobname": 3,
-              "pc_queue": 6
+              "Value #F": 12
             }
           }
         }
