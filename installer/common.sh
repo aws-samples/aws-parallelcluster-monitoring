@@ -15,13 +15,10 @@ set -euo pipefail
 readonly SLURM_EXPORTER_VERSION="1.8.0"
 readonly SLURM_EXPORTER_REPO="rivosinc/prometheus-slurm-exporter"
 
-# Container image tags (used by compose files via env substitution).
-export GRAFANA_IMAGE="grafana/grafana:11.2.2"
-export PROMETHEUS_IMAGE="prom/prometheus:v3.1.0"
-export PUSHGATEWAY_IMAGE="prom/pushgateway:v1.11.2"
-export NODE_EXPORTER_IMAGE="quay.io/prometheus/node-exporter:v1.9.0"
-export NGINX_IMAGE="nginx:1.27-alpine"
-export DCGM_EXPORTER_IMAGE="nvcr.io/nvidia/k8s/dcgm-exporter:4.0.0-4.0.0-ubuntu22.04"
+# Container image tags are pinned in the compose files themselves
+# (compose/{head,compute,compute.gpu}.yml). The installer does not
+# rewrite them — keeping them in compose YAML means `cat compose/*.yml`
+# is the single source of truth for what's running.
 
 # ---------------------------------------------------------------------------
 # Logging helpers
