@@ -85,14 +85,18 @@ case "${PLATFORM_NODE_TYPE}" in
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
         sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" "${MONITORING_HOME}/compose/head.yml"
 
-        # Deploy platform-specific dashboards alongside the shared ones.
+        # Deploy platform-specific dashboards alongside the shared ones,
+        # then remove the OTHER platform's subdirectory entirely (Grafana
+        # provisions recursively, so leaving the directory in place would
+        # surface PCS-only dashboards on a ParallelCluster cluster and
+        # vice versa).
         if [[ -d "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}" ]]; then
-            cp -f "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}/"*.json                   "${MONITORING_HOME}/grafana/dashboards/" 2>/dev/null || true
+            cp -f "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}/"*.json \
+                  "${MONITORING_HOME}/grafana/dashboards/" 2>/dev/null || true
         fi
-        # Remove the other platform's dashboards (avoid confusion).
         case "${PLATFORM}" in
-            parallelcluster) rm -f "${MONITORING_HOME}/grafana/dashboards/pcs/"*.json 2>/dev/null ;;
-            pcs)             rm -f "${MONITORING_HOME}/grafana/dashboards/pcluster/"*.json 2>/dev/null ;;
+            parallelcluster) rm -rf "${MONITORING_HOME}/grafana/dashboards/pcs" ;;
+            pcs)             rm -rf "${MONITORING_HOME}/grafana/dashboards/pcluster" ;;
         esac
 
         # Self-signed TLS cert for nginx.

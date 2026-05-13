@@ -17,13 +17,11 @@ set -uo pipefail
 if [[ -r /etc/parallelcluster/cfnconfig ]]; then
     # shellcheck disable=SC1091
     . /etc/parallelcluster/cfnconfig
-    # shellcheck disable=SC2154
-    # shellcheck disable=SC2154
     cluster_tag_key="parallelcluster:cluster-name"
     # shellcheck disable=SC2154
     cluster_name="${stack_name}"
     # shellcheck disable=SC2154
-    region="${region}"
+    region="${cfn_region}"
 else
     _tok=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
         http://169.254.169.254/latest/api/token 2>/dev/null)
