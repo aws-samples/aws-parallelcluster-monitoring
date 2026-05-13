@@ -22,6 +22,14 @@
       "icon": "external link",
       "tags": [],
       "type": "dashboards"
+    },
+    {
+      "title": "GPU Health",
+      "url": "/d/gpu-health/",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Cluster-wide GPU fault overview (XID, throttle, ECC, NVLink errors)",
+      "targetBlank": false
     }
   ],
   "panels": [
@@ -2100,6 +2108,345 @@
           "max": 100
         },
         "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Compute Pipeline Activity (Volta+ profiling)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 108
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "SM Active",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 109
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(DCGM_FI_PROF_SM_ACTIVE{instance_id=\"$instance_id\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.3
+              },
+              {
+                "color": "green",
+                "value": 0.7
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "SM Occupancy",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 109
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(DCGM_FI_PROF_SM_OCCUPANCY{instance_id=\"$instance_id\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.3
+              },
+              {
+                "color": "green",
+                "value": 0.7
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Tensor pipe active",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 109
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{instance_id=\"$instance_id\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "yellow",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.3
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "DRAM active",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 109
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(DCGM_FI_PROF_DRAM_ACTIVE{instance_id=\"$instance_id\"})",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "SM Activity / Occupancy (per GPU)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 113
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_PROF_SM_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} SM Active"
+        },
+        {
+          "refId": "B",
+          "expr": "DCGM_FI_PROF_SM_OCCUPANCY{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} SM Occupancy"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pipeline activity: Tensor / DRAM / Graphics",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 113
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} Tensor"
+        },
+        {
+          "refId": "B",
+          "expr": "DCGM_FI_PROF_DRAM_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} DRAM"
+        },
+        {
+          "refId": "C",
+          "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} Graphics"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Per-precision pipe activity (FP64 / FP32 / FP16)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 121
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} FP64"
+        },
+        {
+          "refId": "B",
+          "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} FP32"
+        },
+        {
+          "refId": "C",
+          "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{instance_id=\"$instance_id\"}",
+          "legendFormat": "GPU{{gpu}} FP16"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "fillOpacity": 5
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
       }
     }
   ],

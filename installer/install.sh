@@ -298,8 +298,18 @@ ENVFILE
             esac
             nvidia-ctk runtime configure --runtime=docker
             systemctl restart docker
-            docker compose -f "${MONITORING_HOME}/compose/compute.gpu.yml" \
+
+            # compute.gpu.yml needs cfn_cluster_user (for the dcgm
+            # counters bind-mount) and __MONITORING_DIR__ substituted.
+            sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" \
+                "${MONITORING_HOME}/compose/compute.gpu.yml"
+            cat > /tmp/compose.env <<ENVFILE
+cfn_cluster_user=${PLATFORM_USER}
+ENVFILE
+            docker compose --env-file /tmp/compose.env \
+                -f "${MONITORING_HOME}/compose/compute.gpu.yml" \
                 -p monitoring-compute up -d
+            rm -f /tmp/compose.env
         else
             docker compose -f "${MONITORING_HOME}/compose/compute.yml" \
                 -p monitoring-compute up -d

@@ -1,0 +1,935 @@
+{
+  "uid": "gpu-health",
+  "title": "GPU Health",
+  "schemaVersion": 39,
+  "editable": true,
+  "tags": [
+    "gpu",
+    "health",
+    "dcgm"
+  ],
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "refresh": "1m",
+  "links": [
+    {
+      "title": "GPU Workload Detail",
+      "url": "/d/hpcsyl6zhqk/",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Per-GPU workload metrics (utilization, clocks, memory)",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/d/gpu-node-list/",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "GPU fleet table",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "type": "row",
+      "title": "Cluster GPU Health Summary",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Total GPUs",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(DCGM_FI_DEV_GPU_UTIL) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "GPUs with XID error (last 1h)",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 4,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(count_over_time(DCGM_FI_DEV_XID_ERRORS{}[1h]) > 0) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "GPUs with thermal throttle (last 1h)",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 9,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(rate(DCGM_FI_DEV_THERMAL_VIOLATION[1h]) > 0) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "GPUs with power throttle (last 1h)",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 14,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(rate(DCGM_FI_DEV_POWER_VIOLATION[1h]) > 0) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "GPUs with row-remap failure",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(DCGM_FI_DEV_ROW_REMAP_FAILURE > 0) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        }
+      },
+      "options": {
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "XID Errors",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "XID error rate (last 1h, by instance)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "changes(DCGM_FI_DEV_XID_ERRORS[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}} XID={{xid_err}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 20
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Recent XID events",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_DEV_XID_ERRORS != 0",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": false,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "instance_az": true,
+              "instance_state": true,
+              "instance_vpc": true,
+              "modelName": false
+            },
+            "renameByName": {
+              "instance_id": "Instance",
+              "gpu": "GPU",
+              "modelName": "Model",
+              "Value": "XID Code"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Throttling & Violations",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Thermal throttle (\u03bcs/sec)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_THERMAL_VIOLATION[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Power throttle (\u03bcs/sec)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_POWER_VIOLATION[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Sync-boost violations",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 23
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_SYNC_BOOST_VIOLATION[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Board-limit violations",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 23
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_BOARD_LIMIT_VIOLATION[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Reliability violations",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 23
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_RELIABILITY_VIOLATION[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Memory Health (ECC, retired pages, remapped rows)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "ECC single-bit errors (volatile, total)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_ECC_SBE_VOL_TOTAL[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "ECC double-bit errors (volatile, total)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Retired pages and remapped rows (current)",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "DCGM_FI_DEV_RETIRED_SBE",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "DCGM_FI_DEV_RETIRED_DBE",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "expr": "DCGM_FI_DEV_RETIRED_PENDING",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "D",
+          "expr": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "E",
+          "expr": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "F",
+          "expr": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Remap Failure"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pending Retire"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Retired (DBE)",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "instance_az": true,
+              "instance_state": true,
+              "instance_vpc": true,
+              "instance_grafana": true,
+              "instance_type": true
+            },
+            "renameByName": {
+              "instance_id": "Instance",
+              "gpu": "GPU",
+              "modelName": "Model",
+              "Value #A": "Retired (SBE)",
+              "Value #B": "Retired (DBE)",
+              "Value #C": "Pending Retire",
+              "Value #D": "Remapped (corr)",
+              "Value #E": "Remapped (uncorr)",
+              "Value #F": "Remap Failure"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Interconnect Errors (NVLink + PCIe)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "NVLink CRC FLIT errors (rate)",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_COUNT_TOTAL[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "NVLink CRC DATA errors (rate)",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_COUNT_TOTAL[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "NVLink Recovery + Replay errors (rate)",
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_RECOVERY_ERROR_COUNT_TOTAL[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}} recovery"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_REPLAY_ERROR_COUNT_TOTAL[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}} replay"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PCIe replay counter (retries/sec)",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(DCGM_FI_DEV_PCIE_REPLAY_COUNTER[5m])",
+          "legendFormat": "{{instance_id}} GPU{{gpu}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    }
+  ]
+}

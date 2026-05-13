@@ -1,5 +1,62 @@
 # Changelog
 
+## v2.4 — 2026-05-13
+
+DCGM coverage expansion. New GPU Health dashboard plus the Datacenter
+Profiling (DCP) metrics that ML workloads need to see whether tensor
+cores are doing useful work. No breaking changes.
+
+### Added
+- New **GPU Health** dashboard (`grafana/dashboards/gpu-health.json`,
+  24 panels) — fault-focused view distinct from the workload-focused
+  GPU Node Details:
+  - Cluster-wide health summary: GPUs with XID / thermal throttle /
+    power throttle / row-remap-failure (last hour)
+  - XID error rate timeseries + recent-XID-events table
+  - Throttle violations: thermal, power, sync-boost, board limit,
+    reliability — all with per-GPU breakdown
+  - Memory health: ECC SBE/DBE rates, retired pages (SBE/DBE/pending),
+    remapped rows (correctable/uncorrectable), row-remap failure flag
+  - Interconnect errors: NVLink CRC FLIT/DATA, replay, recovery; PCIe
+    replay counter
+- **GPU Node Details** ("Compute Pipeline Activity" row): SM Active /
+  SM Occupancy stats, Tensor pipe activity, DRAM activity, per-precision
+  pipe activity (FP64 / FP32 / FP16). Tells ML users whether the
+  tensor cores they're paying for are actually being utilized.
+- New `dcgm/counters.csv` — bind-mounted into the dcgm-exporter
+  container via `compose/compute.gpu.yml`. Inherits the dcgm-exporter
+  defaults and enables (currently commented out by default upstream):
+  - All throttle/violation counters (power, thermal, sync_boost,
+    board_limit, reliability, low_util)
+  - ECC counters (single + double bit, volatile + persistent)
+  - Retired-page counters (SBE / DBE / pending)
+  - NVLink replay error counter (other NVLink errors were already on)
+  - DCP profiling: `SM_ACTIVE`, `SM_OCCUPANCY`, `PIPE_TENSOR_ACTIVE`,
+    `PIPE_FP64/FP32/FP16_ACTIVE`, `DRAM_ACTIVE`
+  - `PCIE_REPLAY_COUNTER`, `TOTAL_ENERGY_CONSUMPTION`
+- Cross-dashboard links: GPU Node Details → GPU Health, GPU Health →
+  GPU Node Details + GPU Node List.
+
+### Changed
+- `installer/install.sh`: GPU compute branch now substitutes
+  `__MONITORING_DIR__` in `compose/compute.gpu.yml` and passes the
+  `cfn_cluster_user` env (parity with the head node compose
+  invocation). Required for the new dcgm counters bind-mount.
+
+### Notes
+- Profiling metrics (`DCGM_FI_PROF_*`) require Volta+ GPUs. All current
+  AWS GPU instances (p3/p4/p5/g4dn/g5/g6) qualify; older p2 instances
+  will simply not report them.
+- All 58 PromQL expressions in the new and modified dashboards (excluding
+  pre-existing `$__interval` Grafana-templated queries) pass
+  `promtool check rules` validation.
+- The XID code surfaced by `DCGM_FI_DEV_XID_ERRORS` is the raw NVIDIA
+  XID number — refer to the
+  [NVIDIA XID error guide](https://docs.nvidia.com/deploy/xid-errors/)
+  for what each code means. Common ones to investigate first: 31 (GPU
+  memory page fault), 43 (GPU stopped processing), 48 (DBE error),
+  63/64/65 (row remap related), 79 (GPU has fallen off the bus).
+
 ## v2.3 — 2026-05-13
 
 Slurm coverage expansion. New dashboard plus partition/user/account/scheduler

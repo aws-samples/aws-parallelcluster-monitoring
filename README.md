@@ -27,7 +27,8 @@ Slurm metrics as containers — no manual configuration required.
 | **Compute Node List** | Both | Fleet table with CPU/Mem/Disk gauges, job info, click-through |
 | **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA) |
 | **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through |
-| **GPU Node Details** | Both | Per-GPU deep-dive: utilization, clocks, PCIe, NVLink, memory |
+| **GPU Node Details** | Both | Per-GPU workload metrics + Compute Pipeline activity (SM, tensor, FP64/32/16) |
+| **GPU Health** | Both | Cluster-wide GPU faults: XID errors, throttle reasons, ECC, NVLink + PCIe errors, retired pages |
 | **HeadNode Details** | ParallelCluster | Head node metrics |
 | **Login Node List** | PCS | Login nodes table with click-through to node details |
 | **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS) + accumulated total |

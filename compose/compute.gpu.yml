@@ -24,6 +24,16 @@ services:
     pid: host
     restart: unless-stopped
     image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04
+    # Custom counters file enables XID errors, throttle reasons,
+    # ECC counters, retired pages, full NVLink error set, and the
+    # DCP profiling metrics (SM_ACTIVE / SM_OCCUPANCY / TENSOR / FP64 /
+    # FP32 / FP16 / DRAM_ACTIVE) used by gpu-health.json and the
+    # Compute Pipeline row on gpu.json.
+    command:
+      - "-f"
+      - "/etc/dcgm-exporter/counters.csv"
+    volumes:
+      - "/home/${cfn_cluster_user}/__MONITORING_DIR__/dcgm/counters.csv:/etc/dcgm-exporter/counters.csv:ro"
     deploy:
       resources:
         reservations:
