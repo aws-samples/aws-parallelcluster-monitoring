@@ -9,13 +9,13 @@
 #
 # Usage: post-install.sh [ref] [repo_slug]
 #   ref        Git tag OR branch of the monitoring repo to install.
-#              Default: v2.0
+#              Default: v2.1
 #   repo_slug  GitHub "owner/repo" to download from.
 #              Default: aws-samples/aws-parallelcluster-monitoring
 #
 set -euo pipefail
 
-REF="${1:-v2.0}"
+REF="${1:-v2.1}"
 REPO_SLUG="${2:-aws-samples/aws-parallelcluster-monitoring}"
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
 TARBALL="/tmp/${MONITORING_DIR_NAME}.tar.gz"
