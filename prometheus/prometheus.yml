@@ -77,3 +77,8 @@ scrape_configs:
         target_label: instance_type
       - source_labels: [__meta_ec2_vpc_id]
         target_label: instance_vpc
+      # ParallelCluster sets these on every queue compute node.
+      - source_labels: [__meta_ec2_tag_parallelcluster_queue_name]
+        target_label: queue
+      - source_labels: [__meta_ec2_tag_parallelcluster_node_type]
+        target_label: pc_node_type

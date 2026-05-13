@@ -2462,7 +2462,7 @@
         "name": "gpu_node",
         "type": "query",
         "datasource": "prometheus",
-        "query": "label_values(DCGM_FI_DEV_GPU_UTIL, instance_id)",
+        "query": "label_values(DCGM_FI_DEV_GPU_UTIL, Hostname)",
         "refresh": 1,
         "multi": false,
         "includeAll": false,
@@ -2474,7 +2474,7 @@
         "name": "instance_id",
         "type": "query",
         "datasource": "prometheus",
-        "query": "label_values(DCGM_FI_DEV_GPU_UTIL{instance_id=\"$gpu_node\"}, instance_id)",
+        "query": "label_values(DCGM_FI_DEV_GPU_UTIL{Hostname=\"$gpu_node\"}, instance_id)",
         "refresh": 2,
         "hide": 2,
         "sort": 0
