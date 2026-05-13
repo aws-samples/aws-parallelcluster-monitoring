@@ -76,9 +76,9 @@ SLURM_INFO=$(aws pcs get-cluster --region "$REGION" --cluster-identifier "$CLUST
 echo "slurmctld IP: $SLURM_INFO"
 
 # ─── 2. Build user-data for each launch template ──────────────────────
-# Uses a plain shell script via cloud-init's text/x-shellscript handler.
-# Simpler than cloud-config runcmd with all the escape pitfalls; cloud-init
-# runs the script as root after networking is up.
+# PCS requires MIME multipart for compute-node-group launch templates
+# even when there's only a single shellscript section. We use the same
+# shape for the login LT for consistency.
 make_userdata() {
     local role="$1"  # login|compute
     local name_tag
@@ -89,45 +89,52 @@ make_userdata() {
     esac
 
     cat <<USERDATA | base64
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+
+--==BOUNDARY==
+Content-Type: text/x-shellscript; charset="us-ascii"
+
 #!/bin/bash
 set -eux
 exec > >(tee -a /var/log/cloud-init-monitoring.log) 2>&1
 
-# ── Install amazon-efs-utils (PCS AMI usually has it; idempotent if present) ─
+# Install amazon-efs-utils (PCS AMI usually has it; idempotent if present)
 dnf -y install amazon-efs-utils || true
 
-# ── Mount FSx Lustre at /shared ──────────────────────────────────────
+# Mount FSx Lustre at /shared
 mkdir -p /shared
-grep -q "${FSX_DNS}@tcp" /etc/fstab || \
+grep -q "${FSX_DNS}@tcp" /etc/fstab || \\
     echo "${FSX_DNS}@tcp:/${FSX_MOUNT} /shared lustre defaults,_netdev 0 0" >> /etc/fstab
 mount /shared || true
 chmod 1777 /shared || true
 
-# ── Mount EFS at /home (preserves any existing /home content) ────────
+# Mount EFS at /home (preserves any existing /home content)
 mkdir -p /tmp/home
 rsync -a /home/ /tmp/home/ || true
-grep -q "${EFS_ID}:" /etc/fstab || \
+grep -q "${EFS_ID}:" /etc/fstab || \\
     echo "${EFS_ID}:/ /home efs tls,_netdev" >> /etc/fstab
 mount -a -t efs defaults || true
 rsync -a --ignore-existing /tmp/home/ /home/ || true
 rm -rf /tmp/home
 
-# ── Tag the instance so monitoring dashboards filter correctly ───────
+# Tag the instance so monitoring dashboards filter correctly
 TOKEN=\$(curl -sS -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
 INSTANCE_ID=\$(curl -sS -H "X-aws-ec2-metadata-token: \$TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
 aws ec2 create-tags --region ${REGION} --resources "\$INSTANCE_ID" --tags Key=Name,Value=${name_tag} Key=monitoring-role,Value=${role} || true
 
-# ── Mirror tag for the monitoring stack's PCS platform detection ─────
-# (PCS only sets aws:pcs:cluster-id on its own managed compute nodes;
-#  for login fleets launched manually the platform code reads our
-#  pcs-cluster-id mirror tag instead — see installer/platform/pcs.sh)
+# Mirror tag for PCS platform detection on login nodes (PCS only sets
+# aws:pcs:cluster-id on managed compute nodes; AWS reserves the aws:
+# tag namespace, so we use a non-reserved mirror tag for login fleets).
 if [[ "${role}" == "login" ]]; then
     aws ec2 create-tags --region ${REGION} --resources "\$INSTANCE_ID" --tags Key=pcs-cluster-id,Value=${CLUSTER_ID} || true
 fi
 
-# ── Run the monitoring stack post-install ────────────────────────────
-curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh -o /tmp/post-install.sh
-bash /tmp/post-install.sh v2.4 2>&1 | tee /var/log/monitoring-install.log
+# Run the monitoring stack post-install
+curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4.1/post-install.sh -o /tmp/post-install.sh
+bash /tmp/post-install.sh v2.4.1 2>&1 | tee /var/log/monitoring-install.log
+
+--==BOUNDARY==--
 USERDATA
 }
 
@@ -155,6 +162,10 @@ if [[ -z "$existing_role" || "$existing_role" == "None" ]]; then
     # which is REQUIRED for the compute-node-group instance profile.
     aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name pcs-register-and-describe \
         --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["pcs:RegisterComputeNodeGroupInstance","pcs:GetCluster","pcs:ListClusters","pcs:ListComputeNodeGroups","pcs:GetComputeNodeGroup","pcs:ListQueues","pcs:GetQueue","fsx:DescribeFileSystems","ec2:CreateTags"],"Resource":"*"}]}'
+    # KMS:Decrypt scoped to SSM service — needed by refresh-grafana-password.sh
+    # to read the SSM SecureString admin-password parameter.
+    aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name kms-decrypt-via-ssm \
+        --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"kms:Decrypt","Resource":"*","Condition":{"StringEquals":{"kms:ViaService":"ssm.us-east-2.amazonaws.com"}}}]}'
     aws iam create-instance-profile --instance-profile-name "$ROLE_NAME" >/dev/null 2>&1 || true
     aws iam add-role-to-instance-profile --instance-profile-name "$ROLE_NAME" --role-name "$ROLE_NAME" 2>/dev/null || true
     sleep 10  # IAM propagation
