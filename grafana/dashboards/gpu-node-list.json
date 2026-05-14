@@ -24,7 +24,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg by(instance_id, instance_type, modelName) (DCGM_FI_DEV_GPU_UTIL)",
+          "expr": "avg by(instance_id, instance_type, modelName, Hostname) (DCGM_FI_DEV_GPU_UTIL)",
           "format": "table",
           "instant": true
         },
@@ -58,7 +58,7 @@
           "links": [
             {
               "title": "View GPU node details",
-              "url": "/d/hpcsyl6zhqk/?var-gpu_node=${__data.fields.instance_id}",
+              "url": "/grafana/d/hpcsyl6zhqk/?var-gpu_node=${__data.fields.Hostname}",
               "targetBlank": false
             }
           ]
@@ -224,16 +224,18 @@
               "Value #A": "GPU Util %",
               "Value #B": "Temp \u00b0C",
               "Value #C": "Power W",
-              "Value #D": "Mem %"
+              "Value #D": "Mem %",
+              "Hostname": "Hostname"
             },
             "indexByName": {
-              "modelName": 0,
-              "instance_type": 1,
-              "instance_id": 2,
-              "Value #A": 3,
-              "Value #B": 4,
-              "Value #C": 5,
-              "Value #D": 6
+              "Hostname": 0,
+              "modelName": 1,
+              "instance_type": 2,
+              "instance_id": 3,
+              "Value #A": 4,
+              "Value #B": 5,
+              "Value #C": 6,
+              "Value #D": 7
             }
           }
         }
@@ -247,6 +249,50 @@
           }
         ]
       }
+    }
+  ],
+  "links": [
+    {
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/grafana/d/gpu-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Health",
+      "url": "/grafana/d/gpu-health/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
     }
   ]
 }

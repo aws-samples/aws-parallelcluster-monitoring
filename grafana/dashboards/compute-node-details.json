@@ -20,9 +20,46 @@
   "iteration": 1584377467734,
   "links": [
     {
-      "icon": "external link",
-      "tags": [],
-      "type": "dashboards"
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/grafana/d/gpu-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Health",
+      "url": "/grafana/d/gpu-health/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
     }
   ],
   "panels": [
@@ -2330,7 +2367,7 @@
         "name": "node",
         "type": "query",
         "datasource": "prometheus",
-        "query": "label_values(node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}, nodename)",
+        "query": "label_values(node_uname_info{instance_name=\"Compute\"}, nodename)",
         "refresh": 1,
         "multi": false,
         "includeAll": false,
@@ -2395,6 +2432,6 @@
   },
   "timezone": "browser",
   "title": "Compute Node Details",
-  "uid": "qI8VfvXZz",
+  "uid": "compute-node-details",
   "version": 1
 }

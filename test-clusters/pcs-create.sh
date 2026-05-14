@@ -131,8 +131,8 @@ if [[ "${role}" == "login" ]]; then
 fi
 
 # Run the monitoring stack post-install
-curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4.1/post-install.sh -o /tmp/post-install.sh
-bash /tmp/post-install.sh v2.4.1 2>&1 | tee /var/log/monitoring-install.log
+curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh -o /tmp/post-install.sh
+bash /tmp/post-install.sh development 2>&1 | tee /var/log/monitoring-install.log
 
 --==BOUNDARY==--
 USERDATA

@@ -3,7 +3,7 @@
 # and the existing 12TB FSx Lustre.
 #
 # 2× t3.medium compute always-on, 2× g4dn.xlarge GPU always-on.
-# Post-install pulls v2.4 of the monitoring stack from the public repo.
+# Post-install pulls development branch of the monitoring stack from the public repo.
 #
 # /home is managed by ParallelCluster via SharedStorageType=efs (PC
 # creates and owns its own EFS). FSx Lustre is mounted at /shared.
@@ -29,9 +29,9 @@ HeadNode:
   SharedStorageType: Efs
   CustomActions:
     OnNodeConfigured:
-      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh
       Args:
-        - v2.4
+        - development
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -60,9 +60,9 @@ Scheduling:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh
           Args:
-            - v2.4
+            - development
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -84,9 +84,9 @@ Scheduling:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.4/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh
           Args:
-            - v2.4
+            - development
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore

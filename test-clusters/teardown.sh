@@ -91,6 +91,13 @@ if [[ -f .state/pcs.env ]]; then
 
     # Delete PCS instance SG (after cluster gone)
     if [[ -n "${PCS_SG:-}" ]]; then
+        # Revoke any cross-SG ingress rules that reference PCS_SG from
+        # the EFS SG (we added one during create for NFS access).
+        if [[ -n "${EFS_SG_ID:-}" ]]; then
+            aws ec2 revoke-security-group-ingress --region "$REGION" \
+                --group-id "$EFS_SG_ID" \
+                --ip-permissions "[{\"IpProtocol\":\"tcp\",\"FromPort\":2049,\"ToPort\":2049,\"UserIdGroupPairs\":[{\"GroupId\":\"$PCS_SG\"}]}]" 2>/dev/null || true
+        fi
         for _ in $(seq 1 20); do
             aws ec2 delete-security-group --region "$REGION" --group-id "$PCS_SG" 2>/dev/null && break
             echo "    waiting for SG $PCS_SG to release..."
@@ -102,7 +109,7 @@ fi
 # ─── Wait for PC cluster fully gone before EFS ────────────────────────
 echo "  waiting for PC cluster $PC_CLUSTER deletion..."
 for _ in $(seq 1 60); do
-    s=$([[ -n "$PCLUSTER" ]] && "$PCLUSTER" describe-cluster -n "$PC_CLUSTER" --region "$REGION" --query 'clusterStatus' --output text 2>/dev/null || echo "GONE")
+    s=$([[ -n "$PCLUSTER" ]] && "$PCLUSTER" describe-cluster -n "$PC_CLUSTER" --region "$REGION" --query 'clusterStatus' 2>&1 | tr -d '"' | grep -oE 'CREATE_COMPLETE|DELETE_IN_PROGRESS|DELETE_FAILED' || echo "GONE")
     case "$s" in
         GONE|"") break ;;
         DELETE_IN_PROGRESS) sleep 30 ;;

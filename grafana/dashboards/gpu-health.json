@@ -18,19 +18,45 @@
   "refresh": "1m",
   "links": [
     {
-      "title": "GPU Workload Detail",
-      "url": "/d/hpcsyl6zhqk/",
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
       "type": "link",
-      "icon": "external link",
-      "tooltip": "Per-GPU workload metrics (utilization, clocks, memory)",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
       "targetBlank": false
     },
     {
       "title": "GPU Node List",
-      "url": "/d/gpu-node-list/",
+      "url": "/grafana/d/gpu-node-list/",
       "type": "link",
-      "icon": "external link",
-      "tooltip": "GPU fleet table",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Health",
+      "url": "/grafana/d/gpu-health/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
       "targetBlank": false
     }
   ],
@@ -640,37 +666,37 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "DCGM_FI_DEV_RETIRED_SBE",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_RETIRED_SBE)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "DCGM_FI_DEV_RETIRED_DBE",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_RETIRED_DBE)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "DCGM_FI_DEV_RETIRED_PENDING",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_RETIRED_PENDING)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "E",
-          "expr": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "F",
-          "expr": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_ROW_REMAP_FAILURE)",
           "format": "table",
           "instant": true
         }

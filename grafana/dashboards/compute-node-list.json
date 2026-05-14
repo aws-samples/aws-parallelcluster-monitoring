@@ -18,10 +18,46 @@
   "iteration": 1592242343557,
   "links": [
     {
-      "$$hashKey": "object:53",
-      "icon": "external link",
-      "tags": [],
-      "type": "dashboards"
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/grafana/d/gpu-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Health",
+      "url": "/grafana/d/gpu-health/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
     }
   ],
   "panels": [
@@ -38,7 +74,7 @@
           "links": [
             {
               "title": "View compute node details",
-              "url": "/d/qI8VfvXZz/?var-node=${__data.fields[\"Node Name\"]}",
+              "url": "/grafana/d/compute-node-details/?var-node=${__data.fields[\"Node Name\"]}",
               "targetBlank": false
             }
           ]
@@ -284,56 +320,56 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\"}[1m]))) * 100) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\"}[1m]))) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "B",
-          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"Compute\",pc_queue!~\"gpu\"} / node_memory_MemTotal_bytes{instance_name=\"Compute\",pc_queue!~\"gpu\"})) * 100) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"Compute\"} / node_memory_MemTotal_bytes{instance_name=\"Compute\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "C",
-          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\",pc_queue!~\"gpu\"} / node_filesystem_size_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\",pc_queue!~\"gpu\"})) * 100) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "D",
-          "expr": "(node_load1{instance_name=\"Compute\",pc_queue!~\"gpu\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\",pc_queue!~\"gpu\"})) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "(node_load1{instance_name=\"Compute\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "E",
-          "expr": "(sum by(instance_id) (rate(node_network_receive_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\",pc_queue!~\"gpu\"}[1m]) + rate(node_network_transmit_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\",pc_queue!~\"gpu\"}[1m]))) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "(sum by(instance_id) (rate(node_network_receive_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]) + rate(node_network_transmit_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]))) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "F",
-          "expr": "((time() - node_boot_time_seconds{instance_name=\"Compute\",pc_queue!~\"gpu\"})) * on(instance_id) group_left(nodename, instance_type, pc_queue) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "((time() - node_boot_time_seconds{instance_name=\"Compute\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "G",
-          "expr": "node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "H",
-          "expr": "slurm_job_node * on(nodename) group_left(instance_id) node_uname_info{instance_name=\"Compute\",pc_queue!~\"gpu\"}",
+          "expr": "slurm_job_node * on(nodename) group_left(instance_id) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true
         }
@@ -444,6 +480,6 @@
   },
   "timezone": "",
   "title": "Compute Node List",
-  "uid": "SugNQvuWk",
+  "uid": "compute-node-list",
   "version": 1
 }

@@ -19,34 +19,49 @@
   "iteration": 1606149765866,
   "links": [
     {
-      "icon": "external link",
-      "tags": [],
-      "type": "dashboards"
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/grafana/d/gpu-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
     },
     {
       "title": "GPU Health",
-      "url": "/d/gpu-health/",
+      "url": "/grafana/d/gpu-health/",
       "type": "link",
-      "icon": "external link",
-      "tooltip": "Cluster-wide GPU fault overview (XID, throttle, ECC, NVLink errors)",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
       "targetBlank": false
     }
   ],
   "panels": [
-    {
-      "type": "text",
-      "title": "",
-      "gridPos": {
-        "h": 3,
-        "w": 24,
-        "x": 0,
-        "y": -1
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "> **Note:** This dashboard requires GPU instances running the `dcgm-exporter` container (port 9400). If no GPU nodes appear in the dropdown above, your cluster has no GPU compute nodes running, or the DCGM exporter hasn't started yet."
-      }
-    },
     {
       "cacheTimeout": null,
       "colorBackground": false,
@@ -2446,6 +2461,310 @@
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "System Metrics",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 129
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 130
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 - (avg(irate(node_cpu_seconds_total{instance_id=\"$instance_id\",mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "CPU Usage %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Usage",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 130
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_memory_MemTotal_bytes{instance_id=\"$instance_id\"} - node_memory_MemAvailable_bytes{instance_id=\"$instance_id\"}",
+          "legendFormat": "Used"
+        },
+        {
+          "refId": "B",
+          "expr": "node_memory_MemTotal_bytes{instance_id=\"$instance_id\"}",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Network",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "irate(node_network_receive_bytes_total{instance_id=\"$instance_id\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[5m])*8",
+          "legendFormat": "Receive {{device}}"
+        },
+        {
+          "refId": "B",
+          "expr": "irate(node_network_transmit_bytes_total{instance_id=\"$instance_id\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[5m])*8",
+          "legendFormat": "Transmit {{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Disk I/O",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "irate(node_disk_read_bytes_total{instance_id=\"$instance_id\"}[5m])",
+          "legendFormat": "Read"
+        },
+        {
+          "refId": "B",
+          "expr": "irate(node_disk_written_bytes_total{instance_id=\"$instance_id\"}[5m])",
+          "legendFormat": "Written"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "System Metrics (CPU / Memory / Disk / Network)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 146
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 147
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(irate(node_cpu_seconds_total{instance_id=\"$instance_id\",mode=\"system\"}[5m])) by (instance)",
+          "legendFormat": "system"
+        },
+        {
+          "refId": "B",
+          "expr": "avg(irate(node_cpu_seconds_total{instance_id=\"$instance_id\",mode=\"user\"}[5m])) by (instance)",
+          "legendFormat": "user"
+        },
+        {
+          "refId": "C",
+          "expr": "avg(irate(node_cpu_seconds_total{instance_id=\"$instance_id\",mode=\"iowait\"}[5m])) by (instance)",
+          "legendFormat": "iowait"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "fillOpacity": 20,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 147
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_memory_MemTotal_bytes{instance_id=\"$instance_id\"}",
+          "legendFormat": "Total"
+        },
+        {
+          "refId": "B",
+          "expr": "node_memory_MemTotal_bytes{instance_id=\"$instance_id\"} - node_memory_MemAvailable_bytes{instance_id=\"$instance_id\"}",
+          "legendFormat": "Used"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Disk I/O",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 155
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "irate(node_disk_read_bytes_total{instance_id=\"$instance_id\"}[5m])",
+          "legendFormat": "read {{device}}"
+        },
+        {
+          "refId": "B",
+          "expr": "irate(node_disk_written_bytes_total{instance_id=\"$instance_id\"}[5m])",
+          "legendFormat": "write {{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Network",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 155
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "irate(node_network_receive_bytes_total{instance_id=\"$instance_id\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[5m])*8",
+          "legendFormat": "rx {{device}}"
+        },
+        {
+          "refId": "B",
+          "expr": "irate(node_network_transmit_bytes_total{instance_id=\"$instance_id\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[5m])*8",
+          "legendFormat": "tx {{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "fillOpacity": 10
+          }
         }
       }
     }

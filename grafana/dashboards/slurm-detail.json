@@ -41,25 +41,25 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(partition) (slurm_partition_node_count{state=\"alloc\"}) + sum by(partition) (slurm_partition_node_count{state=\"mix\"})",
+          "expr": "sum by(partition) (slurm_partition_node_count) - sum by(partition) (slurm_partition_node_count{state=~\"idle.*\"}) - sum by(partition) (slurm_partition_node_count{state=~\"down.*|drain.*\"}) or sum by(partition) (slurm_partition_node_count) * 0",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "sum by(partition) (slurm_partition_node_count{state=\"idle\"})",
+          "expr": "sum by(partition) (slurm_partition_node_count{state=~\"idle.*\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "sum by(partition) (slurm_partition_node_count{state=\"down\"}) + sum by(partition) (slurm_partition_node_count{state=\"drain\"})",
+          "expr": "sum by(partition) (slurm_partition_node_count{state=~\"down.*|drain.*\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "sum by(partition) (slurm_partition_alloc_cpus{state=\"alloc\"}) + sum by(partition) (slurm_partition_alloc_cpus{state=\"mix\"})",
+          "expr": "sum by(partition) (slurm_partition_alloc_cpus)",
           "format": "table",
           "instant": true
         },
@@ -1279,6 +1279,50 @@
           }
         }
       ]
+    }
+  ],
+  "links": [
+    {
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/grafana/d/gpu-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Health",
+      "url": "/grafana/d/gpu-health/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
     }
   ]
 }

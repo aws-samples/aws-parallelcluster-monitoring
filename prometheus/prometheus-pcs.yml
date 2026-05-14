@@ -73,6 +73,17 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+  # Login node (this host) — scraped via static_configs because the
+  # login node isn't part of a PCS compute-node-group and therefore
+  # doesn't get the aws:pcs:cluster-id tag that EC2 SD filters on.
+  - job_name: 'login_node'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          instance_name: HeadNode
+          instance_id: __LOGIN_INSTANCE_ID__
+
   # EC2 service discovery for node_exporter (port 9100) and
   # DCGM exporter (port 9400, GPU nodes only).
   #

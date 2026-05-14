@@ -120,8 +120,16 @@ num_instances=$(aws ec2 describe-instances --region "${region}" \
     --query 'length(Reservations[].Instances[])' --output text 2>/dev/null || echo "1")
 ebs_cost=$(echo "scale=4; ${num_instances} * 35 * ${ebs_gb_hour}" | bc 2>/dev/null || echo "0")
 
+# ─── PCS controller cost (managed service, fixed rate) ───────────────────────
+# PCS charges $0.59/hr for the SMALL cluster controller regardless of node count.
+# Only applies when running on PCS (not ParallelCluster).
+pcs_controller_cost=0
+if [[ "${cluster_tag_key}" == "aws:pcs:cluster-id" ]]; then
+    pcs_controller_cost="0.59"
+fi
+
 # ─── Total ────────────────────────────────────────────────────────────────────
-total_cost=$(echo "scale=4; ${head_price:-0} + ${compute_cost} + ${ebs_cost}" | bc 2>/dev/null || echo "0")
+total_cost=$(echo "scale=4; ${head_price:-0} + ${compute_cost} + ${ebs_cost} + ${pcs_controller_cost}" | bc 2>/dev/null || echo "0")
 
 # ─── Accumulator (adds cost/60 each minute) ──────────────────────────────────
 accumulated=$(cat "${ACCUMULATOR}" 2>/dev/null || echo "0")
@@ -136,6 +144,7 @@ cat <<METRICS | curl --silent --data-binary @- "${PUSHGW}"
 cluster_cost_per_hour{component="headnode"} ${head_price:-0}
 cluster_cost_per_hour{component="compute"} ${compute_cost}
 cluster_cost_per_hour{component="ebs"} ${ebs_cost}
+cluster_cost_per_hour{component="pcs_controller"} ${pcs_controller_cost}
 cluster_cost_per_hour{component="total"} ${total_cost}
 # HELP cluster_cost_accumulated Estimated total cluster cost in USD since start
 # TYPE cluster_cost_accumulated gauge

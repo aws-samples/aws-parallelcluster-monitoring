@@ -15,7 +15,7 @@
 #
 set -euo pipefail
 
-REF="${1:-v2.1}"
+REF="${1:-v2.5}"
 REPO_SLUG="${2:-aws-samples/aws-parallelcluster-monitoring}"
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
 TARBALL="/tmp/${MONITORING_DIR_NAME}.tar.gz"
