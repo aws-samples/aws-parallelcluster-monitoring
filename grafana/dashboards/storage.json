@@ -281,12 +281,12 @@
         {
           "refId": "A",
           "expr": "rate(aws_fsx_data_read_bytes_sum[5m])",
-          "legendFormat": "Read {{dimension_FileSystemId}}"
+          "legendFormat": "Read {{file_system_id}}"
         },
         {
           "refId": "B",
           "expr": "rate(aws_fsx_data_write_bytes_sum[5m])",
-          "legendFormat": "Write {{dimension_FileSystemId}}"
+          "legendFormat": "Write {{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -318,17 +318,17 @@
         {
           "refId": "A",
           "expr": "rate(aws_fsx_data_read_operations_sum[5m])",
-          "legendFormat": "Read ops {{dimension_FileSystemId}}"
+          "legendFormat": "Read ops {{file_system_id}}"
         },
         {
           "refId": "B",
           "expr": "rate(aws_fsx_data_write_operations_sum[5m])",
-          "legendFormat": "Write ops {{dimension_FileSystemId}}"
+          "legendFormat": "Write ops {{file_system_id}}"
         },
         {
           "refId": "C",
           "expr": "rate(aws_fsx_metadata_operations_sum[5m])",
-          "legendFormat": "Metadata ops {{dimension_FileSystemId}}"
+          "legendFormat": "Metadata ops {{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -360,7 +360,7 @@
         {
           "refId": "A",
           "expr": "aws_fsx_file_server_disk_throughput_utilization_average * 100",
-          "legendFormat": "{{dimension_FileSystemId}}"
+          "legendFormat": "{{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -392,7 +392,7 @@
         {
           "refId": "A",
           "expr": "aws_fsx_cpuutilization_average",
-          "legendFormat": "{{dimension_FileSystemId}}"
+          "legendFormat": "{{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -572,7 +572,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "aws_efs_storage_bytes_average{dimension_StorageClass=\"Total\"}",
+          "expr": "aws_efs_storage_bytes_average{storage_class=\"Total\"}",
           "instant": true
         }
       ],
@@ -616,17 +616,17 @@
         {
           "refId": "A",
           "expr": "rate(aws_efs_data_read_io_bytes_sum[5m])",
-          "legendFormat": "Read {{dimension_FileSystemId}}"
+          "legendFormat": "Read {{file_system_id}}"
         },
         {
           "refId": "B",
           "expr": "rate(aws_efs_data_write_io_bytes_sum[5m])",
-          "legendFormat": "Write {{dimension_FileSystemId}}"
+          "legendFormat": "Write {{file_system_id}}"
         },
         {
           "refId": "C",
           "expr": "rate(aws_efs_metadata_io_bytes_sum[5m])",
-          "legendFormat": "Metadata {{dimension_FileSystemId}}"
+          "legendFormat": "Metadata {{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -658,7 +658,7 @@
         {
           "refId": "A",
           "expr": "aws_efs_percent_io_limit_average",
-          "legendFormat": "{{dimension_FileSystemId}}"
+          "legendFormat": "{{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -690,7 +690,7 @@
         {
           "refId": "A",
           "expr": "aws_efs_permitted_throughput_average",
-          "legendFormat": "{{dimension_FileSystemId}}"
+          "legendFormat": "{{file_system_id}}"
         }
       ],
       "fieldConfig": {
@@ -721,18 +721,18 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "aws_efs_storage_bytes_average{dimension_StorageClass=\"Total\"}",
-          "legendFormat": "Total {{dimension_FileSystemId}}"
+          "expr": "aws_efs_storage_bytes_average{storage_class=\"Total\"}",
+          "legendFormat": "Total {{file_system_id}}"
         },
         {
           "refId": "B",
-          "expr": "aws_efs_storage_bytes_average{dimension_StorageClass=\"Standard\"}",
-          "legendFormat": "Standard {{dimension_FileSystemId}}"
+          "expr": "aws_efs_storage_bytes_average{storage_class=\"Standard\"}",
+          "legendFormat": "Standard {{file_system_id}}"
         },
         {
           "refId": "C",
-          "expr": "aws_efs_storage_bytes_average{dimension_StorageClass=\"InfrequentAccess\"}",
-          "legendFormat": "IA {{dimension_FileSystemId}}"
+          "expr": "aws_efs_storage_bytes_average{storage_class=\"InfrequentAccess\"}",
+          "legendFormat": "IA {{file_system_id}}"
         }
       ],
       "fieldConfig": {
