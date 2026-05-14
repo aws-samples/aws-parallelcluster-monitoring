@@ -1,0 +1,123 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# CloudWatch Exporter configuration for HPC storage metrics.
+# Scrapes FSx for Lustre and EFS metrics from CloudWatch and exposes
+# them as Prometheus gauges/counters.
+#
+# The exporter auto-discovers all file systems in the region via the
+# aws_dimensions list — no hardcoded filesystem IDs needed.
+#
+region: __AWS_REGION__
+
+metrics:
+  # ─── FSx for Lustre ──────────────────────────────────────────────────
+  - aws_namespace: AWS/FSx
+    aws_metric_name: DataReadBytes
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: DataWriteBytes
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: DataReadOperations
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: DataWriteOperations
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: MetadataOperations
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: FreeDataStorageCapacity
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Average]
+    period_seconds: 300
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: DiskIopsUtilization
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Average]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: FileServerDiskThroughputUtilization
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Average]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: CPUUtilization
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Average]
+    period_seconds: 60
+
+  - aws_namespace: AWS/FSx
+    aws_metric_name: ClientConnections
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  # ─── EFS ──────────────────────────────────────────────────────────────
+  - aws_namespace: AWS/EFS
+    aws_metric_name: DataReadIOBytes
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: DataWriteIOBytes
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: MetadataIOBytes
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: TotalIOBytes
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 60
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: ClientConnections
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Sum]
+    period_seconds: 300
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: PercentIOLimit
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Average]
+    period_seconds: 60
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: PermittedThroughput
+    aws_dimensions: [FileSystemId]
+    aws_statistics: [Average]
+    period_seconds: 60
+
+  - aws_namespace: AWS/EFS
+    aws_metric_name: StorageBytes
+    aws_dimensions: [FileSystemId, StorageClass]
+    aws_statistics: [Average]
+    period_seconds: 300

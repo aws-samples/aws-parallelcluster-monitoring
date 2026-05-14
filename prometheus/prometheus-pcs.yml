@@ -68,6 +68,12 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9091']
 
+  - job_name: 'cloudwatch_exporter'
+    scrape_interval: 60s
+    scrape_timeout: 55s
+    static_configs:
+      - targets: ['localhost:9106']
+
   - job_name: 'prometheus_server'
     scrape_interval: 5s
     static_configs:

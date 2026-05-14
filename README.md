@@ -35,6 +35,7 @@ Slurm metrics as containers — no manual configuration required.
 | **HeadNode Details** | ParallelCluster | Head node metrics |
 | **Login Node List** | PCS | Login nodes table with click-through to node details |
 | **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS, PCS controller) + accumulated total |
+| **Storage (FSx + EFS)** | Both | FSx Lustre throughput, IOPS, capacity, CPU/disk utilization; EFS throughput, IO limit, connections, storage |
 
 
 ## Screenshots
@@ -274,6 +275,7 @@ ParallelCluster HeadNode / PCS Login Node
 | NVIDIA DCGM Exporter | 4.5.2-4.8.1-ubuntu22.04 |
 | prometheus-slurm-exporter | 1.8.0 (ParallelCluster only) |
 | Docker Compose v2 | 2.29.7 |
+| CloudWatch Exporter | v0.16.0 |
 
 All images pinned — `latest` is never used.
 

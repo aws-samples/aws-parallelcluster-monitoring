@@ -189,5 +189,14 @@
         ]
       }
     }
+  ],
+  "links": [
+    {
+      "title": "Storage",
+      "url": "/grafana/d/storage/storage",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    }
   ]
 }

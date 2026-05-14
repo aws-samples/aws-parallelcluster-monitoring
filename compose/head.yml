@@ -84,6 +84,21 @@ services:
       - '/home/${cfn_cluster_user}/__MONITORING_DIR__/www:/usr/share/nginx/html'
     image: nginx:1.27-alpine
 
+  cloudwatch-exporter:
+    container_name: cloudwatch-exporter
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    environment:
+      - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
+    volumes:
+      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/cloudwatch-exporter/config.yml:/config/config.yml:ro'
+      - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
+    image: prom/cloudwatch-exporter:v0.16.0
+    command:
+      - '9106'
+      - '/config/config.yml'
+
 volumes:
   prometheus-data:
   grafana-data:

@@ -317,6 +317,13 @@
       "type": "link",
       "icon": "dashboard",
       "targetBlank": false
+    },
+    {
+      "title": "Storage",
+      "url": "/grafana/d/storage/storage",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
     }
   ]
 }
