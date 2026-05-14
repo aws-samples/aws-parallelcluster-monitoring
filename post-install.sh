@@ -8,18 +8,31 @@
 # user data).
 #
 # Usage: post-install.sh [ref] [repo_slug]
-#   ref        Git tag OR branch of the monitoring repo to install.
-#              Default: v2.1
+#   ref        Git tag, branch, or "latest" (resolves to newest release).
+#              Default: latest
 #   repo_slug  GitHub "owner/repo" to download from.
 #              Default: aws-samples/aws-parallelcluster-monitoring
 #
 set -euo pipefail
 
-REF="${1:-v2.5}"
+REF="${1:-latest}"
 REPO_SLUG="${2:-aws-samples/aws-parallelcluster-monitoring}"
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
 TARBALL="/tmp/${MONITORING_DIR_NAME}.tar.gz"
 LOG_FILE="/var/log/parallelcluster-monitoring-install.log"
+
+# Resolve "latest" to the most recent git tag via the GitHub API.
+if [[ "${REF}" == "latest" ]]; then
+    RESOLVED=$(curl -fsSL "https://api.github.com/repos/${REPO_SLUG}/releases/latest" 2>/dev/null \
+        | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)
+    if [[ -n "${RESOLVED}" ]]; then
+        echo "Resolved 'latest' → ${RESOLVED}"
+        REF="${RESOLVED}"
+    else
+        echo "WARN: could not resolve 'latest', falling back to main branch" >&2
+        REF="main"
+    fi
+fi
 
 # Platform detection
 if [[ -r /etc/parallelcluster/cfnconfig ]]; then

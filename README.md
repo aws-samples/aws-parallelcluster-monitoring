@@ -94,14 +94,21 @@ Add to your `pcluster.yaml` under **both** `HeadNode` and each `SlurmQueue`:
 ```yaml
 CustomActions:
   OnNodeConfigured:
-    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.5/post-install.sh
+    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
     Args:
-      - v2.5
+      - latest
 Iam:
   AdditionalIamPolicies:
     - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
     - Policy: arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name>
 ```
+
+> **Pinning a version**: replace `latest` with a specific tag (e.g. `v2.6`)
+> if you need reproducible deployments. `latest` always pulls the newest
+> release from the `main` branch.
+
+For a complete working example, see
+[test-clusters/pc-cluster.yaml](test-clusters/pc-cluster.yaml).
 
 Generate the least-privilege policy:
 
@@ -144,9 +151,9 @@ Ensure your security group allows port 6817 from the login node to the slurmctld
 
 ```bash
 #!/bin/bash
-curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.5/post-install.sh \
+curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh \
     -o /tmp/post-install.sh
-bash /tmp/post-install.sh v2.5
+bash /tmp/post-install.sh latest
 ```
 
 **Compute node** launch template (runs node_exporter + dcgm-exporter):
@@ -168,15 +175,33 @@ The instance profile needs:
 
 ### Access Grafana
 
+**Option A — Public subnet (head/login node has a public IP):**
+
+If your head node or login node is in a public subnet with a public IP,
+just open port 443 in the instance's security group and browse directly:
+
+```
+https://<public-ip>/grafana/
+```
+
+The self-signed certificate will trigger a browser warning — click
+through it (the connection is still encrypted).
+
+**Option B — Private subnet (SSM port-forward):**
+
+If the head/login node is in a private subnet (no public IP), use SSM
+Session Manager to tunnel the HTTPS port to your laptop:
+
 ```bash
-aws ssm start-session --target <login-node-instance-id> --region <region> \
+aws ssm start-session --target <instance-id> --region <region> \
     --document-name AWS-StartPortForwardingSession \
     --parameters 'portNumber=["443"],localPortNumber=["8443"]'
 ```
 
-Browse: `https://localhost:8443/grafana/`
+Then browse: `https://localhost:8443/grafana/`
 
-Retrieve password:
+**Retrieve the admin password:**
+
 ```bash
 aws ssm get-parameter --region <region> \
     --name /<platform>/<cluster-name>/grafana/admin-password \
@@ -185,7 +210,8 @@ aws ssm get-parameter --region <region> \
 
 Where `<platform>` is `parallelcluster` or `pcs`.
 
-For public access with a trusted certificate, see [docs/public-access.md](docs/public-access.md).
+For public access with a trusted certificate (ALB + ACM), see
+[docs/public-access.md](docs/public-access.md).
 
 ### Optional: Cognito SSO
 
