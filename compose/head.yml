@@ -95,9 +95,6 @@ services:
       - '/home/${cfn_cluster_user}/__MONITORING_DIR__/cloudwatch-exporter/config.yml:/config/config.yml:ro'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
     image: prom/cloudwatch-exporter:v0.16.0
-    command:
-      - '9106'
-      - '/config/config.yml'
 
 volumes:
   prometheus-data:
