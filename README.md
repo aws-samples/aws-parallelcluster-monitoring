@@ -1,4 +1,4 @@
-# Grafana Dashboard for AWS ParallelCluster & AWS PCS
+# HPC Cluster Monitoring Dashboard <br/> for AWS ParallelCluster & AWS PCS
 
 A zero-setup monitoring solution for HPC clusters built with
 [AWS ParallelCluster](https://aws.amazon.com/hpc/parallelcluster/) or
@@ -11,10 +11,13 @@ Slurm metrics as containers — no manual configuration required.
 - **Dual-platform**: works on both ParallelCluster and AWS PCS
 - **Zero-setup**: add a few lines to your config, create the cluster, done
 - **Slurm 25.11 native metrics** (PCS): scrapes OpenMetrics directly from slurmctld — no extra exporter
+- **Per-user / per-account / per-partition visibility**: see who's using what, queue health, scheduler RPC stats
+- **GPU profiling**: SM activity, tensor-core utilization, FP64/32/16 pipe activity (Volta+)
+- **GPU health monitoring**: XID errors, throttle reasons, ECC counters, NVLink errors, retired pages
 - **Secure by default**: per-cluster random password in SSM, optional Cognito SSO
-- **GPU-ready**: NVIDIA DCGM exporter auto-deploys on GPU instances
+- **GPU-ready**: NVIDIA DCGM exporter with custom counters auto-deploys on GPU instances
 - **EFA-ready**: InfiniBand/EFA metrics collected automatically
-- **Cost tracking**: real-time cost/hour estimates + accumulated total
+- **Cost tracking**: real-time cost/hour estimates + accumulated total (includes PCS controller cost)
 - **Job mapping**: see which Slurm jobs run on which nodes
 - **Works with `Imds.Secured=true`**: no IMDS workarounds needed
 
@@ -24,14 +27,14 @@ Slurm metrics as containers — no manual configuration required.
 |-----------|----------|-------------|
 | **Cluster Summary** | Both | Cluster overview: Slurm states, CPU/memory aggregates, idle node-hours, top users / partitions |
 | **Slurm Detail** | Both | Per-partition / per-user / per-account breakdown, queue health, scheduler RPC stats, license usage |
-| **Compute Node List** | Both | Fleet table with CPU/Mem/Disk gauges, job info, click-through |
+| **Compute Node List** | Both | Fleet table with CPU/Mem/Disk/Network gauges, Queue column, job info, click-through |
 | **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA) |
-| **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through |
-| **GPU Node Details** | Both | Per-GPU workload metrics + Compute Pipeline activity (SM, tensor, FP64/32/16) |
+| **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through by hostname |
+| **GPU Node Details** | Both | Per-GPU workload metrics + Compute Pipeline activity (SM, tensor, FP64/32/16) + system metrics (CPU/mem/disk/net) |
 | **GPU Health** | Both | Cluster-wide GPU faults: XID errors, throttle reasons, ECC, NVLink + PCIe errors, retired pages |
 | **HeadNode Details** | ParallelCluster | Head node metrics |
 | **Login Node List** | PCS | Login nodes table with click-through to node details |
-| **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS) + accumulated total |
+| **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS, PCS controller) + accumulated total |
 
 
 ## Screenshots
@@ -78,8 +81,8 @@ memory gauges. Click any row to open the detailed per-GPU dashboard.
 
 ### Cluster Costs
 Real-time cost/hour and accumulated cost since cluster start, broken down by
-component (head/login node, compute, EBS). List prices via AWS Pricing API,
-cached for 24h.
+component (head/login node, compute, EBS, PCS controller). List prices via AWS
+Pricing API, cached for 24h.
 
 ![Cluster Costs](docs/screenshots/cluster-costs.png)
 
@@ -90,9 +93,9 @@ Add to your `pcluster.yaml` under **both** `HeadNode` and each `SlurmQueue`:
 ```yaml
 CustomActions:
   OnNodeConfigured:
-    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.1/post-install.sh
+    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.5/post-install.sh
     Args:
-      - v2.1
+      - v2.5
 Iam:
   AdditionalIamPolicies:
     - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -134,15 +137,15 @@ Ensure your security group allows port 6817 from the login node to the slurmctld
 ### 2. Configure launch templates
 
 **Login node** launch template (runs the monitoring stack):
-- Tag: `Name=HeadNode`, `monitoring-role=login`
+- Tag: `Name=HeadNode`, `monitoring-role=login`, `pcs-cluster-id=<cluster-id>`
 - `MetadataOptions.InstanceMetadataTags=enabled`
 - User data (MIME multipart):
 
 ```bash
 #!/bin/bash
-curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.1/post-install.sh \
+curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.5/post-install.sh \
     -o /tmp/post-install.sh
-bash /tmp/post-install.sh v2.1
+bash /tmp/post-install.sh v2.5
 ```
 
 **Compute node** launch template (runs node_exporter + dcgm-exporter):
@@ -153,10 +156,14 @@ bash /tmp/post-install.sh v2.1
 ### 3. IAM instance profile permissions
 
 The instance profile needs:
-- `pcs:GetCluster`, `pcs:ListComputeNodeGroups`
-- `ec2:DescribeInstances`, `ec2:DescribeVolumes`
+- `pcs:GetCluster`, `pcs:ListComputeNodeGroups`, `pcs:RegisterComputeNodeGroupInstance`
+- `ec2:DescribeInstances`, `ec2:DescribeVolumes`, `ec2:CreateTags`
 - `ssm:GetParameter`, `ssm:PutParameter`
 - `pricing:GetProducts`
+- `kms:Decrypt` (condition: via `ssm.<region>.amazonaws.com`)
+
+**Important**: the IAM role name must start with `AWSPCS` or use path
+`/aws-pcs/` (PCS requirement for compute-node-group instance profiles).
 
 ### Access Grafana
 
