@@ -298,9 +298,9 @@ ENVFILE
                     ;;
                 ubuntu|debian)
                     curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
-                        | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+                        -o /usr/share/keyrings/nvidia-container-toolkit-keyring.asc
                     curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
-                        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+                        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.asc] https://#g' \
                         > /etc/apt/sources.list.d/nvidia-container-toolkit.list
                     apt-get update
                     DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-container-toolkit
