@@ -80,7 +80,6 @@ case "${PLATFORM_NODE_TYPE}" in
             sed -i "s|__SLURMCTLD_IP__|${PCS_SLURMCTLD_IP}|g"     "${MONITORING_HOME}/prometheus/prometheus.yml"
             sed -i "s|__PCS_CLUSTER_ID__|${PCS_CLUSTER_ID}|g"     "${MONITORING_HOME}/prometheus/prometheus.yml"
             # Login node instance ID for the static scrape target.
-            local login_id
             login_id=$(curl -sf -H "X-aws-ec2-metadata-token: $(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)" \
                 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "unknown")
             sed -i "s|__LOGIN_INSTANCE_ID__|${login_id}|g"         "${MONITORING_HOME}/prometheus/prometheus.yml"
