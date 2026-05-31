@@ -58,11 +58,17 @@ _load_pcs() {
             --output text 2>/dev/null) || die "Could not resolve slurmctld endpoint"
     fi
 
+    # Detect the platform user. Ubuntu-based AMIs use 'ubuntu', AL2023 uses 'ec2-user'.
+    local platform_user="ec2-user"
+    if [[ -d /home/ubuntu ]] && id ubuntu >/dev/null 2>&1; then
+        platform_user="ubuntu"
+    fi
+
     export PLATFORM="pcs"
     export PLATFORM_NODE_TYPE="${node_type}"      # login | compute
     export PLATFORM_CLUSTER_NAME="${cluster_id}"
     export PLATFORM_REGION="${region}"
-    export PLATFORM_USER="ec2-user"               # AL2023 default
+    export PLATFORM_USER="${platform_user}"
 
     # PCS-specific
     export PCS_CLUSTER_ID="${cluster_id}"

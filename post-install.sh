@@ -41,8 +41,12 @@ if [[ -r /etc/parallelcluster/cfnconfig ]]; then
     # shellcheck disable=SC2154  # cfn_cluster_user is set by cfnconfig
     CLUSTER_USER="${cfn_cluster_user}"
 else
-    # PCS / other: sample AMIs use ec2-user
+    # PCS / other: Detect the cluster user. Ubuntu-based AMIs use 'ubuntu',
+    # Amazon Linux 2023 uses 'ec2-user'.
     CLUSTER_USER="ec2-user"
+    if [[ -d /home/ubuntu ]] && id ubuntu >/dev/null 2>&1; then
+        CLUSTER_USER="ubuntu"
+    fi
 fi
 MONITORING_HOME="/home/${CLUSTER_USER}/${MONITORING_DIR_NAME}"
 
