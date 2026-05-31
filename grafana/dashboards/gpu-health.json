@@ -134,7 +134,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(count_over_time(DCGM_FI_DEV_XID_ERRORS{}[1h]) > 0) or vector(0)",
+          "expr": "count(max_over_time(DCGM_FI_DEV_XID_ERRORS{}[1h]) > 0) or vector(0)",
           "instant": true
         }
       ],
