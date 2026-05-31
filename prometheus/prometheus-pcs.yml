@@ -116,6 +116,24 @@ scrape_configs:
           - name: instance-state-name
             values: [running]
     relabel_configs:
+      # Drop login/head nodes from EC2 service discovery. They are already
+      # scraped by the static 'login_node' job (localhost:9100) with
+      # instance_name=HeadNode. On PCS the login node group also carries the
+      # aws:pcs:cluster-id tag this job filters on, so without this drop the
+      # login node is discovered here too and scraped a second time, producing
+      # duplicate node_uname_info series for one instance_id and breaking the
+      # Login Node dashboards' `* on(instance_id) group_left(...)` joins with
+      # "many-to-many matching not allowed" (HTTP 422). See issue #45.
+      #
+      # Login nodes are identified by the monitoring-role=login tag (the same
+      # tag installer/platform/pcs.sh reads via IMDS to pick the node type).
+      # Nodes without a monitoring-role tag (legacy clusters, or CNGs deployed
+      # with MonitoringRole=none) present an empty string here, which does NOT
+      # match 'login', so they are kept and treated as compute. This frees the
+      # EC2 'Name' tag for arbitrary operator use.
+      - source_labels: [__meta_ec2_tag_monitoring_role]
+        regex: login
+        action: drop
       - source_labels: [__meta_ec2_tag_aws_pcs_compute_node_group_id]
         target_label: node_group_id
       - source_labels: [__meta_ec2_instance_id]
@@ -128,11 +146,16 @@ scrape_configs:
         target_label: instance_type
       - source_labels: [__meta_ec2_vpc_id]
         target_label: instance_vpc
-      # Dashboards filter by instance_name='HeadNode' or 'Compute'.
-      # For PCS: the launch template should tag Name=HeadNode on login
-      # and Name=Compute on compute nodes (legacy convention).
-      - source_labels: [__meta_ec2_tag_Name]
+      # Everything reaching this point is a compute node (login was dropped
+      # above). The Grafana dashboards filter on the literal instance_name
+      # values "HeadNode" (served only by the static 'login_node' job) and
+      # "Compute" (served here), so we hardcode instance_name=Compute rather
+      # than deriving it from the Name tag. This frees the Name tag for
+      # arbitrary use and is backward compatible: legacy compute nodes
+      # (Name=Compute) resolve to the same value.
+      - source_labels: []
         target_label: instance_name
+        replacement: Compute
       # Surface the PCS compute-node-group ID as 'pc_queue' so the same
       # dashboards (which group/sort by queue on PC) work on PCS.
       # (Avoiding the bare 'queue' label name because node_exporter

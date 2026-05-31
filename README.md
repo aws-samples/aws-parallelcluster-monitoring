@@ -144,8 +144,14 @@ Ensure your security group allows port 6817 from the login node to the slurmctld
 
 ### 2. Configure launch templates
 
+Node type (login vs compute) is determined by the `monitoring-role` tag, not by
+`Name`. The `Name` tag is free for arbitrary operator use. Login nodes
+(`monitoring-role=login`) are excluded from EC2 service discovery and scraped by
+the static `login_node` job as `instance_name=HeadNode`; every other discovered
+node is reported as `instance_name=Compute`.
+
 **Login node** launch template (runs the monitoring stack):
-- Tag: `Name=HeadNode`, `monitoring-role=login`, `pcs-cluster-id=<cluster-id>`
+- Tag: `monitoring-role=login`, `pcs-cluster-id=<cluster-id>` (`Name` is free)
 - `MetadataOptions.InstanceMetadataTags=enabled`
 - User data (MIME multipart):
 
@@ -157,7 +163,8 @@ bash /tmp/post-install.sh latest
 ```
 
 **Compute node** launch template (runs node_exporter + dcgm-exporter):
-- Tag: `Name=Compute`
+- Tag: `monitoring-role=compute` (optional — a node with no `monitoring-role`
+  tag is treated as compute; `Name` is free)
 - `MetadataOptions.InstanceMetadataTags=enabled`
 - Same user data as above
 
