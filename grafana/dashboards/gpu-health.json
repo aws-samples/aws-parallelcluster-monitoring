@@ -170,111 +170,11 @@
     },
     {
       "type": "stat",
-      "title": "GPUs with thermal throttle (last 1h)",
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 9,
-        "y": 1
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count(rate(DCGM_FI_DEV_THERMAL_VIOLATION[1h]) > 0) or vector(0)",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "noValue": "0"
-        }
-      },
-      "options": {
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "GPUs with power throttle (last 1h)",
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 14,
-        "y": 1
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count(rate(DCGM_FI_DEV_POWER_VIOLATION[1h]) > 0) or vector(0)",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "noValue": "0"
-        }
-      },
-      "options": {
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
       "title": "GPUs with row-remap failure",
       "gridPos": {
         "h": 4,
         "w": 5,
-        "x": 19,
+        "x": 9,
         "y": 1
       },
       "targets": [
