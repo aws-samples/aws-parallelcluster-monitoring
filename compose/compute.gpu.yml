@@ -33,7 +33,7 @@ services:
       - "-f"
       - "/etc/dcgm-exporter/counters.csv"
     volumes:
-      - "/home/${cfn_cluster_user}/__MONITORING_DIR__/dcgm/counters.csv:/etc/dcgm-exporter/counters.csv:ro"
+      - "__MONITORING_HOME__/dcgm/counters.csv:/etc/dcgm-exporter/counters.csv:ro"
     deploy:
       resources:
         reservations:

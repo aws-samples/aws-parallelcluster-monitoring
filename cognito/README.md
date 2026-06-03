@@ -76,7 +76,7 @@ re-run the installer manually:
 
 ```bash
 # On the HeadNode (via SSH or SSM Session Manager)
-sudo bash /home/ec2-user/aws-parallelcluster-monitoring/installer/install.sh
+sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
 sudo docker restart grafana
 ```
 
@@ -121,7 +121,7 @@ aws ssm delete-parameter --region <region> \
     --name /parallelcluster/<cluster>/grafana/cognito
 
 # On the HeadNode:
-sudo bash /home/ec2-user/aws-parallelcluster-monitoring/installer/install.sh
+sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
 sudo docker restart grafana
 ```
 

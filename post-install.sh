@@ -48,7 +48,14 @@ else
         CLUSTER_USER="ubuntu"
     fi
 fi
-MONITORING_HOME="/home/${CLUSTER_USER}/${MONITORING_DIR_NAME}"
+# Install the monitoring tree on NODE-LOCAL disk, NOT under /home.
+# On AWS PCS, /home is a SHARED filesystem (FSx for OpenZFS over NFS) mounted on
+# every node. Extracting/owning/sed-ing the tree there makes the login node and
+# every compute node race on the same files at first boot, which intermittently
+# fails with "error reading input file: Stale file handle" (one node's tar
+# replaces an inode another node is mid-read). /opt is local to each node, so
+# each install is independent.
+MONITORING_HOME="/opt/${MONITORING_DIR_NAME}"
 
 # Fetch the tarball. /archive supports both tag and branch paths.
 fetch_tarball() {
