@@ -23,7 +23,12 @@ services:
     network_mode: host
     pid: host
     restart: unless-stopped
-    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04
+    # Pinned to the newest tag whose manifest is a Docker manifest-list v2.
+    # From 4.2.3 onward NVCR publishes an OCI image index with attestation/SBOM
+    # manifests, which Docker 29.x cannot pull ("error from registry: Incorrect
+    # Repository Format"), leaving GPU nodes with no dcgm-exporter. 4.2.0-4.1.0
+    # pulls cleanly on Docker 29.x and emits the same DCGM_FI_DEV_* fields. See #47.
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.2.0-4.1.0-ubuntu22.04
     # Custom counters file enables XID errors, throttle reasons,
     # ECC counters, retired pages, full NVLink error set, and the
     # DCP profiling metrics (SM_ACTIVE / SM_OCCUPANCY / TENSOR / FP64 /
