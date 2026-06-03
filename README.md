@@ -247,7 +247,7 @@ aws ssm put-parameter \
     }'
 
 # 3. Re-run the installer (or recreate the cluster)
-sudo bash /home/ec2-user/aws-parallelcluster-monitoring/installer/install.sh
+sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
 sudo docker restart grafana
 ```
 

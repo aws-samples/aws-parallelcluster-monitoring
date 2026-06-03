@@ -22,8 +22,8 @@ services:
       # Required because Imds.Secured=true blocks non-root IMDS access inside containers.
       - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
     volumes:
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/prometheus/rules:/etc/prometheus/rules:ro'
+      - '__MONITORING_HOME__/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml'
+      - '__MONITORING_HOME__/prometheus/rules:/etc/prometheus/rules:ro'
       - 'prometheus-data:/prometheus'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
     image: prom/prometheus:v3.1.0
@@ -53,7 +53,7 @@ services:
       # Empty file when Cognito is not configured (no-op).
       - '/run/grafana-secrets/cognito.env'
     volumes:
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/grafana:/etc/grafana/provisioning'
+      - '__MONITORING_HOME__/grafana:/etc/grafana/provisioning'
       - 'grafana-data:/var/lib/grafana'
       - '/run/grafana-secrets:/run/grafana-secrets:ro'
     image: grafana/grafana:11.2.2
@@ -79,9 +79,9 @@ services:
     pid: host
     restart: unless-stopped
     volumes:
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/nginx/conf.d:/etc/nginx/conf.d/'
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/nginx/ssl:/etc/ssl/'
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/www:/usr/share/nginx/html'
+      - '__MONITORING_HOME__/nginx/conf.d:/etc/nginx/conf.d/'
+      - '__MONITORING_HOME__/nginx/ssl:/etc/ssl/'
+      - '__MONITORING_HOME__/www:/usr/share/nginx/html'
     image: nginx:1.27-alpine
 
   cloudwatch-exporter:
@@ -92,7 +92,7 @@ services:
     environment:
       - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
     volumes:
-      - '/home/${cfn_cluster_user}/__MONITORING_DIR__/cloudwatch-exporter/config.yml:/config/config.yml:ro'
+      - '__MONITORING_HOME__/cloudwatch-exporter/config.yml:/config/config.yml:ro'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
     image: prom/cloudwatch-exporter:v0.16.0
 

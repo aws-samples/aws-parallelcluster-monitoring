@@ -20,7 +20,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 detect_platform
 
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
-MONITORING_HOME="/home/${PLATFORM_USER}/${MONITORING_DIR_NAME}"
+# Derive MONITORING_HOME from where this script actually lives (the extracted
+# tree's installer/ dir → its parent), so it works wherever post-install.sh
+# extracted it. NOTE: this must be node-LOCAL (post-install.sh uses /opt), never
+# the shared /home — see the Stale-file-handle note in post-install.sh.
+MONITORING_HOME="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export MONITORING_HOME MONITORING_DIR_NAME
 
 log "Platform: ${PLATFORM}"
@@ -52,7 +56,7 @@ case "${PLATFORM_NODE_TYPE}" in
 
         # Extract context from chef dna.json and CloudFormation.
 
-        chown "${PLATFORM_USER}:${PLATFORM_USER}" -R "/home/${PLATFORM_USER}"
+        chown "${PLATFORM_USER}:${PLATFORM_USER}" -R "${MONITORING_HOME}"
         chmod +x "${MONITORING_HOME}/custom-metrics/"*
 
         cp -rp "${MONITORING_HOME}/custom-metrics/"* /usr/local/bin/
@@ -88,7 +92,7 @@ case "${PLATFORM_NODE_TYPE}" in
         fi
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/cloudwatch-exporter/config.yml"
-        sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" "${MONITORING_HOME}/compose/head.yml"
+        sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" "${MONITORING_HOME}/compose/head.yml"
 
         # Deploy platform-specific dashboards alongside the shared ones,
         # then remove the OTHER platform's subdirectory entirely (Grafana
@@ -249,18 +253,13 @@ COGENV
         systemctl enable --now prometheus-creds-refresh.timer
         log "EC2 credential refresh timer active"
 
-        # Start the monitoring stack.
-        # Generate a compose env file with the variables head.yml references.
-        # We must export cfn_cluster_user (legacy name used throughout the
-        # compose file) regardless of platform to avoid rewriting the file.
-        cat > /tmp/compose.env <<ENVFILE
-cfn_cluster_user=${PLATFORM_USER}
-ENVFILE
+        # Start the monitoring stack. Bind-mount source paths are resolved by
+        # the __MONITORING_HOME__ substitution above (node-local /opt path), so
+        # no compose env file is needed.
         cd "${MONITORING_HOME}"
-        docker compose --env-file /tmp/compose.env \
+        docker compose \
             -f "${MONITORING_HOME}/compose/head.yml" \
             -p monitoring-head up -d
-        rm -f /tmp/compose.env
 
         # Slurm job-to-node textfile collector (Phase 3c).
         # Runs every 30s, writes /var/lib/prometheus/node-exporter/slurm_jobs.prom
@@ -308,17 +307,13 @@ ENVFILE
             nvidia-ctk runtime configure --runtime=docker
             systemctl restart docker
 
-            # compute.gpu.yml needs cfn_cluster_user (for the dcgm
-            # counters bind-mount) and __MONITORING_DIR__ substituted.
-            sed -i "s|__MONITORING_DIR__|${MONITORING_DIR_NAME}|g" \
+            # compute.gpu.yml's dcgm counters bind-mount resolves via the
+            # __MONITORING_HOME__ substitution (node-local /opt path).
+            sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" \
                 "${MONITORING_HOME}/compose/compute.gpu.yml"
-            cat > /tmp/compose.env <<ENVFILE
-cfn_cluster_user=${PLATFORM_USER}
-ENVFILE
-            docker compose --env-file /tmp/compose.env \
+            docker compose \
                 -f "${MONITORING_HOME}/compose/compute.gpu.yml" \
                 -p monitoring-compute up -d
-            rm -f /tmp/compose.env
         else
             docker compose -f "${MONITORING_HOME}/compose/compute.yml" \
                 -p monitoring-compute up -d
