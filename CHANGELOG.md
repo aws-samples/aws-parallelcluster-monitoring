@@ -1,5 +1,91 @@
 # Changelog
 
+## v2.6.5 — 2026-06-03
+
+GPU monitoring fixes for AWS PCS on Docker 29.x. No breaking changes.
+Contributed and validated on real PCS GPU hardware by
+[@DaisukeMiyamoto](https://github.com/DaisukeMiyamoto).
+
+### Fixed
+- `compose/compute.gpu.yml`: repin dcgm-exporter from
+  `4.5.2-4.8.1-ubuntu22.04` to `4.2.0-4.1.0-ubuntu22.04`. From tag
+  4.2.3 onward NVCR publishes an OCI image index with attestation/SBOM
+  manifests that Docker 29.x cannot pull (`error from registry:
+  Incorrect Repository Format`), leaving GPU compute nodes with no
+  dcgm-exporter and empty GPU dashboards. `4.2.0-4.1.0` is the newest
+  tag whose manifest is a plain Docker manifest-list v2; it pulls
+  cleanly on Docker 29.x and emits the same `DCGM_FI_DEV_*` fields the
+  dashboards use. (#47 via #49)
+- `grafana/dashboards/gpu-health.json`: remove the "GPUs with thermal
+  throttle" and "GPUs with power throttle" summary tiles. They counted
+  `rate(DCGM_FI_DEV_*_VIOLATION[1h]) > 0`, but those are monotonic
+  accumulated-throttle-time counters, so any GPU that has ever
+  throttled reads non-zero — healthy H100s were flagged red essentially
+  always (16/16 on an idle cluster). The per-node throttle time-series
+  panels below are kept as relative trends. (#47 via #49)
+
+### Notes
+- The earlier GPU Health XID summary-tile false-positive (also #47) was
+  fixed in v2.6.4: `count_over_time(DCGM_FI_DEV_XID_ERRORS[1h]) > 0`
+  (sample count, always true) → `max_over_time(...) > 0`.
+
+## v2.6.4 — 2026-06-03
+
+AWS PCS reliability fixes. No breaking changes. Contributed and
+validated on real PCS hardware by
+[@DaisukeMiyamoto](https://github.com/DaisukeMiyamoto).
+
+### Fixed
+- `prometheus/prometheus-pcs.yml`: fix Login Node dashboard HTTP 422
+  (`many-to-many matching not allowed`). A PCS-managed login node
+  carries the `aws:pcs:cluster-id` tag, so it was discovered by both
+  the static `login_node` job and EC2 service discovery, producing
+  duplicate `node_uname_info` series for one `instance_id` that broke
+  the dashboard `* on(instance_id) group_left(...)` joins. Node-type
+  selection now keys on the existing `monitoring-role` tag and drops
+  `monitoring-role=login` from EC2 SD, so the login node is scraped
+  only once. (#45 via #46)
+- First-boot `Stale file handle` race: the installer extracted,
+  `chown`ed, and `sed`ed the monitoring tree under the shared `/home`
+  filesystem (FSx/NFS on PCS). Concurrent login + compute bootstrap
+  clobbered each other's inodes, intermittently failing with
+  `error reading input file: Stale file handle` and leaving nodes
+  unmonitored. The tree now installs on node-local `/opt`
+  (`post-install.sh`, `installer/install.sh`); compose bind-mounts
+  resolve via a `__MONITORING_HOME__` token and the per-platform
+  compose env file is dropped. (#48)
+
+### Changed
+- node-type selection on PCS is now decoupled from the user-facing
+  `Name` tag — `Name` is free for arbitrary operator use. Everything
+  left in EC2 SD after the `monitoring-role=login` drop is reported as
+  `instance_name=Compute`. Backward compatible: nodes without a
+  `monitoring-role` tag are treated as compute, and legacy
+  `Name=Compute` nodes resolve to the same value.
+
+## v2.6.3 — 2026-05-31
+
+Ubuntu support for AWS PCS AMIs. No breaking changes. Contributed and
+validated on the PCS Ubuntu 24.04 DLAMI base by
+[@DaisukeMiyamoto](https://github.com/DaisukeMiyamoto).
+
+### Fixed
+- Enable a clean install on Ubuntu-based PCS AMIs, where the OS user is
+  `ubuntu` rather than `ec2-user`:
+  - `installer/install.sh`: remove an illegal top-level `local`
+    declaration in the PCS login-node branch. Under Ubuntu's bash with
+    `set -euo pipefail` this raised `local: can only be used in a
+    function` and aborted the install (AL2023's environment happened to
+    tolerate it).
+  - `installer/platform/pcs.sh` and `post-install.sh`: auto-detect the
+    platform user (`ubuntu` when `/home/ubuntu` exists and the `ubuntu`
+    user is present, otherwise the existing `ec2-user` default).
+
+### Notes
+- Fully backward compatible with Amazon Linux 2023: when `/home/ubuntu`
+  is absent, the `ec2-user` default is preserved. No changes to the
+  ParallelCluster (`pcluster`) code path. (#43 via #44)
+
 ## v2.4 — 2026-05-13
 
 DCGM coverage expansion. New GPU Health dashboard plus the Datacenter
