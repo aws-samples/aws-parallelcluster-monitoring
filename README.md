@@ -170,6 +170,15 @@ bash /tmp/post-install.sh latest
 - `MetadataOptions.InstanceMetadataTags=enabled`
 - Same user data as above
 
+> **Newer GPUs (e.g. B300):** the dcgm-exporter image defaults to a build
+> that pulls cleanly on Docker 29.x but only covers up to B200. For GPUs
+> needing DCGM ≥ 4.4.0 (such as B300 / p6-b300), export
+> `DCGM_EXPORTER_IMAGE` before the installer runs — set it in the compute
+> node's user data. Supply the image **by digest** to bypass the Docker
+> 29.x OCI-index pull failure, e.g.
+> `export DCGM_EXPORTER_IMAGE=nvcr.io/nvidia/k8s/dcgm-exporter@sha256:<digest>`.
+> Leave it unset to use the default.
+
 ### 3. IAM instance profile permissions
 
 The instance profile needs:

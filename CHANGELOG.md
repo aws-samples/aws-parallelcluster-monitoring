@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.9.1 — 2026-06-04
+
+GPU image configurability. No breaking changes. Contributed by
+[@DaisukeMiyamoto](https://github.com/DaisukeMiyamoto), validated on real
+B300 (p6-b300) and B200 (p6-b200) hardware.
+
+### Added
+- `compose/compute.gpu.yml`: the dcgm-exporter image is now overridable via
+  the `DCGM_EXPORTER_IMAGE` environment variable, defaulting to the existing
+  `4.2.0-4.1.0-ubuntu22.04` pin. The installer exports it (empty when unset,
+  so the inline compose default applies) before the GPU `docker compose up`.
+  Lets newer GPUs that need DCGM ≥ 4.4.0 (e.g. B300) run a capable build —
+  supplied by digest to bypass the Docker 29.x OCI-index pull failure (#47) —
+  without forking. Fully backward compatible. (#50 via #51)
+- README: documented the `DCGM_EXPORTER_IMAGE` override (by-digest example)
+  in the compute-node launch-template section.
+
 ## v2.9 — 2026-06-04
 
 Grafana 11 → 13 upgrade. The deferred major bump from the v2.8 dependency
