@@ -1,0 +1,262 @@
+{
+  "uid": "cluster-logs",
+  "title": "Cluster Logs",
+  "schemaVersion": 39,
+  "editable": true,
+  "graphTooltip": 0,
+  "refresh": "30s",
+  "time": {
+    "from": "now-12h",
+    "to": "now"
+  },
+  "tags": ["parallelcluster"],
+  "links": [
+    {
+      "title": "Cluster Summary",
+      "url": "/grafana/d/r9_U2AzGz/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Slurm Detail",
+      "url": "/grafana/d/slurm-detail/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Compute Node List",
+      "url": "/grafana/d/compute-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Node List",
+      "url": "/grafana/d/gpu-node-list/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "GPU Health",
+      "url": "/grafana/d/gpu-health/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Cluster Costs",
+      "url": "/grafana/d/cluster-costs/",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    },
+    {
+      "title": "Storage",
+      "url": "/grafana/d/storage/storage",
+      "type": "link",
+      "icon": "dashboard",
+      "targetBlank": false
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "search",
+        "label": "Filter text",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Slurm",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "type": "logs",
+      "title": "slurmctld (HeadNode scheduler)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 1 },
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @logStream like /slurmctld/ | filter @message like /$search/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "slurmd (compute node daemon)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 1 },
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @logStream like /slurmd/ | filter @message like /$search/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "ParallelCluster daemons",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "panels": []
+    },
+    {
+      "type": "logs",
+      "title": "clustermgtd (cluster manager)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 14 },
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @logStream like /clustermgtd/ | filter @message like /$search/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "computemgtd (compute health)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 14 },
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @logStream like /computemgtd/ | filter @message like /$search/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Bootstrap / init",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "panels": []
+    },
+    {
+      "type": "logs",
+      "title": "cfn-init (cluster bootstrap actions)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 27 },
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @logStream like /cfn-init/ | filter @message like /$search/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "cloud-init (OS / user-data)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 27 },
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @logStream like /cloud-init/ | filter @message like /$search/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "All streams",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
+      "panels": []
+    },
+    {
+      "type": "logs",
+      "title": "Cluster Logs (all streams in selected group)",
+      "datasource": "cloudwatch",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 40 },
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "__AWS_REGION__",
+          "logGroups": [{ "arn": "__LOG_GROUP_ARN__", "name": "__LOG_GROUP_NAME__" }],
+          "expression": "fields @timestamp, @logStream, @message | filter @message like /$search/ | sort @timestamp desc | limit 200"
+        }
+      ]
+    }
+  ]
+}

@@ -13,10 +13,16 @@ services:
     restart: unless-stopped
     volumes:
       - '/:/host:ro,rslave'
+      - '/var/lib/prometheus/node-exporter:/textfile:ro'
     image: quay.io/prometheus/node-exporter:v1.9.0
     command:
       - '--path.rootfs=/host'
       - '--collector.infiniband'
+      # EFA hw_counters (RDMA, SRD retransmits, WR errors) are published
+      # via the textfile collector by efa-metrics.sh — node_exporter's
+      # infiniband collector does not read the hw_counters/ directory.
+      - '--collector.textfile'
+      - '--collector.textfile.directory=/textfile'
 
   dcgm-exporter:
     container_name: nvidia-dcgm

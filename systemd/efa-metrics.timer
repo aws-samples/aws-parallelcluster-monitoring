@@ -1,0 +1,10 @@
+[Unit]
+Description=EFA hw_counters collector every 30s
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

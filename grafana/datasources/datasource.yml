@@ -23,5 +23,4 @@ datasources:
     editable: true
     jsonData:
       authType: default
-      defaultRegion: us-east
-      
+      defaultRegion: __AWS_REGION__

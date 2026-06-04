@@ -16,9 +16,10 @@ Slurm metrics as containers — no manual configuration required.
 - **GPU health monitoring**: XID errors, throttle reasons, ECC counters, NVLink errors, retired pages
 - **Secure by default**: per-cluster random password in SSM, optional Cognito SSO
 - **GPU-ready**: NVIDIA DCGM exporter with custom counters auto-deploys on GPU instances
-- **EFA-ready**: InfiniBand/EFA metrics collected automatically
+- **EFA fabric metrics**: bandwidth, packet rate, RDMA read/write throughput, SRD retransmits and work-request errors — collected automatically on EFA hardware
 - **Cost tracking**: real-time cost/hour estimates + accumulated total (includes PCS controller cost)
 - **Job mapping**: see which Slurm jobs run on which nodes
+- **Log search in Grafana**: CloudWatch Logs (slurmctld, slurmd, cluster daemons, bootstrap) browsable from a dashboard (ParallelCluster)
 - **Works with `Imds.Secured=true`**: no IMDS workarounds needed
 
 ## Dashboards
@@ -28,7 +29,7 @@ Slurm metrics as containers — no manual configuration required.
 | **Cluster Summary** | Both | Cluster overview: Slurm states, CPU/memory aggregates, idle node-hours, top users / partitions |
 | **Slurm Detail** | Both | Per-partition / per-user / per-account breakdown, queue health, scheduler RPC stats, license usage |
 | **Compute Node List** | Both | Fleet table with CPU/Mem/Disk/Network gauges, Queue column, job info, click-through |
-| **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA) |
+| **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA bandwidth/RDMA/retransmits/errors) |
 | **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through by hostname |
 | **GPU Node Details** | Both | Per-GPU workload metrics + Compute Pipeline activity (SM, tensor, FP64/32/16) + system metrics (CPU/mem/disk/net) |
 | **GPU Health** | Both | Cluster-wide GPU faults: XID errors, throttle reasons, ECC, NVLink + PCIe errors, retired pages |
@@ -36,6 +37,7 @@ Slurm metrics as containers — no manual configuration required.
 | **Login Node List** | PCS | Login nodes table with click-through to node details |
 | **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS, PCS controller) + accumulated total |
 | **Storage (FSx + EFS)** | Both | FSx Lustre throughput, IOPS, capacity, CPU/disk utilization; EFS throughput, IO limit, connections, storage |
+| **Cluster Logs** | ParallelCluster | Searchable CloudWatch Logs (slurmctld, slurmd, clustermgtd, computemgtd, cfn-init, cloud-init) with log-group picker and text filter |
 
 
 ## Screenshots

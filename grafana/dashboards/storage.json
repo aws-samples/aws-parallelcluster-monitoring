@@ -350,6 +350,7 @@
     {
       "type": "timeseries",
       "title": "FSx Disk Throughput Utilization %",
+      "description": "Only published by FSx for Lustre Persistent-2 (and some Persistent-1 SSD) deployments under load. Scratch and HDD file systems do not emit FileServerDiskThroughputUtilization, so this panel stays empty for them.",
       "gridPos": {
         "h": 7,
         "w": 12,
@@ -382,6 +383,7 @@
     {
       "type": "timeseries",
       "title": "FSx CPU Utilization %",
+      "description": "Only published by FSx for Lustre Persistent-2 (and some Persistent-1 SSD) deployments under load. Scratch and HDD file systems do not emit CPUUtilization, so this panel stays empty for them.",
       "gridPos": {
         "h": 7,
         "w": 12,
@@ -478,7 +480,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "aws_efs_percent_io_limit_average",
+          "expr": "aws_efs_percent_iolimit_average",
           "instant": true
         }
       ],
@@ -615,17 +617,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(aws_efs_data_read_io_bytes_sum[5m])",
+          "expr": "rate(aws_efs_data_read_iobytes_sum[5m])",
           "legendFormat": "Read {{file_system_id}}"
         },
         {
           "refId": "B",
-          "expr": "rate(aws_efs_data_write_io_bytes_sum[5m])",
+          "expr": "rate(aws_efs_data_write_iobytes_sum[5m])",
           "legendFormat": "Write {{file_system_id}}"
         },
         {
           "refId": "C",
-          "expr": "rate(aws_efs_metadata_io_bytes_sum[5m])",
+          "expr": "rate(aws_efs_metadata_iobytes_sum[5m])",
           "legendFormat": "Metadata {{file_system_id}}"
         }
       ],
@@ -657,7 +659,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "aws_efs_percent_io_limit_average",
+          "expr": "aws_efs_percent_iolimit_average",
           "legendFormat": "{{file_system_id}}"
         }
       ],

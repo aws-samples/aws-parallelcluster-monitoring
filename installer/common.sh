@@ -100,6 +100,23 @@ install_slurm_exporter() {
 }
 
 # ---------------------------------------------------------------------------
+# Install the EFA hw_counters textfile collector + systemd timer.
+# Safe on all nodes/instances: efa-metrics.sh writes an empty file when no
+# EFA hardware is present. Called on head/login and compute nodes so EFA
+# panels populate wherever EFA-capable instances run node_exporter.
+# ---------------------------------------------------------------------------
+install_efa_collector() {
+    mkdir -p /var/lib/prometheus/node-exporter
+    install -m 0755 "${MONITORING_HOME}/custom-metrics/efa-metrics.sh" /usr/local/bin/
+    install -m 0644 "${MONITORING_HOME}/systemd/efa-metrics.service" /etc/systemd/system/
+    install -m 0644 "${MONITORING_HOME}/systemd/efa-metrics.timer" /etc/systemd/system/
+    systemctl daemon-reload
+    /usr/local/bin/efa-metrics.sh || true   # first run (no-op without EFA)
+    systemctl enable --now efa-metrics.timer
+    log "EFA hw_counters textfile collector active"
+}
+
+# ---------------------------------------------------------------------------
 # Verify that "docker" and "docker compose" (v2) both work.
 # ---------------------------------------------------------------------------
 verify_docker() {

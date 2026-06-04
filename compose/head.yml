@@ -48,6 +48,10 @@ services:
       - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
       # Land every user on ParallelCluster Summary after login.
       - 'GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/ParallelCluster.json'
+      # AWS creds for the CloudWatch datasource (Logs dashboard). Same
+      # host-refreshed credentials file Prometheus/cloudwatch-exporter use;
+      # required because Imds.Secured=true blocks IMDS from containers.
+      - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
     env_file:
       # Cognito OAuth2 config, materialized by installer from SSM.
       # Empty file when Cognito is not configured (no-op).
@@ -56,6 +60,7 @@ services:
       - '__MONITORING_HOME__/grafana:/etc/grafana/provisioning'
       - 'grafana-data:/var/lib/grafana'
       - '/run/grafana-secrets:/run/grafana-secrets:ro'
+      - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
     image: grafana/grafana:11.2.2
 
   prometheus-node-exporter:

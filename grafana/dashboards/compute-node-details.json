@@ -2285,7 +2285,7 @@
       },
       "targets": [
         {
-          "expr": "8 * rate(node_infiniband_port_data_received_bytes_total{instance_id=\"$node_instance_id\"}[1m])",
+          "expr": "8 * rate(node_amazonefa_rx_bytes{instance_id=\"$node_instance_id\"}[1m])",
           "legendFormat": "{{device}} port {{port}} RX",
           "refId": "A"
         }
@@ -2309,7 +2309,7 @@
       },
       "targets": [
         {
-          "expr": "8 * rate(node_infiniband_port_data_transmitted_bytes_total{instance_id=\"$node_instance_id\"}[1m])",
+          "expr": "8 * rate(node_amazonefa_tx_bytes{instance_id=\"$node_instance_id\"}[1m])",
           "legendFormat": "{{device}} port {{port}} TX",
           "refId": "A"
         }
@@ -2333,7 +2333,7 @@
       },
       "targets": [
         {
-          "expr": "rate(node_infiniband_port_packets_received_total{instance_id=\"$node_instance_id\"}[1m])",
+          "expr": "rate(node_amazonefa_rx_pkts{instance_id=\"$node_instance_id\"}[1m])",
           "legendFormat": "{{device}} port {{port}} RX",
           "refId": "A"
         }
@@ -2357,9 +2357,114 @@
       },
       "targets": [
         {
-          "expr": "rate(node_infiniband_port_packets_transmitted_total{instance_id=\"$node_instance_id\"}[1m])",
+          "expr": "rate(node_amazonefa_tx_pkts{instance_id=\"$node_instance_id\"}[1m])",
           "legendFormat": "{{device}} port {{port}} TX",
           "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "EFA RDMA Read Throughput",
+      "description": "RDMA read bytes/s from EFA hw_counters (node_amazonefa_rdma_read_bytes). Populated by the efa-metrics.sh textfile collector on EFA-capable instances.",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1016
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "8 * rate(node_amazonefa_rdma_read_bytes{instance_id=\"$node_instance_id\"}[1m])",
+          "legendFormat": "{{device}} port {{port}} RDMA read",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "EFA RDMA Write Throughput",
+      "description": "RDMA write bytes/s from EFA hw_counters (node_amazonefa_rdma_write_bytes).",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1016
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "8 * rate(node_amazonefa_rdma_write_bytes{instance_id=\"$node_instance_id\"}[1m])",
+          "legendFormat": "{{device}} port {{port}} RDMA write",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "EFA SRD Retransmitted Packets",
+      "description": "EFA Scalable Reliable Datagram retransmissions/s (node_amazonefa_retrans_pkts). Sustained non-zero values indicate fabric packet loss or congestion — the closest EFA equivalent of a 'dropped packet' signal.",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1024
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(node_amazonefa_retrans_pkts{instance_id=\"$node_instance_id\"}[1m])",
+          "legendFormat": "{{device}} port {{port}} retrans",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "EFA Work-Request Errors",
+      "description": "RDMA read/write work-request error rate from EFA hw_counters (node_amazonefa_rdma_read_wr_err + rdma_write_wr_err). Should normally be flat at zero.",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1024
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(node_amazonefa_rdma_read_wr_err{instance_id=\"$node_instance_id\"}[5m])",
+          "legendFormat": "{{device}} port {{port}} read WR err",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_amazonefa_rdma_write_wr_err{instance_id=\"$node_instance_id\"}[5m])",
+          "legendFormat": "{{device}} port {{port}} write WR err",
+          "refId": "B"
         }
       ]
     }

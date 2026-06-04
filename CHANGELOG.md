@@ -1,5 +1,71 @@
 # Changelog
 
+## v2.7 — 2026-06-03
+
+EFA fabric metrics and a searchable CloudWatch Logs dashboard. No breaking
+changes. Closes the main gaps identified against the AWS HPC blog's
+`observability_for_pcs` solution.
+
+### Added
+- **EFA hardware counters** via a new textfile collector
+  (`custom-metrics/efa-metrics.sh` + `systemd/efa-metrics.{service,timer}`).
+  node_exporter's `--collector.infiniband` only reads the standard IB
+  `counters/` directory; the EFA-specific counters
+  (RDMA read/write bytes, SRD retransmits, work-request errors) live in
+  `/sys/class/infiniband/<dev>/ports/<port>/hw_counters/`, which it does
+  not read. The collector surfaces them as `node_amazonefa_*` metrics
+  (matching the upstream awsome-distributed-training EFA exporter names),
+  scraped via node_exporter's textfile collector on compute and head/login
+  nodes. Emits an empty file on non-EFA instances (no-op).
+- **Compute Node Details**: four new EFA panels — RDMA Read Throughput,
+  RDMA Write Throughput, SRD Retransmitted Packets, and Work-Request
+  Errors — alongside the existing bandwidth/packet-rate panels. The
+  existing bandwidth/packet panels were also migrated from the stock
+  `node_infiniband_*` metrics to `node_amazonefa_*`: on real EFA hardware
+  node_exporter's infiniband collector emits no `node_infiniband_*`
+  series, so those panels previously stayed empty on EFA instances.
+- New **Cluster Logs** dashboard (`grafana/dashboards/pcluster/logs.json`,
+  ParallelCluster only): searchable CloudWatch Logs for slurmctld, slurmd,
+  clustermgtd, computemgtd, cfn-init, and cloud-init, plus an all-streams
+  panel. Includes a `log_group` picker (CloudWatch `logGroups` template
+  variable, auto-discovers `/aws/parallelcluster/*`) and a free-text
+  filter — no per-cluster token substitution needed. Replaces the old
+  `logs.json.disabled` stub.
+
+### Changed
+- `compose/compute.yml` and `compose/compute.gpu.yml`: node_exporter now
+  runs the textfile collector (`--collector.textfile`) so EFA metrics are
+  scraped on compute nodes (head node already had it).
+- `compose/head.yml`: the Grafana container now mounts the host-refreshed
+  AWS credentials file (`/run/prometheus-ec2-creds`) so the CloudWatch
+  datasource can read Logs under `Imds.Secured=true`.
+- `custom-metrics/refresh-ec2-credentials.sh`: the credentials file is now
+  world-readable (0644, tmpfs-only) so all three consumer containers can
+  read it — prometheus (uid 65534), cloudwatch-exporter (uid 0), and
+  grafana (uid 472/gid 0). The previous `root:65534 0640` blocked Grafana.
+- `grafana/datasources/datasource.yml`: CloudWatch `defaultRegion` is now
+  substituted from the cluster region (was hardcoded to an invalid
+  `us-east`); the installer also `sed`s `__AWS_REGION__` here.
+- `installer/install.sh`: on ParallelCluster, wires the Cluster Logs
+  dashboard to the cluster's CloudWatch log group by substituting the log
+  group name (from `/etc/chef/dna.json`) and ARN (built from region +
+  account). Drops the dashboard if logging is disabled.
+
+### Notes
+- EFA metrics require EFA-capable instances (p4/p5/hpc6a/c5n/...). The
+  required CloudWatch Logs IAM permissions are already in
+  `iam/monitoring-head-node-policy.json`.
+- `node_amazonefa_*` counters intentionally omit the Prometheus `_total`
+  suffix to stay name-compatible with the upstream EFA node exporter.
+- The Logs dashboard pins the log group ARN at install time rather than
+  using a template variable: Grafana's CloudWatch logs query requires the
+  ARN, and the PC log group name carries a creation-timestamp suffix that
+  can't be hardcoded.
+- Validated end-to-end on a live PC cluster (hpc8a.96xlarge + g6e.16xlarge,
+  both EFA-enabled): EFA `node_amazonefa_*` metrics scraped with correct
+  `instance_id` labels, and the Logs dashboard panels return slurmctld /
+  slurmd / computemgtd rows.
+
 ## v2.6.5 — 2026-06-03
 
 GPU monitoring fixes for AWS PCS on Docker 29.x. No breaking changes.

@@ -1,12 +1,20 @@
-# ParallelCluster 3.15 test config.
-# Region us-east-2, reuses the HPC-Prod-Network VPC + private subnet A
-# and the existing 12TB FSx Lustre.
+# ParallelCluster 3.15 test config — v2.7 EFA + Logs validation.
+# Region us-east-2, reuses the HPC-Prod-Network VPC + subnets and the
+# existing 12TB FSx Lustre.
 #
-# 2× t3.medium compute always-on, 2× g4dn.xlarge GPU always-on.
-# Post-install pulls development branch of the monitoring stack from the public repo.
+# Layout (chosen to actually exercise the v2.7 features):
+#   - HeadNode  t3.medium       — runs Grafana/Prometheus; validates the
+#                                 new Cluster Logs dashboard (CloudWatch).
+#   - hpc queue 1x hpc8a.96xlarge (EFA) — pure-EFA HPC node; validates the
+#                                 new EFA RDMA / retransmit / WR-error panels.
+#   - gpu queue 1x g6e.16xlarge  (EFA + 1x L40S) — validates EFA metrics
+#                                 alongside GPU/DCGM (64 vCPU = G quota cap).
 #
-# /home is managed by ParallelCluster via SharedStorageType=efs (PC
-# creates and owns its own EFS). FSx Lustre is mounted at /shared.
+# Post-install pulls the development-2.7 branch of the monitoring stack.
+#
+# /home is managed by ParallelCluster via SharedStorageType=Efs. FSx
+# Lustre is mounted at /shared. EFA requires a single subnet + a cluster
+# placement group per compute resource.
 
 Region: us-east-2
 
@@ -23,15 +31,12 @@ HeadNode:
     RootVolume:
       VolumeType: gp3
       Size: 50
-  # PC 3.8+: tells ParallelCluster to use a managed EFS for /home, /opt/slurm,
-  # /opt/intel etc. instead of NFS-exporting them from the HeadNode EBS volume.
-  # Cleaner than mounting our own EFS on top of /home.
   SharedStorageType: Efs
   CustomActions:
     OnNodeConfigured:
-      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development-2.7/post-install.sh
       Args:
-        - development
+        - development-2.7
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -43,26 +48,30 @@ HeadNode:
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
-    - Name: cpu
+    - Name: hpc
       AllocationStrategy: lowest-price
       ComputeResources:
-        - Name: t3med
+        - Name: hpc8a
           Instances:
-            - InstanceType: t3.medium
-          MinCount: 2
-          MaxCount: 4
+            - InstanceType: hpc8a.96xlarge
+          MinCount: 1
+          MaxCount: 2
+          Efa:
+            Enabled: true
       Networking:
         SubnetIds:
-          - subnet-00643c21d668273ca  # private subnet A
+          - subnet-00643c21d668273ca  # private subnet A (us-east-2b)
+        PlacementGroup:
+          Enabled: true
       ComputeSettings:
         LocalStorage:
           RootVolume:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development-2.7/post-install.sh
           Args:
-            - development
+            - development-2.7
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -70,29 +79,33 @@ Scheduling:
     - Name: gpu
       AllocationStrategy: lowest-price
       ComputeResources:
-        - Name: g4dnxl
+        - Name: g6e16xl
           Instances:
-            - InstanceType: g4dn.xlarge
-          MinCount: 2
-          MaxCount: 4
+            - InstanceType: g6e.16xlarge
+          MinCount: 1
+          MaxCount: 1
+          Efa:
+            Enabled: true
       Networking:
         SubnetIds:
-          - subnet-00643c21d668273ca  # private subnet A
+          - subnet-00643c21d668273ca  # private subnet A (us-east-2b)
+        PlacementGroup:
+          Enabled: true
       ComputeSettings:
         LocalStorage:
           RootVolume:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/development-2.7/post-install.sh
           Args:
-            - development
+            - development-2.7
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
 # Reuse the existing 12TB FSx Lustre as /shared. /home is handled by
-# HeadNode.SharedStorageType=efs above (PC creates a managed EFS).
+# HeadNode.SharedStorageType=Efs above (PC creates a managed EFS).
 SharedStorage:
   - Name: fsx-shared
     StorageType: FsxLustre

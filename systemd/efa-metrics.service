@@ -1,0 +1,7 @@
+[Unit]
+Description=Collect Amazon EFA hw_counters for Prometheus (textfile collector)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/efa-metrics.sh
+User=root

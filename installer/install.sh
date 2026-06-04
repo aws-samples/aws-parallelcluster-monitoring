@@ -92,21 +92,55 @@ case "${PLATFORM_NODE_TYPE}" in
         fi
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/cloudwatch-exporter/config.yml"
+        sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/grafana/datasources/datasource.yml"
         sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" "${MONITORING_HOME}/compose/head.yml"
 
-        # Deploy platform-specific dashboards alongside the shared ones,
-        # then remove the OTHER platform's subdirectory entirely (Grafana
-        # provisions recursively, so leaving the directory in place would
-        # surface PCS-only dashboards on a ParallelCluster cluster and
-        # vice versa).
+        # Deploy platform-specific dashboards alongside the shared ones.
+        # Grafana provisions the dashboards directory RECURSIVELY, so after
+        # copying ${PLATFORM}/*.json up to the root we must remove BOTH the
+        # pcs/ and pcluster/ subdirectories — otherwise the copied dashboards
+        # exist twice (root + subdir), Grafana sees duplicate UIDs, and
+        # refuses to save ANY provisioned dashboard ("the same UID is used
+        # more than once" → "no database write permissions because of
+        # duplicates"). Removing the active platform's subdir is just as
+        # important as removing the other platform's.
         if [[ -d "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}" ]]; then
             cp -f "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}/"*.json \
                   "${MONITORING_HOME}/grafana/dashboards/" 2>/dev/null || true
         fi
-        case "${PLATFORM}" in
-            parallelcluster) rm -rf "${MONITORING_HOME}/grafana/dashboards/pcs" ;;
-            pcs)             rm -rf "${MONITORING_HOME}/grafana/dashboards/pcluster" ;;
-        esac
+        rm -rf "${MONITORING_HOME}/grafana/dashboards/pcs" \
+               "${MONITORING_HOME}/grafana/dashboards/pcluster"
+
+        # Cluster Logs dashboard (ParallelCluster only): substitute the
+        # CloudWatch log group name + ARN so the Logs panels resolve.
+        # PC writes the cluster log group into /etc/chef/dna.json as
+        # cluster.log_group_name (it carries a creation-timestamp suffix,
+        # so it can't be hardcoded). The Grafana CloudWatch logs query
+        # requires the log group ARN, which we derive from name + region +
+        # account id (from STS). If logging is disabled or the file is
+        # absent, drop the Logs dashboard so it doesn't ship broken.
+        logs_dash="${MONITORING_HOME}/grafana/dashboards/logs.json"
+        if [[ "${PLATFORM}" == "parallelcluster" && -f "${logs_dash}" ]]; then
+            lg_name=""
+            if [[ -r /etc/chef/dna.json ]]; then
+                lg_name=$(python3 -c 'import json,sys
+try:
+    d=json.load(open("/etc/chef/dna.json"))
+    print(d.get("cluster",{}).get("log_group_name",""))
+except Exception:
+    pass' 2>/dev/null || echo "")
+            fi
+            acct_id=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "")
+            if [[ -n "${lg_name}" && -n "${acct_id}" ]]; then
+                lg_arn="arn:aws:logs:${PLATFORM_REGION}:${acct_id}:log-group:${lg_name}:*"
+                sed -i "s|__LOG_GROUP_NAME__|${lg_name}|g" "${logs_dash}"
+                sed -i "s|__LOG_GROUP_ARN__|${lg_arn}|g"   "${logs_dash}"
+                log "Cluster Logs dashboard wired to ${lg_name}"
+            else
+                log "WARN: could not resolve PC log group (logging disabled?); removing Logs dashboard"
+                rm -f "${logs_dash}"
+            fi
+        fi
 
         # Self-signed TLS cert for nginx.
         # Includes multiple SANs so the cert is valid for:
@@ -273,6 +307,10 @@ COGENV
         systemctl enable --now slurm-job-nodes.timer
         log "Slurm job-node textfile collector active"
 
+        # EFA hw_counters collector (head/login may itself be EFA-capable,
+        # and this keeps the collector list consistent across node types).
+        install_efa_collector
+
         # Slurm metrics source:
         #   - ParallelCluster: rivosinc/prometheus-slurm-exporter (port 9092)
         #   - PCS: native OpenMetrics on slurmctld:6817 (no extra process)
@@ -283,6 +321,11 @@ COGENV
 
     compute)
         log "Configuring ComputeFleet node"
+
+        # EFA hw_counters textfile collector. Compute nodes are where EFA
+        # hardware lives (p4/p5/hpc6a/c5n/...); writes an empty file and is
+        # a no-op on non-EFA instances.
+        install_efa_collector
 
         if has_nvidia_gpu; then
             log "NVIDIA GPU detected — installing nvidia-container-toolkit"
