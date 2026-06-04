@@ -61,7 +61,7 @@ services:
       - 'grafana-data:/var/lib/grafana'
       - '/run/grafana-secrets:/run/grafana-secrets:ro'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
-    image: grafana/grafana:11.2.2
+    image: grafana/grafana:13.0.2
 
   prometheus-node-exporter:
     container_name: node-exporter

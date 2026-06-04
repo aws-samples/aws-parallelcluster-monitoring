@@ -96,16 +96,23 @@ case "${PLATFORM_NODE_TYPE}" in
         sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" "${MONITORING_HOME}/compose/head.yml"
 
         # Deploy platform-specific dashboards alongside the shared ones.
+        # The per-platform subdir is named 'pcluster' / 'pcs' (NOT the
+        # ${PLATFORM} value, which is 'parallelcluster' / 'pcs') — map it.
         # Grafana provisions the dashboards directory RECURSIVELY, so after
-        # copying ${PLATFORM}/*.json up to the root we must remove BOTH the
-        # pcs/ and pcluster/ subdirectories — otherwise the copied dashboards
-        # exist twice (root + subdir), Grafana sees duplicate UIDs, and
-        # refuses to save ANY provisioned dashboard ("the same UID is used
-        # more than once" → "no database write permissions because of
-        # duplicates"). Removing the active platform's subdir is just as
+        # copying the platform's *.json up to the root we must remove BOTH
+        # the pcs/ and pcluster/ subdirectories — otherwise the copied
+        # dashboards exist twice (root + subdir), Grafana sees duplicate
+        # UIDs, and refuses to save ANY provisioned dashboard ("the same UID
+        # is used more than once" → "no database write permissions because
+        # of duplicates"). Removing the active platform's subdir is just as
         # important as removing the other platform's.
-        if [[ -d "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}" ]]; then
-            cp -f "${MONITORING_HOME}/grafana/dashboards/${PLATFORM}/"*.json \
+        case "${PLATFORM}" in
+            parallelcluster) dash_subdir="pcluster" ;;
+            pcs)             dash_subdir="pcs" ;;
+            *)               dash_subdir="" ;;
+        esac
+        if [[ -n "${dash_subdir}" && -d "${MONITORING_HOME}/grafana/dashboards/${dash_subdir}" ]]; then
+            cp -f "${MONITORING_HOME}/grafana/dashboards/${dash_subdir}/"*.json \
                   "${MONITORING_HOME}/grafana/dashboards/" 2>/dev/null || true
         fi
         rm -rf "${MONITORING_HOME}/grafana/dashboards/pcs" \

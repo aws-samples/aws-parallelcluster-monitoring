@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.9 — 2026-06-04
+
+Grafana 11 → 13 upgrade. The deferred major bump from the v2.8 dependency
+refresh, handled as its own release given the two-major jump.
+
+### Changed
+- Grafana `11.2.2` → `13.0.2`.
+
+### Fixed
+- **Installer: platform dashboards never deployed on ParallelCluster.**
+  The dashboard-deploy step copied from `grafana/dashboards/${PLATFORM}`,
+  but `PLATFORM` is `parallelcluster` while the subdir is named
+  `pcluster`. The copy silently no-op'd (hidden by `2>/dev/null`) and the
+  follow-up `rm -rf` then deleted `pcluster/`, so `logs.json` (Cluster
+  Logs) and `head-node-details.json` (HeadNode Details) were lost on every
+  clean PC install. PCS was unaffected (`PLATFORM=pcs` matched `pcs/`).
+  Now maps `parallelcluster`→`pcluster`. (Surfaced during Grafana 13
+  validation; v2.7 appeared to work only because those dashboards were
+  hand-deployed during that session.)
+
+### Compatibility audit
+- No Angular panels (removed in v12): all dashboards use modern React
+  panel types (timeseries, stat, table, gauge, bargauge, logs); schema
+  version 39 throughout.
+- No legacy alerting (removed in v11/v12) — this project ships no alert
+  rules.
+- Datasources are file-provisioned and referenced by name, so the v13
+  removal of deprecated numeric-id data source APIs and the RBAC/Terraform
+  data-source-permission changes do not apply.
+- Leftover `valueName` keys on a few `stat` panels are harmless dead
+  fields (the live config is in `options.reduceOptions`); left as-is.
+- Grafana `GF_*` env vars and Cognito OAuth keys unchanged across 11→13.
+
 ## v2.8 — 2026-06-04
 
 Dependency refresh. Bumps the low-risk pinned components to current

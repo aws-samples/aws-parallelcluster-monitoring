@@ -302,7 +302,7 @@ ParallelCluster HeadNode / PCS Login Node
 
 | Component | Version |
 |-----------|---------|
-| Grafana | 11.2.2 |
+| Grafana | 13.0.2 |
 | Prometheus | v3.12.0 |
 | Pushgateway | v1.11.3 |
 | Node Exporter | v1.11.1 |
