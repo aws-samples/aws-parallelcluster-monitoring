@@ -307,7 +307,7 @@ ParallelCluster HeadNode / PCS Login Node
 | Pushgateway | v1.11.2 |
 | Node Exporter | v1.9.0 |
 | NGINX | 1.27-alpine |
-| NVIDIA DCGM Exporter | 4.5.2-4.8.1-ubuntu22.04 |
+| NVIDIA DCGM Exporter | 4.2.0-4.1.0-ubuntu22.04 |
 | prometheus-slurm-exporter | 1.8.0 (ParallelCluster only) |
 | Docker Compose v2 | 2.29.7 |
 | CloudWatch Exporter | v0.16.0 |
