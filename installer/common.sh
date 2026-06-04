@@ -121,7 +121,7 @@ install_efa_collector() {
 # ---------------------------------------------------------------------------
 verify_docker() {
     docker --version >/dev/null 2>&1 || die "docker not installed"
-    docker compose version >/dev/null 2>&1 || die "docker compose v2 plugin not installed"
+    docker compose version >/dev/null 2>&1 || die "docker compose plugin not installed"
     log "docker: $(docker --version)"
     log "compose: $(docker compose version --short)"
 }

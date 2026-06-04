@@ -303,13 +303,13 @@ ParallelCluster HeadNode / PCS Login Node
 | Component | Version |
 |-----------|---------|
 | Grafana | 11.2.2 |
-| Prometheus | v3.1.0 |
-| Pushgateway | v1.11.2 |
-| Node Exporter | v1.9.0 |
+| Prometheus | v3.12.0 |
+| Pushgateway | v1.11.3 |
+| Node Exporter | v1.11.1 |
 | NGINX | 1.27-alpine |
 | NVIDIA DCGM Exporter | 4.2.0-4.1.0-ubuntu22.04 |
 | prometheus-slurm-exporter | 1.8.0 (ParallelCluster only) |
-| Docker Compose v2 | 2.29.7 |
+| Docker Compose | 5.1.4 |
 | CloudWatch Exporter | v0.16.0 |
 
 All images pinned — `latest` is never used.

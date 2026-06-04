@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.8 — 2026-06-04
+
+Dependency refresh. Bumps the low-risk pinned components to current
+upstream releases. No functional changes. Grafana is intentionally held
+at 11.2.2 (the 11→13 jump needs a separate dashboard-compatibility pass)
+and DCGM exporter stays at 4.2.0-4.1.0 (Docker 29.x pull constraint, #47;
+configurability tracked in #50).
+
+### Changed
+- Prometheus `v3.1.0` → `v3.12.0`
+- node_exporter `v1.9.0` → `v1.11.1` (all compose files)
+- Pushgateway `v1.11.2` → `v1.11.3`
+- Docker Compose plugin `v2.29.7` → `v5.1.4` (AL2 / AL2023 binary install;
+  Ubuntu/RHEL continue to use the distro `docker-compose-plugin` package)
+- README Components table synced; dropped stale "v2" wording from the
+  Compose label and installer comments.
+
 ## v2.7 — 2026-06-03
 
 EFA fabric metrics and a searchable CloudWatch Logs dashboard. No breaking

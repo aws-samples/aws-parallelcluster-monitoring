@@ -2,7 +2,7 @@
 # shellcheck disable=SC2154  # PLATFORM_USER from installer/platform/platform.sh
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-# Amazon Linux 2 package installation (docker + compose v2 plugin).
+# Amazon Linux 2 package installation (docker + compose plugin).
 set -euo pipefail
 
 log "Installing docker on Amazon Linux 2"
@@ -10,8 +10,8 @@ log "Installing docker on Amazon Linux 2"
 amazon-linux-extras install -y docker
 yum -y install jq bc tar gzip
 
-# Docker Compose v2 is NOT in AL2 repos. Install as a plugin binary.
-COMPOSE_VERSION="v2.29.7"
+# Docker Compose is NOT in AL2 repos. Install as a plugin binary.
+COMPOSE_VERSION="v5.1.4"
 install -d -m 0755 /usr/libexec/docker/cli-plugins
 curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-$(uname -m)" \
     -o /usr/libexec/docker/cli-plugins/docker-compose

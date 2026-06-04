@@ -19,7 +19,7 @@ dnf -y install bc || log "WARN: bc not available, cost scripts may be degraded"
 
 # AL2023 does not ship docker-compose-plugin in its default repos yet.
 # Install upstream plugin binary.
-COMPOSE_VERSION="v2.29.7"
+COMPOSE_VERSION="v5.1.4"
 install -d -m 0755 /usr/libexec/docker/cli-plugins
 curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-$(uname -m)" \
     -o /usr/libexec/docker/cli-plugins/docker-compose
