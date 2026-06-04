@@ -354,6 +354,11 @@ COGENV
             # __MONITORING_HOME__ substitution (node-local /opt path).
             sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" \
                 "${MONITORING_HOME}/compose/compute.gpu.yml"
+            # Allow the dcgm-exporter image to be overridden (e.g. a B300-capable
+            # DCGM >= 4.4.0 build, supplied by digest to bypass the Docker 29.x
+            # OCI-index pull failure). compute.gpu.yml defaults to the safe 4.2.0
+            # pin when this is unset, so existing behaviour is unchanged. See #50.
+            export DCGM_EXPORTER_IMAGE="${DCGM_EXPORTER_IMAGE:-}"
             docker compose \
                 -f "${MONITORING_HOME}/compose/compute.gpu.yml" \
                 -p monitoring-compute up -d
