@@ -17,6 +17,7 @@ Slurm metrics as containers — no manual configuration required.
 - **Secure by default**: per-cluster random password in SSM, optional Cognito SSO
 - **GPU-ready**: NVIDIA DCGM exporter with custom counters auto-deploys on GPU instances
 - **EFA fabric metrics**: bandwidth, packet rate, RDMA read/write throughput, SRD retransmits and work-request errors — collected automatically on EFA hardware
+- **Amazon RES desktop monitoring**: monitor Research and Engineering Studio VDI desktops (CPU, RAM, GPU) for rightsizing, on the same stack — opt-in, discovered by `res:EnvironmentName` tag
 - **Cost tracking**: real-time cost/hour estimates + accumulated total (includes PCS controller cost)
 - **Job mapping**: see which Slurm jobs run on which nodes
 - **Log search in Grafana**: CloudWatch Logs (slurmctld, slurmd, cluster daemons, bootstrap) browsable from a dashboard (ParallelCluster)
@@ -30,6 +31,8 @@ Slurm metrics as containers — no manual configuration required.
 | **Slurm Detail** | Both | Per-partition / per-user / per-account breakdown, queue health, scheduler RPC stats, license usage |
 | **Compute Node List** | Both | Fleet table with CPU/Mem/Disk/Network gauges, Queue column, job info, click-through |
 | **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA bandwidth/RDMA/retransmits/errors) |
+| **RES Node List** | RES | Amazon RES desktop fleet: Owner, Project, instance type, CPU/Mem/GPU/Disk gauges, network, uptime — click-through to details |
+| **RES Node Details** | RES | Per-desktop deep-dive (CPU, memory, disk, network), mirroring Compute Node Details |
 | **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through by hostname |
 | **GPU Node Details** | Both | Per-GPU workload metrics + Compute Pipeline activity (SM, tensor, FP64/32/16) + system metrics (CPU/mem/disk/net) |
 | **GPU Health** | Both | Cluster-wide GPU faults: XID errors, throttle reasons, ECC, NVLink + PCIe errors, retired pages |
@@ -280,6 +283,64 @@ Args:
 # PCS (in user data)
 bash /tmp/post-install.sh <tag-or-branch> <you>/aws-parallelcluster-monitoring
 ```
+
+## Monitoring Amazon RES desktops
+
+If you run [Amazon Research and Engineering Studio
+(RES)](https://aws.amazon.com/hpc/res/) alongside a ParallelCluster or PCS
+cluster, you can monitor RES VDI desktops on the **same** monitoring stack —
+useful for rightsizing (e.g. spotting an overprovisioned `g5.48xlarge` whose
+GPUs sit idle). RES desktops appear in their own **RES Node List** /
+**RES Node Details** dashboards, separate from the Slurm compute fleet.
+
+This is fully opt-in: nothing changes unless you set `RES_ENVIRONMENT_NAME`.
+
+### 1. Enable RES discovery on the monitoring node
+
+On the ParallelCluster head node (or PCS login node) already running the
+stack, re-run the installer with `RES_ENVIRONMENT_NAME` set to your RES
+environment name (the value of the `res:EnvironmentName` tag RES puts on its
+resources):
+
+```bash
+sudo RES_ENVIRONMENT_NAME=<your-res-env-name> bash /opt/aws-parallelcluster-monitoring/installer/install.sh
+sudo docker restart prometheus
+```
+
+This appends a `res_instances` Prometheus scrape job that discovers every
+running instance tagged `res:EnvironmentName=<your-res-env-name>` and labels
+them `instance_name="RES"`. The head node's IAM role already has
+region-scoped `ec2:DescribeInstances`, so no IAM change is needed when RES is
+in the same region.
+
+### 2. Run the exporters on the RES desktops
+
+Add the installer to your **RES project launch script** (RES → Project →
+launch template, Linux script) so each desktop runs node_exporter (and
+dcgm-exporter on GPU desktops):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh \
+    -o /tmp/post-install.sh
+RES_ENVIRONMENT_NAME=<your-res-env-name> bash /tmp/post-install.sh latest
+```
+
+The desktop is detected as a RES compute node either from the
+`RES_ENVIRONMENT_NAME` you pass, or from the `res:EnvironmentName` instance
+tag via IMDS (requires `InstanceMetadataTags=enabled` on the launch
+template). Already-running desktops can be enrolled by running the same
+command over SSM.
+
+> **Note:** the desktop's security group must allow the monitoring node to
+> reach port `9100` (and `9400` for GPU desktops), the same as for compute
+> nodes.
+
+### 3. View the dashboards
+
+Open **RES Node List** in Grafana. Each row links to **RES Node Details**.
+The Owner and Project columns come from the RES `res:Owner` / `res:Project`
+tags; the GPU% column populates on GPU desktops so idle-GPU rightsizing
+candidates stand out.
 
 ## Supported platforms
 

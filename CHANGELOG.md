@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.10 — 2026-06-12
+
+Amazon RES (Research and Engineering Studio) VDI monitoring, plus a GPU
+clock-unit fix. No breaking changes; RES support is fully opt-in and inert
+unless `RES_ENVIRONMENT_NAME` is set.
+
+### Added
+- **RES desktop monitoring.** RES VDI desktops can now be monitored on the
+  same stack already running on a ParallelCluster/PCS head node. They are
+  treated as compute nodes (node_exporter + dcgm-exporter on GPU desktops)
+  and discovered by their `res:EnvironmentName` tag. (#52)
+  - `prometheus/prometheus-res.yml`: a `res_instances` scrape job
+    (ports 9100 + 9400) that filters on `tag:res:EnvironmentName` and
+    relabels matched instances with a constant `instance_name="RES"`, plus
+    `res_project` / `res_owner` / `res_desktop` labels from RES tags. The
+    installer appends and templates this snippet **only** when
+    `RES_ENVIRONMENT_NAME` is set on the monitoring node — no-op otherwise.
+  - `grafana/dashboards/res-node-list.json` (**RES Node List**): fleet table
+    of RES desktops — Owner, Project, Instance Type, CPU/Mem/GPU/Disk gauges,
+    network, uptime — with click-through to per-node details. GPU% surfaces
+    idle GPU desktops for rightsizing (e.g. an overprovisioned g5.48xlarge).
+  - `grafana/dashboards/res-node-details.json` (**RES Node Details**):
+    per-desktop deep-dive, mirroring Compute Node Details.
+  - `installer/platform/res.sh` + platform detection: `post-install.sh` can
+    run on a RES desktop as a compute node, detected via `RES_ENVIRONMENT_NAME`
+    or the `res:EnvironmentName` IMDS instance tag. Wire it into the RES
+    project launch script.
+
+### Fixed
+- **GPU Details: SM/Memory clock graphs showed Hz instead of GHz.** The two
+  timeseries clock panels applied Grafana's `hertz` unit to the raw DCGM
+  value, which is reported in **MHz** — so ~1980 MHz rendered as ~2 kHz. They
+  now scale by `1e6` before the unit is applied, matching the (already
+  correct) stat panels. `dcgm/counters.csv` documents both clocks as MHz.
+
 ## v2.9.1 — 2026-06-04
 
 GPU image configurability. No breaking changes. Contributed by

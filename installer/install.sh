@@ -90,6 +90,18 @@ case "${PLATFORM_NODE_TYPE}" in
         else
             sed -i "s|__PC_CLUSTER_NAME__|${PLATFORM_CLUSTER_NAME}|g" "${MONITORING_HOME}/prometheus/prometheus.yml"
         fi
+        # Amazon RES (Research and Engineering Studio) VDI discovery — opt-in.
+        # Only when RES_ENVIRONMENT_NAME is set on this monitoring node do we
+        # append the res_instances scrape job, so RES desktops populate the
+        # RES Node List / Details dashboards. No-op otherwise; non-RES
+        # deployments are completely unchanged. Appended BEFORE the region
+        # substitution below so the snippet's __AWS_REGION__ is resolved too.
+        if [[ -n "${RES_ENVIRONMENT_NAME:-}" && -f "${MONITORING_HOME}/prometheus/prometheus-res.yml" ]]; then
+            log "RES discovery enabled for environment: ${RES_ENVIRONMENT_NAME}"
+            sed "s|__RES_ENVIRONMENT_NAME__|${RES_ENVIRONMENT_NAME}|g" \
+                "${MONITORING_HOME}/prometheus/prometheus-res.yml" \
+                >> "${MONITORING_HOME}/prometheus/prometheus.yml"
+        fi
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/prometheus/prometheus.yml"
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/cloudwatch-exporter/config.yml"
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/grafana/datasources/datasource.yml"

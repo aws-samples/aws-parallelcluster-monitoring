@@ -25,13 +25,6 @@
       "targetBlank": false
     },
     {
-      "title": "Slurm Detail",
-      "url": "/grafana/d/slurm-detail/",
-      "type": "link",
-      "icon": "dashboard",
-      "targetBlank": false
-    },
-    {
       "title": "Compute Node List",
       "url": "/grafana/d/compute-node-list/",
       "type": "link",
@@ -48,13 +41,6 @@
     {
       "title": "GPU Node List",
       "url": "/grafana/d/gpu-node-list/",
-      "type": "link",
-      "icon": "dashboard",
-      "targetBlank": false
-    },
-    {
-      "title": "GPU Health",
-      "url": "/grafana/d/gpu-health/",
       "type": "link",
       "icon": "dashboard",
       "targetBlank": false
@@ -87,8 +73,8 @@
           },
           "links": [
             {
-              "title": "View compute node details",
-              "url": "/grafana/d/compute-node-details/?var-node=${__data.fields[\"Node Name\"]}",
+              "title": "View RES node details",
+              "url": "/grafana/d/res-node-details/?var-node=${__data.fields[\"Node Name\"]}",
               "targetBlank": false
             }
           ]
@@ -100,48 +86,24 @@
               "options": "CPU %"
             },
             "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "min",
-                "value": 0
-              },
-              {
-                "id": "max",
-                "value": 100
-              },
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 70
-                    },
-                    {
-                      "color": "red",
-                      "value": 85
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 70 },
+                    { "color": "red", "value": 85 }
                   ]
                 }
               },
               {
                 "id": "custom.cellOptions",
-                "value": {
-                  "type": "gauge",
-                  "mode": "gradient"
-                }
+                "value": { "type": "gauge", "mode": "gradient" }
               }
             ]
           },
@@ -151,48 +113,51 @@
               "options": "Memory %"
             },
             "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "min",
-                "value": 0
-              },
-              {
-                "id": "max",
-                "value": 100
-              },
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 70
-                    },
-                    {
-                      "color": "red",
-                      "value": 85
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 70 },
+                    { "color": "red", "value": 85 }
                   ]
                 }
               },
               {
                 "id": "custom.cellOptions",
+                "value": { "type": "gauge", "mode": "gradient" }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU %"
+            },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              {
+                "id": "thresholds",
                 "value": {
-                  "type": "gauge",
-                  "mode": "gradient"
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "yellow", "value": 10 },
+                    { "color": "green", "value": 30 }
+                  ]
                 }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "gauge", "mode": "gradient" }
               }
             ]
           },
@@ -202,48 +167,24 @@
               "options": "Disk %"
             },
             "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "min",
-                "value": 0
-              },
-              {
-                "id": "max",
-                "value": 100
-              },
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 70
-                    },
-                    {
-                      "color": "red",
-                      "value": 85
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 70 },
+                    { "color": "red", "value": 85 }
                   ]
                 }
               },
               {
                 "id": "custom.cellOptions",
-                "value": {
-                  "type": "gauge",
-                  "mode": "gradient"
-                }
+                "value": { "type": "gauge", "mode": "gradient" }
               }
             ]
           },
@@ -253,35 +194,21 @@
               "options": "Load / Core"
             },
             "properties": [
-              {
-                "id": "decimals",
-                "value": 2
-              },
+              { "id": "decimals", "value": 2 },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "yellow",
-                      "value": 1.0
-                    },
-                    {
-                      "color": "red",
-                      "value": 2.0
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 1.0 },
+                    { "color": "red", "value": 2.0 }
                   ]
                 }
               },
               {
                 "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
+                "value": { "type": "color-text" }
               }
             ]
           },
@@ -291,14 +218,8 @@
               "options": "Network (B/s)"
             },
             "properties": [
-              {
-                "id": "unit",
-                "value": "Bps"
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              }
+              { "id": "unit", "value": "Bps" },
+              { "id": "decimals", "value": 2 }
             ]
           },
           {
@@ -307,14 +228,8 @@
               "options": "Uptime"
             },
             "properties": [
-              {
-                "id": "unit",
-                "value": "s"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              }
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 0 }
             ]
           }
         ]
@@ -334,71 +249,70 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"Compute\"}[1m]))) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((1 - avg by(instance_id) (rate(node_cpu_seconds_total{mode=\"idle\",instance_name=\"RES\"}[1m]))) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "B",
-          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"Compute\"} / node_memory_MemTotal_bytes{instance_name=\"Compute\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((1 - (node_memory_MemAvailable_bytes{instance_name=\"RES\"} / node_memory_MemTotal_bytes{instance_name=\"RES\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "C",
-          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance_name=\"Compute\",mountpoint=\"/\",fstype=~\"ext4|xfs\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((1 - (node_filesystem_avail_bytes{instance_name=\"RES\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance_name=\"RES\",mountpoint=\"/\",fstype=~\"ext4|xfs\"})) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "D",
-          "expr": "(node_load1{instance_name=\"Compute\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "(node_load1{instance_name=\"RES\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"RES\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "E",
-          "expr": "(sum by(instance_id) (rate(node_network_receive_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]) + rate(node_network_transmit_bytes_total{instance_name=\"Compute\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]))) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "(sum by(instance_id) (rate(node_network_receive_bytes_total{instance_name=\"RES\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]) + rate(node_network_transmit_bytes_total{instance_name=\"RES\",device!~\"tap.*|veth.*|br.*|docker.*|virbr.*|lo.*\"}[1m]))) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "F",
-          "expr": "((time() - node_boot_time_seconds{instance_name=\"Compute\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "((time() - node_boot_time_seconds{instance_name=\"RES\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "G",
-          "expr": "node_uname_info{instance_name=\"Compute\"}",
+          "expr": "node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
         },
         {
           "refId": "H",
-          "expr": "slurm_job_node * on(nodename) group_left(instance_id) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "avg by(instance_id) (DCGM_FI_DEV_GPU_UTIL{instance_name=\"RES\"}) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
-          "instant": true
+          "instant": true,
+          "legendFormat": ""
         }
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Compute Nodes (click row for details)",
+      "title": "RES Desktops (click row for details)",
       "type": "table",
       "options": {
         "showHeader": true,
         "footer": {
           "show": false,
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "fields": ""
         },
         "sortBy": [
@@ -430,12 +344,13 @@
               "instance_state": true,
               "instance_vpc": true,
               "instance_az": true,
-              "Value #G": true,
-              "Value #H": true,
-              "state": true
+              "Value #G": true
             },
             "renameByName": {
               "nodename": "Node Name",
+              "res_desktop": "Desktop",
+              "res_owner": "Owner",
+              "res_project": "Project",
               "instance_id": "Instance ID",
               "instance_type": "Instance Type",
               "Value #A": "CPU %",
@@ -444,21 +359,18 @@
               "Value #D": "Load / Core",
               "Value #E": "Network (B/s)",
               "Value #F": "Uptime",
-              "jobid": "Job ID",
-              "user": "User",
-              "jobname": "Job Name",
-              "pc_queue": "Queue"
+              "Value #H": "GPU %"
             },
             "indexByName": {
               "nodename": 0,
-              "jobid": 1,
-              "user": 2,
-              "jobname": 3,
+              "res_desktop": 1,
+              "res_owner": 2,
+              "res_project": 3,
               "instance_id": 4,
               "instance_type": 5,
-              "pc_queue": 6,
-              "Value #A": 7,
-              "Value #B": 8,
+              "Value #A": 6,
+              "Value #B": 7,
+              "Value #H": 8,
               "Value #C": 9,
               "Value #D": 10,
               "Value #E": 11,
@@ -493,7 +405,7 @@
     ]
   },
   "timezone": "",
-  "title": "Compute Node List",
-  "uid": "compute-node-list",
+  "title": "RES Node List",
+  "uid": "res-node-list",
   "version": 1
 }

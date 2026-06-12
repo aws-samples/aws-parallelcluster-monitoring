@@ -1,0 +1,66 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Amazon RES (Research and Engineering Studio) VDI discovery.
+#
+# This snippet is APPENDED to prometheus.yml by installer/install.sh ONLY
+# when RES_ENVIRONMENT_NAME is set on the monitoring (head/login) node. It is
+# never active otherwise, so non-RES deployments are unaffected.
+#
+# RES tags every VDI instance with `res:EnvironmentName` (and project/owner
+# tags). We discover those instances by tag and force a constant
+# instance_name="RES" label so they get their own dashboards (RES Node List /
+# RES Node Details), separate from the Slurm compute fleet.
+#
+# __AWS_REGION__ and __RES_ENVIRONMENT_NAME__ are substituted by the installer.
+  - job_name: 'res_instances'
+    scrape_interval: 5s
+    ec2_sd_configs:
+      # node_exporter on every RES VDI.
+      - port: 9100
+        region: __AWS_REGION__
+        refresh_interval: 10s
+        filters:
+          - name: instance-state-name
+            values: [running]
+          - name: tag:res:EnvironmentName
+            values: ['__RES_ENVIRONMENT_NAME__']
+      # DCGM exporter on GPU VDIs (e.g. g5/g6). Non-GPU desktops simply
+      # report up=0 for 9400, which Prometheus tolerates.
+      - port: 9400
+        region: __AWS_REGION__
+        refresh_interval: 10s
+        filters:
+          - name: instance-state-name
+            values: [running]
+          - name: tag:res:EnvironmentName
+            values: ['__RES_ENVIRONMENT_NAME__']
+    relabel_configs:
+      # Constant marker so RES desktops get their own dashboards. RES sets
+      # the EC2 Name tag per-desktop, so (unlike the PC job) we must NOT
+      # derive instance_name from it.
+      - target_label: instance_name
+        replacement: RES
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance_id
+      - source_labels: [__meta_ec2_availability_zone]
+        target_label: instance_az
+      - source_labels: [__meta_ec2_instance_state]
+        target_label: instance_state
+      - source_labels: [__meta_ec2_instance_type]
+        target_label: instance_type
+      - source_labels: [__meta_ec2_vpc_id]
+        target_label: instance_vpc
+      # RES metadata for the node-list table. res:Project and
+      # res:EnvironmentName are documented RES tags; res:Owner is the
+      # desktop owner (username) — best-effort: if a given RES version uses
+      # a different owner key, adjust the source label below (the label just
+      # stays empty until then, nothing breaks). The Name tag is the
+      # human-readable desktop name RES assigns.
+      - source_labels: [__meta_ec2_tag_res_Project]
+        target_label: res_project
+      - source_labels: [__meta_ec2_tag_res_Owner]
+        target_label: res_owner
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: res_desktop

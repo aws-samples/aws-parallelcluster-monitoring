@@ -8,7 +8,7 @@
 # Exports a uniform set of variables regardless of whether the node is
 # running on ParallelCluster or PCS:
 #
-#   PLATFORM              parallelcluster | pcs
+#   PLATFORM              parallelcluster | pcs | res
 #   PLATFORM_NODE_TYPE    head | compute | login
 #   PLATFORM_CLUSTER_NAME <string>   (unique cluster identifier)
 #   PLATFORM_REGION       <aws-region>
@@ -34,7 +34,26 @@ detect_platform() {
         return 0
     fi
 
-    die "Cannot detect platform: neither /etc/parallelcluster/cfnconfig nor PCS markers found"
+    # RES: explicit RES_ENVIRONMENT_NAME env var (set in the RES project
+    # launch script) or the res:EnvironmentName instance tag via IMDS.
+    if [[ -n "${RES_ENVIRONMENT_NAME:-}" ]] || [[ -n "$(imds_res_environment_name)" ]]; then
+        # shellcheck disable=SC1091
+        . "$(dirname "${BASH_SOURCE[0]}")/res.sh"
+        _load_res
+        return 0
+    fi
+
+    die "Cannot detect platform: no ParallelCluster, PCS, or RES markers found"
+}
+
+# Echo the res:EnvironmentName instance tag from IMDS (empty if absent).
+# Requires InstanceMetadataTags=enabled on the instance.
+imds_res_environment_name() {
+    local token
+    token=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+        http://169.254.169.254/latest/api/token 2>/dev/null) || return 0
+    curl -sf -H "X-aws-ec2-metadata-token: ${token}" \
+        "http://169.254.169.254/latest/meta-data/tags/instance/res:EnvironmentName" 2>/dev/null || return 0
 }
 
 imds_has_pcs_tag() {
