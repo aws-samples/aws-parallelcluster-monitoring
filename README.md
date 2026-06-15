@@ -1,10 +1,13 @@
-# HPC Cluster Monitoring Dashboard <br/> for AWS ParallelCluster & AWS PCS
+# HPC Cluster Monitoring Dashboard <br/> for AWS ParallelCluster & AWS PCS <br/> + Amazon RES virtual desktops
 
 A zero-setup monitoring solution for HPC clusters built with
 [AWS ParallelCluster](https://aws.amazon.com/hpc/parallelcluster/) or
 [AWS Parallel Computing Service (PCS)](https://aws.amazon.com/pcs/).
 Deploys Prometheus, Grafana, node_exporter, NVIDIA DCGM exporter, and
-Slurm metrics as containers — no manual configuration required.
+Slurm metrics as containers — no manual configuration required. It can
+also monitor [Amazon Research and Engineering Studio
+(RES)](https://aws.amazon.com/hpc/res/) virtual desktops alongside the
+cluster for rightsizing.
 
 ## Features
 
@@ -348,6 +351,7 @@ rightsizing candidates stand out.
 |----------|-------------|-------|
 | ParallelCluster 3.10–3.15 | rivosinc/prometheus-slurm-exporter | AL2, AL2023, Ubuntu 22/24, RHEL 9 |
 | AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 |
+| Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
 ## Architecture
 
