@@ -31,7 +31,7 @@ Slurm metrics as containers — no manual configuration required.
 | **Slurm Detail** | Both | Per-partition / per-user / per-account breakdown, queue health, scheduler RPC stats, license usage |
 | **Compute Node List** | Both | Fleet table with CPU/Mem/Disk/Network gauges, Queue column, job info, click-through |
 | **Compute Node Details** | Both | Per-node deep-dive (CPU, memory, disk, network, EFA bandwidth/RDMA/retransmits/errors) |
-| **RES Node List** | RES | Amazon RES desktop fleet: Owner, Project, instance type, CPU/Mem/GPU/Disk gauges, network, uptime — click-through to details |
+| **RES Node List** | RES | Amazon RES desktop fleet: Project, Desktop, instance type, CPU/Mem/GPU/Disk gauges, network, uptime — click-through to details |
 | **RES Node Details** | RES | Per-desktop deep-dive (CPU, memory, disk, network), mirroring Compute Node Details |
 | **GPU Node List** | Both | GPU fleet table: model, utilization, temp, power, memory — click-through by hostname |
 | **GPU Node Details** | Both | Per-GPU workload metrics + Compute Pipeline activity (SM, tensor, FP64/32/16) + system metrics (CPU/mem/disk/net) |
@@ -338,9 +338,9 @@ command over SSM.
 ### 3. View the dashboards
 
 Open **RES Node List** in Grafana. Each row links to **RES Node Details**.
-The Owner and Project columns come from the RES `res:Owner` / `res:Project`
-tags; the GPU% column populates on GPU desktops so idle-GPU rightsizing
-candidates stand out.
+The Project column comes from the RES `res:Project` tag and Desktop from the
+instance `Name` tag; the GPU% column populates on GPU desktops so idle-GPU
+rightsizing candidates stand out.
 
 ## Supported platforms
 

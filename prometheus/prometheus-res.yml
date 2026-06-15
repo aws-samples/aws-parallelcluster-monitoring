@@ -53,14 +53,13 @@
       - source_labels: [__meta_ec2_vpc_id]
         target_label: instance_vpc
       # RES metadata for the node-list table. res:Project and
-      # res:EnvironmentName are documented RES tags; res:Owner is the
-      # desktop owner (username) — best-effort: if a given RES version uses
-      # a different owner key, adjust the source label below (the label just
-      # stays empty until then, nothing breaks). The Name tag is the
-      # human-readable desktop name RES assigns.
+      # res:EnvironmentName are documented RES tags that propagate to every
+      # VDI instance. NOTE: RES does NOT tag instances with the desktop owner
+      # (the owner is held in RES's database, not as an EC2 tag), so there is
+      # deliberately no res_owner here — the Name tag (res_desktop) is the
+      # human-readable per-desktop identifier RES assigns. Project is the
+      # reliable attribution column.
       - source_labels: [__meta_ec2_tag_res_Project]
         target_label: res_project
-      - source_labels: [__meta_ec2_tag_res_Owner]
-        target_label: res_owner
       - source_labels: [__meta_ec2_tag_Name]
         target_label: res_desktop

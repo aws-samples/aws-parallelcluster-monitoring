@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.10.1 — 2026-06-12
+
+RES tag correction. Patch on top of v2.10.
+
+### Fixed
+- **RES Node List: removed the always-empty Owner column.** v2.10 sourced an
+  Owner column from a `res:Owner` instance tag, but RES does not tag VDI
+  instances with the desktop owner — the owner is held in RES's database
+  (`idea_session_owner`), not as an EC2 tag (confirmed against the RES source,
+  `aws/res`). The column would have been permanently blank. The list now shows
+  **Project** (`res:Project`, which RES propagates to every project instance)
+  and **Desktop** (the instance `Name` tag) for attribution. The `res_owner`
+  relabel was dropped from `prometheus/prometheus-res.yml`.
+
 ## v2.10 — 2026-06-12
 
 Amazon RES (Research and Engineering Studio) VDI monitoring, plus a GPU
