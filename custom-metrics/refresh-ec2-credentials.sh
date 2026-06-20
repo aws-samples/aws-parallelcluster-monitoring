@@ -63,14 +63,20 @@ chmod 0644 "${TMP_FILE}"
 chown root:root "${TMP_FILE}"
 
 # Detect whether the IMDS access key actually rotated (IMDS rotates role
-# creds roughly every ~6h). Prometheus re-reads the credentials file on
-# every ec2_sd refresh, so it never goes stale. But long-running JVM/Go
-# consumers — the cloudwatch-exporter and Grafana's CloudWatch datasource —
-# load the credentials provider once at startup and cache it in memory,
-# so when the underlying token expires their CloudWatch calls start
-# returning 403 "security token expired" and the Storage / Logs dashboards
-# go blank. Restart those two containers, but only when the key actually
-# changed, to avoid needless churn on every 5-minute tick.
+# creds roughly every ~6h). Long-running consumers load the AWS credentials
+# provider once at startup and cache it in memory, so when the underlying
+# session token expires their AWS calls start failing until the process is
+# restarted:
+#   - cloudwatch-exporter / Grafana CloudWatch datasource — 403 "security
+#     token expired"; Storage / Logs dashboards go blank.
+#   - prometheus ec2_sd — the AWS SDK for Go used by ec2_sd_config caches the
+#     shared-credentials file in-process and does NOT re-read it when the
+#     token expires, so DescribeInstances returns "RequestExpired: Request has
+#     expired" (misreported as a clock-skew error) and EC2 service discovery
+#     stops finding compute nodes — node/GPU/EFA metrics silently disappear
+#     while the login-local targets (slurm exporter, HeadNode) still look fine.
+# So restart all three on key rotation, but only when the key actually changed,
+# to avoid needless churn on every 5-minute tick.
 OLD_KEY=""
 if [[ -r "${CREDS_FILE}" ]]; then
     OLD_KEY=$(awk -F'= *' '/aws_access_key_id/{print $2; exit}' "${CREDS_FILE}" 2>/dev/null || echo "")
@@ -78,10 +84,10 @@ fi
 mv -f "${TMP_FILE}" "${CREDS_FILE}"
 
 if [[ "${AWS_ACCESS_KEY_ID}" != "${OLD_KEY}" && -n "${OLD_KEY}" ]]; then
-    # Key rotated since last run — bounce the CloudWatch consumers so they
+    # Key rotated since last run — bounce the AWS-credential consumers so they
     # pick up the new credentials. Ignore errors (containers may not exist
     # on compute nodes; this script only does meaningful work on head/login).
-    for c in cloudwatch-exporter grafana; do
+    for c in prometheus cloudwatch-exporter grafana; do
         docker restart "${c}" >/dev/null 2>&1 || true
     done
 fi
