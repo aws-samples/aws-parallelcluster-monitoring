@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.10.2 — 2026-06-22
+
+Prometheus EC2 service-discovery credential-rotation fix. No breaking changes.
+Changes one file (`custom-metrics/refresh-ec2-credentials.sh`).
+
+### Fixed
+- **Prometheus EC2 service discovery silently stopped finding compute nodes
+  ~6h after container start.** `refresh-ec2-credentials.sh` restarted
+  `cloudwatch-exporter` and `grafana` on IMDS key rotation but not
+  `prometheus`, on the (incorrect) assumption that Prometheus re-reads the
+  credentials file on every `ec2_sd` refresh. It does not: the AWS SDK for
+  Go used by `ec2_sd_config` reads `AWS_SHARED_CREDENTIALS_FILE` once at
+  startup and caches the provider in-process, so when the IMDS role token
+  expires (~every 6h) `DescribeInstances` fails with `RequestExpired`
+  (misreported as a clock-skew error) and EC2 service discovery drops every
+  EC2-discovered target — node-exporter (`:9100`) and dcgm-exporter
+  (`:9400`) — so the node/GPU/EFA dashboards go blank. The login/head-local
+  static targets (Slurm exporter, HeadNode node-exporter) keep reporting, so
+  Grafana still looks healthy and the breakage is easy to miss. `prometheus`
+  is now restarted alongside the other two AWS-credential consumers on key
+  rotation, and only when the access key actually changed, so there is no
+  extra churn (~4 restarts/day; ~1s downtime, TSDB persists via volume). (#53)
+
 ## v2.10.1 — 2026-06-12
 
 RES tag correction. Patch on top of v2.10.
