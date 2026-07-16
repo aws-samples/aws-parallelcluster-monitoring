@@ -28,8 +28,12 @@ The figures below are **approximate, order-of-magnitude** estimates for the extr
 
 | Compute node type | Standard method (installer runs on every boot) | Custom AMI (packages + images pre-baked) |
 |---|---|---|
-| CPU node | ~60–120 s of extra boot time (docker + compose install, node-exporter image pull) | ~5–15 s (only `docker compose up -d` against cached images) |
-| GPU node | ~3–6 min of extra boot time (adds NVIDIA Container Toolkit install, Docker restart, large `dcgm-exporter` image pull) | ~15–40 s |
+| CPU node | ~60–120 s of extra boot time (docker + compose install, node-exporter image pull) | ~15–30 s: the container image is served from cache and the package installs are no-ops; on AL2/AL2023 the installer still re-downloads the ~32 MB Compose plugin (see note) |
+| GPU node | ~3–6 min of extra boot time (adds NVIDIA Container Toolkit install, Docker restart, large `dcgm-exporter` image pull) | ~30–60 s: the large `dcgm-exporter` image is served from cache and the toolkit install is a no-op; Docker is still restarted and the Compose plugin re-downloaded |
+
+> **What the custom AMI does and does not skip (measured).** Because `installer/install.sh` always runs the per-OS bootstrap, the boot-time saving comes from **not pulling the container images** (the dominant cost — the `node-exporter` image, and especially the large `dcgm-exporter` image on GPU nodes) and from the package installs becoming fast no-ops (`docker`, `jq`, and `nvidia-container-toolkit` report "already installed"). The installer does **not** currently skip the ~32 MB Docker Compose plugin download on Amazon Linux 2 / 2023, because those OS scripts fetch the plugin binary with `curl` unconditionally. To remove that last step too, use the optional slimmed boot path in Step 5.
+
+> **Validated live** (ParallelCluster 3.15.1, Amazon Linux 2023, `c5.large`): a compute node launched from a custom AMI built with this procedure brought up the `node-exporter` container **with zero image pulls at boot** (the pinned `quay.io/prometheus/node-exporter:v1.11.1` image was served from the pre-baked cache), the `dnf` package steps reported "already installed / Nothing to do", and the exporter served metrics normally. The only network step left in the compute-node boot path was the Compose plugin re-download noted above.
 
 **Benefits of the custom AMI approach:**
 
@@ -159,16 +163,17 @@ Scheduling:
       # keep your existing Networking / Iam / CustomActions (OnNodeConfigured) here
 ```
 
-Keep the existing `OnNodeConfigured` post-install action in place (see [the Quickstart in the README](../README.md#quickstart--parallelcluster)). With the custom AMI:
+Keep the existing `OnNodeConfigured` post-install action in place (see [the Quickstart in the README](../README.md#quickstart--parallelcluster)). With the custom AMI, the installer still runs on every boot but most of its work collapses:
 
-- The OS package installs become fast no-ops because Docker, the Compose plugin, and (on GPU AMIs) the NVIDIA Container Toolkit are already present.
-- `docker compose ... up -d` starts the containers from the **pre-pulled images** instead of downloading them.
+- `docker compose ... up -d` starts the containers from the **pre-pulled images** instead of downloading them — this is the biggest saving, and the only one on GPU nodes that avoids the large `dcgm-exporter` pull.
+- The package installs (`docker`, `jq`, `tar`, and `nvidia-container-toolkit` on GPU AMIs) become fast no-ops because they are already present.
+- **Not skipped:** on Amazon Linux 2 / 2023 the OS bootstrap still re-downloads the ~32 MB Compose plugin binary each boot, and GPU nodes still restart Docker. See the note under [Expected boot time impact](#expected-boot-time-impact).
 
-That combination is where the boot-time savings come from. The head/login node still needs the full installer (it configures Prometheus, Grafana, TLS, SSM, etc.), so leave it on the official AMI unless you also pre-bake its images.
+The head/login node still needs the full installer (it configures Prometheus, Grafana, TLS, SSM, etc.), so leave it on the official AMI unless you also pre-bake its images.
 
 ### Optional: trim the boot path further
 
-If you want to squeeze out the last few seconds on compute nodes, you can maintain a slimmed variant of the compute-node bootstrap that only runs `docker compose -f compose/compute[.gpu].yml -p monitoring-compute up -d` against the cached images and skips the install steps entirely. This is optional — the standard installer already benefits from the cached packages and images.
+To remove the remaining boot-time steps (notably the Compose plugin re-download on Amazon Linux), run a slimmed bootstrap on compute nodes instead of the full installer — one that only runs `docker compose -f compose/compute[.gpu].yml -p monitoring-compute up -d` against the cached images and skips the OS install steps entirely. This is optional; the full installer already works on a custom AMI, it just repeats a few no-op/redundant steps.
 
 ## Maintenance reminder
 
