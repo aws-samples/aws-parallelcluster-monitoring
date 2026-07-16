@@ -399,6 +399,7 @@ All images pinned — `latest` is never used.
 
 ## Documentation
 
+- [Reducing compute node boot time (custom AMI)](docs/custom-ami.md)
 - [Public access (ALB + ACM)](docs/public-access.md)
 - [IMDS credential sidecar design](docs/imds-secured-design.md)
 - [Least-privilege IAM policy](iam/README.md)
