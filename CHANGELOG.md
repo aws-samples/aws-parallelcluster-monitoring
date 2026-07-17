@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.11 — 2026-07-17
+
+Faster compute-node boot via custom AMIs, plus an idempotent installer. No
+breaking changes.
+
+### Added
+- **Custom compute-node AMI guide + tooling.** `docs/custom-ami.md` documents
+  building a ParallelCluster custom AMI with the monitoring stack pre-baked so
+  compute nodes stop doing network-bound install work on every scale-up.
+  Ships `parallelcluster-setup/build-ami.sh` (resolves the official base AMI
+  and runs `pcluster build-image`), the CPU/GPU build templates
+  (`build-image-cpu.yaml` / `build-image-gpu.yaml`), and an EC2 Image Builder
+  component (`build-custom-ami-component.sh`) that reuses the installer's own
+  OS scripts and pre-pulls the pinned images from `compose/*.yml`.
+
+### Changed
+- **Idempotent Docker/Compose bootstrap.** The AL2/AL2023 OS scripts fetched
+  the ~32 MB Docker Compose plugin binary with `curl` on every boot. The
+  pinned version now lives in `installer/common.sh` and
+  `install_compose_plugin_binary()` skips the download when that version is
+  already present.
+- **Pre-baked-AMI fast path.** `installer/install.sh` now skips the whole
+  per-OS bootstrap when the docker daemon + compose plugin are already usable
+  (custom AMI or a prior run), via `docker_runtime_ready()`.
+
+Validated live on ParallelCluster 3.15.1 / Amazon Linux 2023: a custom-AMI
+CPU node reached `node-exporter`-running ~17 s faster than a stock-AMI control
+with zero Compose downloads and zero image pulls at boot; a GPU node served
+both `node-exporter` and the ~1.4 GB `dcgm-exporter` image from the pre-baked
+cache with zero pulls.
+
 ## v2.10.2 — 2026-06-22
 
 Prometheus EC2 service-discovery credential-rotation fix. No breaking changes.

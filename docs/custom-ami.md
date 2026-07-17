@@ -24,16 +24,19 @@ For that reason **we do not publish a prebuilt AMI**. This page documents the pr
 
 ## Expected boot time impact
 
-The figures below are **approximate, order-of-magnitude** estimates for the extra time the monitoring setup adds to a compute node's boot. Actual values depend on instance type, region, network, and image sizes (the `dcgm-exporter` image is large) — measure in your own environment before drawing conclusions.
+On a custom AMI, `installer/install.sh` detects that the container runtime is already present and **skips the entire per-OS bootstrap** (docker install + Compose plugin download), and `docker compose up` starts the containers from the **pre-baked images** instead of pulling them. So the monitoring stack adds only a few seconds to boot.
 
-| Compute node type | Standard method (installer runs on every boot) | Custom AMI (packages + images pre-baked) |
+| Compute node type | Standard method (installer runs full bootstrap every boot) | Custom AMI (runtime + images pre-baked) |
 |---|---|---|
-| CPU node | ~60–120 s of extra boot time (docker + compose install, node-exporter image pull) | ~15–30 s: the container image is served from cache and the package installs are no-ops; on AL2/AL2023 the installer still re-downloads the ~32 MB Compose plugin (see note) |
-| GPU node | ~3–6 min of extra boot time (adds NVIDIA Container Toolkit install, Docker restart, large `dcgm-exporter` image pull) | ~30–60 s: the large `dcgm-exporter` image is served from cache and the toolkit install is a no-op; Docker is still restarted and the Compose plugin re-downloaded |
+| CPU node | docker install + ~32 MB Compose plugin download + `node-exporter` image pull | OS bootstrap skipped, image served from cache — no monitoring-related downloads |
+| GPU node | above **plus** NVIDIA Container Toolkit install + Docker restart + large (~1.4 GB) `dcgm-exporter` image pull | toolkit install is a no-op, both images served from cache — only the Docker restart for the NVIDIA runtime remains |
 
-> **What the custom AMI does and does not skip (measured).** Because `installer/install.sh` always runs the per-OS bootstrap, the boot-time saving comes from **not pulling the container images** (the dominant cost — the `node-exporter` image, and especially the large `dcgm-exporter` image on GPU nodes) and from the package installs becoming fast no-ops (`docker`, `jq`, and `nvidia-container-toolkit` report "already installed"). The installer does **not** currently skip the ~32 MB Docker Compose plugin download on Amazon Linux 2 / 2023, because those OS scripts fetch the plugin binary with `curl` unconditionally. To remove that last step too, use the optional slimmed boot path in Step 5.
-
-> **Validated live** (ParallelCluster 3.15.1, Amazon Linux 2023, `c5.large`): a compute node launched from a custom AMI built with this procedure brought up the `node-exporter` container **with zero image pulls at boot** (the pinned `quay.io/prometheus/node-exporter:v1.11.1` image was served from the pre-baked cache), the `dnf` package steps reported "already installed / Nothing to do", and the exporter served metrics normally. The only network step left in the compute-node boot path was the Compose plugin re-download noted above.
+> **Validated live** (ParallelCluster 3.15.1, Amazon Linux 2023). Custom-AMI compute nodes were compared against a control queue on the stock AMI, both running the same installer pinned to `main`:
+>
+> - **CPU (`c5.large`)**: time from EC2 launch to `node-exporter` running was **~109 s on the custom AMI vs ~126 s on the stock AMI (~17 s faster)**. On the custom node the installer logged *"Container runtime already present (pre-baked AMI) — skipping OS bootstrap"*: **zero** Compose-plugin downloads and **zero** image pulls at boot, versus one of each on the stock node. Both served 665 `node_` metrics.
+> - **GPU (`g4dn.xlarge`, Tesla T4)**: both the `node-exporter` and the ~1.4 GB `dcgm-exporter` images were served from the pre-baked cache with **zero pulls at boot**, the NVIDIA Container Toolkit install was a no-op, and the OS bootstrap was skipped. This is where pre-baking helps most, since the stock path would otherwise download the large `dcgm-exporter` image on every scale-up.
+>
+> The launch-to-ready times above are dominated by the OS boot and the ParallelCluster bootstrap (identical on both AMIs); the delta is the monitoring stack's contribution. Measure in your own environment before drawing conclusions.
 
 **Benefits of the custom AMI approach:**
 
@@ -51,6 +54,20 @@ The figures below are **approximate, order-of-magnitude** estimates for the extr
   ```
 - Credentials for an account/region where EC2 Image Builder can run (the build launches a temporary EC2 instance).
 - The build component script from this repo, [`parallelcluster-setup/build-custom-ami-component.sh`](../parallelcluster-setup/build-custom-ami-component.sh). It reuses this repo's own installer to install Docker + the Compose plugin and pre-pulls the exact pinned images from the `compose/` files, and — when it detects an NVIDIA GPU on the build instance — installs the NVIDIA Container Toolkit and pre-pulls `dcgm-exporter`.
+
+## Shortcut: `build-ami.sh`
+
+If you just want the AMI, the helper [`parallelcluster-setup/build-ami.sh`](../parallelcluster-setup/build-ami.sh) automates Steps 1, 3 and 4 — it resolves the official base AMI, fills in the build template, and runs `pcluster build-image`:
+
+```bash
+# CPU AMI on Amazon Linux 2023
+parallelcluster-setup/build-ami.sh --type cpu --os alinux2023 --region us-east-1 --wait
+
+# GPU AMI (builds on a GPU instance; bakes the NVIDIA toolkit + dcgm-exporter image)
+parallelcluster-setup/build-ami.sh --type gpu --os alinux2023 --region us-east-1 --wait
+```
+
+It uses the templates [`build-image-cpu.yaml`](../parallelcluster-setup/build-image-cpu.yaml) / [`build-image-gpu.yaml`](../parallelcluster-setup/build-image-gpu.yaml). The manual steps below explain what it does and how to customize the build. Either way, continue at Step 5 to use the resulting AMI.
 
 ## Step 1 — Find the official ParallelCluster base AMI for your version
 
@@ -163,17 +180,14 @@ Scheduling:
       # keep your existing Networking / Iam / CustomActions (OnNodeConfigured) here
 ```
 
-Keep the existing `OnNodeConfigured` post-install action in place (see [the Quickstart in the README](../README.md#quickstart--parallelcluster)). With the custom AMI, the installer still runs on every boot but most of its work collapses:
+Keep the existing `OnNodeConfigured` post-install action in place (see [the Quickstart in the README](../README.md#quickstart--parallelcluster)). On a custom AMI the installer detects the pre-baked runtime and short-circuits:
 
-- `docker compose ... up -d` starts the containers from the **pre-pulled images** instead of downloading them — this is the biggest saving, and the only one on GPU nodes that avoids the large `dcgm-exporter` pull.
-- The package installs (`docker`, `jq`, `tar`, and `nvidia-container-toolkit` on GPU AMIs) become fast no-ops because they are already present.
-- **Not skipped:** on Amazon Linux 2 / 2023 the OS bootstrap still re-downloads the ~32 MB Compose plugin binary each boot, and GPU nodes still restart Docker. See the note under [Expected boot time impact](#expected-boot-time-impact).
+- It **skips the entire per-OS bootstrap** — no docker install and no Compose plugin download — logging *"Container runtime already present (pre-baked AMI) — skipping OS bootstrap"*.
+- `docker compose ... up -d` starts the containers from the **pre-baked images** instead of pulling them. On GPU nodes this avoids the large `dcgm-exporter` download, and the NVIDIA Container Toolkit install is a no-op.
+
+This behavior is automatic (added in `installer/install.sh` via `docker_runtime_ready`); no extra flag or slimmed script is needed. The only compute-node boot step that remains is the Docker restart GPU nodes do to activate the NVIDIA runtime.
 
 The head/login node still needs the full installer (it configures Prometheus, Grafana, TLS, SSM, etc.), so leave it on the official AMI unless you also pre-bake its images.
-
-### Optional: trim the boot path further
-
-To remove the remaining boot-time steps (notably the Compose plugin re-download on Amazon Linux), run a slimmed bootstrap on compute nodes instead of the full installer — one that only runs `docker compose -f compose/compute[.gpu].yml -p monitoring-compute up -d` against the cached images and skips the OS install steps entirely. This is optional; the full installer already works on a custom AMI, it just repeats a few no-op/redundant steps.
 
 ## Maintenance reminder
 
