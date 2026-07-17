@@ -108,15 +108,22 @@ if has_nvidia_gpu; then
             ;;
         *) warn "No NVIDIA toolkit install path for OS '${OS_ID}', skipping" ;;
     esac
-    nvidia-ctk runtime configure --runtime=docker || true
-    systemctl restart docker || true
+    # NOTE: we deliberately do NOT run `nvidia-ctk runtime configure` or restart
+    # Docker here. Configuring the nvidia runtime and restarting the daemon on
+    # the build instance — where the GPU driver may not be active yet — can
+    # leave Docker unable to come back up, which fails the whole build. Baking
+    # the toolkit package is enough; installer/install.sh configures the runtime
+    # and restarts Docker on the real GPU compute node at boot. Pulling images
+    # does not require the nvidia runtime.
 
     log "Pre-pulling GPU compute images (node-exporter + dcgm-exporter)"
     export DCGM_EXPORTER_IMAGE="${DCGM_EXPORTER_IMAGE:-}"
-    docker compose -f "${MONITORING_HOME}/compose/compute.gpu.yml" pull
+    docker compose -f "${MONITORING_HOME}/compose/compute.gpu.yml" pull 2>&1 \
+        || die "docker compose pull failed for compose/compute.gpu.yml"
 else
     log "No NVIDIA GPU detected - pre-pulling CPU compute image (node-exporter)"
-    docker compose -f "${MONITORING_HOME}/compose/compute.yml" pull
+    docker compose -f "${MONITORING_HOME}/compose/compute.yml" pull 2>&1 \
+        || die "docker compose pull failed for compose/compute.yml"
 fi
 
 log "Custom AMI pre-installation complete"
