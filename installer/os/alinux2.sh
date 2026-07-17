@@ -10,12 +10,9 @@ log "Installing docker on Amazon Linux 2"
 amazon-linux-extras install -y docker
 yum -y install jq bc tar gzip
 
-# Docker Compose is NOT in AL2 repos. Install as a plugin binary.
-COMPOSE_VERSION="v5.1.4"
-install -d -m 0755 /usr/libexec/docker/cli-plugins
-curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-$(uname -m)" \
-    -o /usr/libexec/docker/cli-plugins/docker-compose
-chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+# Docker Compose is NOT in AL2 repos. Install the plugin binary (idempotent:
+# skips the download if the pinned version is already present).
+install_compose_plugin_binary
 
 systemctl enable docker
 systemctl start docker

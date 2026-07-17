@@ -1,0 +1,17 @@
+# Custom compute-node AMI (CPU) for aws-parallelcluster-monitoring.
+#
+# Replace ParentImage with the official ParallelCluster AMI for YOUR pcluster
+# version + OS:
+#     pcluster list-official-images --os <os> --region <region>
+# or let parallelcluster-setup/build-ami.sh fill it in automatically.
+#
+# For reproducible builds, pin the component Value to a release tag instead of
+# 'main' (e.g. .../<tag>/parallelcluster-setup/build-custom-ami-component.sh).
+Build:
+  InstanceType: c5.xlarge
+  ParentImage: __PARENT_IMAGE__
+  UpdateOsPackages:
+    Enabled: false
+  Components:
+    - Type: script
+      Value: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/parallelcluster-setup/build-custom-ami-component.sh

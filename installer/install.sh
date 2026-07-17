@@ -40,9 +40,22 @@ os_script="$(pick_os_script "${SCRIPT_DIR}/os")"
 [[ -n "${os_script}" && -r "${os_script}" ]] \
     || die "Unsupported OS: ${OS_ID} ${OS_VERSION_ID}. Supported: amzn2, amzn2023, ubuntu 22.04/24.04, rhel/rocky/alma/centos-stream 9.x"
 
-log "Running OS bootstrap: ${os_script}"
-# shellcheck disable=SC1090
-. "${os_script}"
+# Fast path: if the container runtime is already baked into the AMI (custom
+# AMI) or was installed by a previous run, skip the whole per-OS bootstrap
+# (docker install + ~32MB compose plugin download). This is the bulk of a
+# compute node's monitoring boot overhead on a pre-baked AMI. `docker start`
+# is a no-op if it's already running; it fails harmlessly (|| true) when
+# docker isn't installed yet, and we fall through to the OS bootstrap.
+systemctl start docker >/dev/null 2>&1 || true
+if docker_runtime_ready; then
+    log "Container runtime already present (pre-baked AMI) — skipping OS bootstrap (${os_script##*/})"
+    systemctl enable docker >/dev/null 2>&1 || true
+    usermod -a -G docker "${PLATFORM_USER}" 2>/dev/null || true
+else
+    log "Running OS bootstrap: ${os_script}"
+    # shellcheck disable=SC1090
+    . "${os_script}"
+fi
 
 verify_docker
 

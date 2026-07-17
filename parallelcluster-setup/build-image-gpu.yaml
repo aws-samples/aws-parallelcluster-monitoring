@@ -1,0 +1,24 @@
+# Custom compute-node AMI (GPU) for aws-parallelcluster-monitoring.
+#
+# Build this on a GPU instance so the component installs the NVIDIA Container
+# Toolkit and pre-pulls the (large) dcgm-exporter image. NvidiaSoftware.Enabled
+# also bakes the NVIDIA driver + CUDA into the AMI.
+#
+# Replace ParentImage with the official ParallelCluster AMI for YOUR pcluster
+# version + OS:
+#     pcluster list-official-images --os <os> --region <region>
+# or let parallelcluster-setup/build-ami.sh --type gpu fill it in automatically.
+#
+# For reproducible builds, pin the component Value to a release tag instead of
+# 'main' (e.g. .../<tag>/parallelcluster-setup/build-custom-ami-component.sh).
+Build:
+  InstanceType: g4dn.xlarge
+  ParentImage: __PARENT_IMAGE__
+  UpdateOsPackages:
+    Enabled: false
+  Installation:
+    NvidiaSoftware:
+      Enabled: true
+  Components:
+    - Type: script
+      Value: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/parallelcluster-setup/build-custom-ami-component.sh

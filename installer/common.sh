@@ -15,6 +15,13 @@ set -euo pipefail
 readonly SLURM_EXPORTER_VERSION="1.8.0"
 readonly SLURM_EXPORTER_REPO="rivosinc/prometheus-slurm-exporter"
 
+# Docker Compose v2 plugin. Amazon Linux 2 / 2023 install this binary directly
+# (their repos don't ship docker-compose-plugin); RHEL/Ubuntu get it from the
+# docker-ce repo. Kept here as the single source of truth so the OS scripts and
+# the idempotency check below agree on one version.
+readonly COMPOSE_PLUGIN_VERSION="v5.1.4"
+readonly COMPOSE_PLUGIN_PATH="/usr/libexec/docker/cli-plugins/docker-compose"
+
 # Container image tags are pinned in the compose files themselves
 # (compose/{head,compute,compute.gpu}.yml). The installer does not
 # rewrite them — keeping them in compose YAML means `cat compose/*.yml`
@@ -114,6 +121,41 @@ install_efa_collector() {
     /usr/local/bin/efa-metrics.sh || true   # first run (no-op without EFA)
     systemctl enable --now efa-metrics.timer
     log "EFA hw_counters textfile collector active"
+}
+
+# ---------------------------------------------------------------------------
+# Install the Docker Compose v2 plugin binary at the pinned version,
+# idempotently. Used by the OS scripts whose repos don't ship the plugin as a
+# package (Amazon Linux 2 / 2023). If the pinned version is already installed
+# (e.g. baked into a custom AMI, or a previous run), the ~32MB download is
+# skipped — this is what stops the plugin being re-fetched on every boot.
+# ---------------------------------------------------------------------------
+install_compose_plugin_binary() {
+    local want="${COMPOSE_PLUGIN_VERSION#v}" have=""
+    if [[ -x "${COMPOSE_PLUGIN_PATH}" ]]; then
+        have="$(docker compose version --short 2>/dev/null | sed 's/^v//')"
+    fi
+    if [[ "${have}" == "${want}" ]]; then
+        log "Docker Compose plugin v${want} already present — skipping download"
+        return 0
+    fi
+    log "Installing Docker Compose plugin ${COMPOSE_PLUGIN_VERSION}"
+    install -d -m 0755 "$(dirname "${COMPOSE_PLUGIN_PATH}")"
+    curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_PLUGIN_VERSION}/docker-compose-linux-$(uname -m)" \
+        -o "${COMPOSE_PLUGIN_PATH}"
+    chmod +x "${COMPOSE_PLUGIN_PATH}"
+}
+
+# ---------------------------------------------------------------------------
+# True when the container runtime is already usable: the docker daemon
+# responds and the compose v2 plugin works. On a pre-baked custom AMI this
+# lets install.sh skip the whole per-OS bootstrap (docker install + compose
+# download), which is the bulk of a compute node's monitoring boot overhead.
+# ---------------------------------------------------------------------------
+docker_runtime_ready() {
+    docker info    >/dev/null 2>&1 || return 1
+    docker compose version >/dev/null 2>&1 || return 1
+    return 0
 }
 
 # ---------------------------------------------------------------------------
