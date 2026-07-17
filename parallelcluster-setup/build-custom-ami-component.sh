@@ -118,6 +118,12 @@ if has_nvidia_gpu; then
 
     log "Pre-pulling GPU compute images (node-exporter + dcgm-exporter)"
     export DCGM_EXPORTER_IMAGE="${DCGM_EXPORTER_IMAGE:-}"
+    # compute.gpu.yml carries a __MONITORING_HOME__ bind-mount placeholder that
+    # installer/install.sh substitutes at node boot. Left unsubstituted, Docker
+    # Compose reads it as an undefined named volume and refuses to parse the
+    # project, so `pull` fails before touching a registry. Substitute it here
+    # (harmless: the node re-fetches and re-substitutes at boot).
+    sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" "${MONITORING_HOME}/compose/compute.gpu.yml"
     docker compose -f "${MONITORING_HOME}/compose/compute.gpu.yml" pull 2>&1 \
         || die "docker compose pull failed for compose/compute.gpu.yml"
 else
