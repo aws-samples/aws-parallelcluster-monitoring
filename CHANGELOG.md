@@ -25,6 +25,15 @@ breaking changes.
   per-OS bootstrap when the docker daemon + compose plugin are already usable
   (custom AMI or a prior run), via `docker_runtime_ready()`.
 
+### Fixed
+- **GPU nodes exported zero `DCGM_*` metrics** (#55). The `nvidia-dcgm`
+  container started but had no NVML inside: the runtime registered by
+  `nvidia-ctk runtime configure` is not the default, and the Compose
+  `deploy.resources` device reservation did not inject the GPU, so
+  dcgm-exporter logged "NVML doesn't exist on this system" and every GPU
+  panel stayed empty. `compose/compute.gpu.yml` now pins
+  `runtime: nvidia` on the dcgm-exporter service.
+
 Validated live on ParallelCluster 3.15.1 / Amazon Linux 2023: a custom-AMI
 CPU node reached `node-exporter`-running ~17 s faster than a stock-AMI control
 with zero Compose downloads and zero image pulls at boot; a GPU node served
