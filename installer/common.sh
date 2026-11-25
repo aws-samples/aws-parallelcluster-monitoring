@@ -85,7 +85,9 @@ pick_os_script() {
         amzn:2023)         echo "${dir}/alinux2023.sh" ;;
         ubuntu:22.04)      echo "${dir}/ubuntu22.sh" ;;
         ubuntu:24.04)      echo "${dir}/ubuntu24.sh" ;;
+        ubuntu:26.04)      echo "${dir}/ubuntu26.sh" ;;
         rhel:9*|rocky:9*|almalinux:9*|centos:9*) echo "${dir}/rhel9.sh" ;;
+        rhel:10*|rocky:10*|almalinux:10*|centos:10*) echo "${dir}/rhel10.sh" ;;
         *) echo "" ;;
     esac
 }

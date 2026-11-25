@@ -38,7 +38,7 @@ log "Monitoring home: ${MONITORING_HOME}"
 detect_os
 os_script="$(pick_os_script "${SCRIPT_DIR}/os")"
 [[ -n "${os_script}" && -r "${os_script}" ]] \
-    || die "Unsupported OS: ${OS_ID} ${OS_VERSION_ID}. Supported: amzn2, amzn2023, ubuntu 22.04/24.04, rhel/rocky/alma/centos-stream 9.x"
+    || die "Unsupported OS: ${OS_ID} ${OS_VERSION_ID}. Supported: amzn2, amzn2023, ubuntu 22.04/24.04/26.04, rhel/rocky/alma/centos-stream 9.x/10.x"
 
 # Fast path: if the container runtime is already baked into the AMI (custom
 # AMI) or was installed by a previous run, skip the whole per-OS bootstrap
