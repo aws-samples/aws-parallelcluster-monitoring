@@ -179,6 +179,38 @@ docker_runtime_ready() {
 }
 
 # ---------------------------------------------------------------------------
+# Head/login nodes need jq (Cognito config, refresh-ec2-credentials.sh) and
+# bc (cost-metrics.sh). The per-OS bootstrap installs them, so when the fast
+# path skips that bootstrap, install whichever is missing. No package-manager
+# call when both are present, so a pre-baked AMI still makes no repo calls.
+# Each tool is installed on its own, because dnf and apt-get fail the whole
+# command when one package is unavailable.
+# ---------------------------------------------------------------------------
+ensure_jq_and_bc() {
+    local tool missing=()
+    for tool in jq bc; do
+        command -v "${tool}" >/dev/null 2>&1 || missing+=("${tool}")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        log "Fast path: jq and bc already present"
+        return 0
+    fi
+    log "Fast path: installing missing head/login tools: ${missing[*]}"
+    if [[ "${OS_ID}" == "ubuntu" ]]; then
+        DEBIAN_FRONTEND=noninteractive apt-get update || true
+    fi
+    for tool in "${missing[@]}"; do
+        case "${OS_ID}:${OS_VERSION_ID}" in
+            amzn:2)   yum -y install "${tool}" ;;
+            ubuntu:*) DEBIAN_FRONTEND=noninteractive apt-get install -y "${tool}" ;;
+            *)        dnf -y install "${tool}" ;;
+        esac || warn "could not install ${tool}"
+    done
+    command -v jq >/dev/null 2>&1 || die "jq is required on head/login nodes and could not be installed"
+    command -v bc >/dev/null 2>&1 || warn "bc not available, cost metrics will read 0"
+}
+
+# ---------------------------------------------------------------------------
 # Verify that "docker" and "docker compose" (v2) both work.
 # ---------------------------------------------------------------------------
 verify_docker() {

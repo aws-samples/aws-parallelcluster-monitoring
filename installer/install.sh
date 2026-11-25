@@ -51,6 +51,8 @@ if docker_runtime_ready; then
     log "Container runtime already present (pre-baked AMI) — skipping OS bootstrap (${os_script##*/})"
     systemctl enable docker >/dev/null 2>&1 || true
     usermod -a -G docker "${PLATFORM_USER}" 2>/dev/null || true
+    # The skipped OS bootstrap is what installs jq and bc on head/login nodes.
+    case "${PLATFORM_NODE_TYPE}" in head|login) ensure_jq_and_bc ;; esac
 else
     log "Running OS bootstrap: ${os_script}"
     # shellcheck disable=SC1090
