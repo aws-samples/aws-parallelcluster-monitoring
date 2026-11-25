@@ -29,6 +29,17 @@ services:
     network_mode: host
     pid: host
     restart: unless-stopped
+    # Pin the NVIDIA runtime explicitly. installer/install.sh registers the
+    # runtime via 'nvidia-ctk runtime configure' but does NOT make it the
+    # default, and on this stack (Docker 25 / Compose v5 / AL2023) the
+    # deploy.resources device reservation below does not inject the GPU:
+    # the container comes up under runc with no NVML inside, so dcgm-exporter
+    # runs but reports "NVML doesn't exist on this system" and exports zero
+    # DCGM_* series. With runtime: nvidia the toolkit injects the driver
+    # stack based on NVIDIA_VISIBLE_DEVICES/NVIDIA_DRIVER_CAPABILITIES.
+    # The deploy block is kept for engines that honor device reservations.
+    # See #55.
+    runtime: nvidia
     # Image is overridable via DCGM_EXPORTER_IMAGE; the default below is the
     # newest tag whose manifest is a Docker manifest-list v2. From 4.2.3 onward
     # NVCR publishes an OCI image index with attestation/SBOM manifests, which
