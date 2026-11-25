@@ -26,6 +26,10 @@ services:
       - '__MONITORING_HOME__/prometheus/rules:/etc/prometheus/rules:ro'
       - 'prometheus-data:/prometheus'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
+    group_add:
+      # Read access to /run/prometheus-ec2-creds (root:monitoring-creds,
+      # 0750/0640). installer/install.sh substitutes the group's GID.
+      - '__CREDS_GID__'
     image: prom/prometheus:v3.12.0
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -61,6 +65,10 @@ services:
       - 'grafana-data:/var/lib/grafana'
       - '/run/grafana-secrets:/run/grafana-secrets:ro'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
+    group_add:
+      # Read access to /run/prometheus-ec2-creds (root:monitoring-creds,
+      # 0750/0640). installer/install.sh substitutes the group's GID.
+      - '__CREDS_GID__'
     image: grafana/grafana:13.0.2
 
   prometheus-node-exporter:
@@ -99,6 +107,10 @@ services:
     volumes:
       - '__MONITORING_HOME__/cloudwatch-exporter/config.yml:/config/config.yml:ro'
       - '/run/prometheus-ec2-creds:/run/prometheus-ec2-creds:ro'
+    group_add:
+      # Read access to /run/prometheus-ec2-creds (root:monitoring-creds,
+      # 0750/0640). installer/install.sh substitutes the group's GID.
+      - '__CREDS_GID__'
     image: prom/cloudwatch-exporter:v0.16.0
 
 volumes:

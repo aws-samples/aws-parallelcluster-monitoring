@@ -69,6 +69,14 @@ case "${PLATFORM_NODE_TYPE}" in
     head|login)
         log "Configuring HeadNode"
 
+        # Only root and the containers that call AWS (prometheus, grafana,
+        # cloudwatch-exporter) may read the instance-role credentials. They get
+        # this group through group_add in compose/head.yml, which needs the
+        # numeric GID because the group name doesn't exist inside them.
+        getent group "${CREDS_GROUP}" >/dev/null || groupadd --system "${CREDS_GROUP}"
+        creds_gid="$(getent group "${CREDS_GROUP}" | cut -d: -f3)"
+        [[ -n "${creds_gid}" ]] || die "Could not resolve the GID of group ${CREDS_GROUP}"
+
         # Extract context from chef dna.json and CloudFormation.
 
         chown "${PLATFORM_USER}:${PLATFORM_USER}" -R "${MONITORING_HOME}"
@@ -121,6 +129,7 @@ case "${PLATFORM_NODE_TYPE}" in
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/cloudwatch-exporter/config.yml"
         sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g"        "${MONITORING_HOME}/grafana/datasources/datasource.yml"
         sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" "${MONITORING_HOME}/compose/head.yml"
+        sed -i "s|__CREDS_GID__|${creds_gid}|g" "${MONITORING_HOME}/compose/head.yml"
 
         # Deploy platform-specific dashboards alongside the shared ones.
         # The per-platform subdir is named 'pcluster' / 'pcs' (NOT the

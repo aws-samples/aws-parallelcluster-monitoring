@@ -13,22 +13,25 @@
 # which is bind-mounted into the Prometheus container.
 #
 set -euo pipefail
+umask 0027   # new files, the tmp file included, get no access for others
 
 CREDS_DIR="/run/prometheus-ec2-creds"
 CREDS_FILE="${CREDS_DIR}/credentials"
+# These are the instance role's credentials. On ParallelCluster they carry
+# everything the head node's role grants, which is why Imds.Secured limits
+# IMDS to root. Only root and the containers that call AWS may read them:
+# prometheus (EC2 SD, uid 65534), cloudwatch-exporter (uid 65534 since
+# v0.18.0) and grafana (CloudWatch datasource, uid 472). compose/head.yml
+# gives those containers this group (group_add); installer/install.sh
+# creates it. Keep the name in sync with CREDS_GROUP in installer/common.sh.
+CREDS_GROUP="monitoring-creds"
+if ! getent group "${CREDS_GROUP}" >/dev/null; then
+    echo "ERROR: group ${CREDS_GROUP} is missing; re-run installer/install.sh" >&2
+    exit 1
+fi
 mkdir -p "${CREDS_DIR}"
-# World-readable dir/file (see chmod on the file below). The credentials
-# are consumed by three containers running as different uids/gids:
-#   prometheus          uid 65534 / gid 65534
-#   cloudwatch-exporter uid 0     / gid 0
-#   grafana             uid 472   / gid 0   (CloudWatch Logs datasource)
-# No single owner/group satisfies all three, so we rely on world-read.
-# This is acceptable here: the file lives only on tmpfs (never touches
-# disk), holds short-lived IAM role credentials that are already
-# retrievable from IMDS by any process on this single-tenant host, and
-# the directory is not network-exposed.
-chmod 0755 "${CREDS_DIR}"
-chown root:root "${CREDS_DIR}"
+chown "root:${CREDS_GROUP}" "${CREDS_DIR}"
+chmod 0750 "${CREDS_DIR}"
 
 # IMDSv2 token
 TOKEN=$(curl -sS --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" \
@@ -56,11 +59,10 @@ aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
 aws_session_token = ${AWS_SESSION_TOKEN}
 CRED
 
-# World-readable (see dir comment above): consumed by prometheus,
-# cloudwatch-exporter, and grafana running as different uids/gids.
-# tmpfs-backed so creds never touch persistent disk.
-chmod 0644 "${TMP_FILE}"
-chown root:root "${TMP_FILE}"
+# Readable by root and the monitoring-creds group only (see above); the
+# rename below keeps the mode. tmpfs-backed, so never on persistent disk.
+chown "root:${CREDS_GROUP}" "${TMP_FILE}"
+chmod 0640 "${TMP_FILE}"
 
 # Detect whether the IMDS access key actually rotated (IMDS rotates role
 # creds roughly every ~6h). Long-running consumers load the AWS credentials

@@ -22,6 +22,12 @@ readonly SLURM_EXPORTER_REPO="rivosinc/prometheus-slurm-exporter"
 readonly COMPOSE_PLUGIN_VERSION="v5.1.4"
 readonly COMPOSE_PLUGIN_PATH="/usr/libexec/docker/cli-plugins/docker-compose"
 
+# System group that may read the instance-role credentials in
+# /run/prometheus-ec2-creds. custom-metrics/refresh-ec2-credentials.sh uses
+# the same name.
+# shellcheck disable=SC2034  # used by installer/install.sh
+readonly CREDS_GROUP="monitoring-creds"
+
 # Container image tags are pinned in the compose files themselves
 # (compose/{head,compute,compute.gpu}.yml). The installer does not
 # rewrite them — keeping them in compose YAML means `cat compose/*.yml`
