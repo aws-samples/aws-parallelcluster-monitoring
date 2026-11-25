@@ -35,6 +35,26 @@ warn() { printf '[monitoring-install][WARN] %s\n' "$*" >&2; }
 die()  { printf '[monitoring-install][ERROR] %s\n' "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
+# Keep secrets out of the shell trace. post-install.sh runs the installer
+# under `bash -x`; the trace goes to the install log and, on ParallelCluster,
+# to cfn-init.log and from there to CloudWatch Logs. Wrap code that handles a
+# secret in:
+#   { xtrace_suspend; } 2>/dev/null
+#   ...
+#   { xtrace_restore; } 2>/dev/null
+# The braces and 2>/dev/null keep the toggles themselves out of the trace.
+# xtrace_restore only turns tracing back on if it was on before, so a plain
+# `sudo bash install.sh` re-run stays untraced.
+# ---------------------------------------------------------------------------
+xtrace_suspend() {
+    if [[ $- == *x* ]]; then _XTRACE_WAS_ON=1; else _XTRACE_WAS_ON=0; fi
+    set +x
+}
+xtrace_restore() {
+    if [[ "${_XTRACE_WAS_ON:-0}" == 1 ]]; then set -x; fi
+}
+
+# ---------------------------------------------------------------------------
 # OS detection. Writes to global OS_ID and OS_VERSION_ID.
 # ---------------------------------------------------------------------------
 detect_os() {

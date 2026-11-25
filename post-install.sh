@@ -81,6 +81,10 @@ rm -f "${TARBALL}"
 chown -R "${CLUSTER_USER}:${CLUSTER_USER}" "${MONITORING_HOME}"
 
 # Hand off to the platform-aware installer.
+# The log holds the full shell trace, so make it root-only. tee keeps an
+# existing file's mode, so create the file first; this also tightens a
+# world-readable log left by an older version.
+install -m 0600 /dev/null "${LOG_FILE}"
 set +e
 bash -x "${MONITORING_HOME}/installer/install.sh" 2>&1 | tee "${LOG_FILE}"
 rc=${PIPESTATUS[0]}

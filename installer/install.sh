@@ -214,6 +214,8 @@ except Exception:
             log "Reusing existing Grafana password in ${GRAFANA_SSM_PARAM}"
         else
             log "Generating new Grafana admin password, storing in ${GRAFANA_SSM_PARAM}"
+            # Keep the password out of the trace (see xtrace_suspend).
+            { xtrace_suspend; } 2>/dev/null
             GRAFANA_PASSWORD=$(openssl rand -hex 16)
             aws ssm put-parameter --region "${PLATFORM_REGION}" \
                 --name "${GRAFANA_SSM_PARAM}" \
@@ -222,6 +224,7 @@ except Exception:
                 --tags "Key=${PLATFORM}:cluster-name,Value=${PLATFORM_CLUSTER_NAME}" \
                 --no-overwrite >/dev/null
             unset GRAFANA_PASSWORD
+            { xtrace_restore; } 2>/dev/null
         fi
 
         # Install the Grafana password refresh timer.
@@ -251,6 +254,10 @@ except Exception:
         # When absent, local admin/password login is the only auth path.
         # -------------------------------------------------------------
         COGNITO_SSM_PARAM="/${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/cognito"
+        # Keep the client secret out of the trace (see xtrace_suspend). The
+        # whole if/else stays untraced, because even its test expands the
+        # JSON that holds the secret. The log lines still print.
+        { xtrace_suspend; } 2>/dev/null
         cognito_json=$(aws ssm get-parameter --region "${PLATFORM_REGION}" \
             --name "${COGNITO_SSM_PARAM}" --with-decryption \
             --query 'Parameter.Value' --output text 2>/dev/null) || cognito_json=""
@@ -304,6 +311,8 @@ COGENV
             : > /run/grafana-secrets/cognito.env
             chmod 0640 /run/grafana-secrets/cognito.env
         fi
+        unset cognito_json
+        { xtrace_restore; } 2>/dev/null
 
                 # Set up credential refresh for Prometheus ec2_sd_configs.
         # ParallelCluster's Imds.Secured=true blocks IMDS from non-root
