@@ -50,44 +50,84 @@ commands with credentials for the cluster's account.
    `sudo systemctl start grafana-password-refresh.service` on that node.
    Also check Grafana's users and service accounts for entries you didn't
    create.
-2. **If you use Cognito SSO, rotate the app client secret.** Add a second
-   secret and store it in the Cognito parameter:
-   ```bash
-   PARAM="/<platform>/<cluster>/grafana/cognito"
-   new_secret=$(aws cognito-idp add-user-pool-client-secret --region <region> \
-       --user-pool-id <pool-id> --client-id <client-id> \
-       --query ClientSecretDescriptor.ClientSecretValue --output text)
-   cognito_json=$(aws ssm get-parameter --region <region> --name "${PARAM}" \
-       --with-decryption --query Parameter.Value --output text)
-   aws ssm put-parameter --region <region> --overwrite --type SecureString \
-       --name "${PARAM}" \
-       --value "$(jq -c --arg s "${new_secret}" '.client_secret = $s' <<<"${cognito_json}")"
-   unset new_secret cognito_json
-   ```
-   Apply it on the head/login node. On v2.6.4 and later, the installer is in
-   `/opt`:
-   ```bash
-   sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
-   sudo docker restart grafana
-   ```
-   On v2.0 through v2.6.3, it is in the home directory of the cluster's
-   default OS user (`<cluster-user>`, such as `ec2-user` or `ubuntu`):
-   ```bash
-   sudo bash /home/<cluster-user>/aws-parallelcluster-monitoring/installer/install.sh
-   sudo docker restart grafana
-   ```
-   Sign in to Grafana through Cognito to check the new secret. Delete the
-   old secret only after that sign-in works on every cluster that uses this
-   app client. If the installer didn't run, `docker restart grafana`
-   reloads the old secret, and deleting it would break sign-in. The list
-   shows each secret's ID and creation date; delete the older one:
-   ```bash
-   aws cognito-idp list-user-pool-client-secrets --region <region> \
-       --user-pool-id <pool-id> --client-id <client-id> \
-       --query 'ClientSecrets[].[ClientSecretId,ClientSecretCreateDate]' --output text
-   aws cognito-idp delete-user-pool-client-secret --region <region> \
-       --user-pool-id <pool-id> --client-id <client-id> --client-secret-id <older-id>
-   ```
+2. **If you use Cognito SSO, rotate the app client secret.** An app client
+   holds at most two secrets, and Cognito accepts both until you delete
+   one. So add a new secret, load it on every node that uses the app
+   client, check each node, and only then delete the old secret.
+   - **2a. Add a new secret and store it.** In `PARAMS`, list the Cognito
+     parameter of every cluster that uses this app client, one quoted entry
+     per cluster, so that they all get the same new secret. Fill in the
+     first four lines, then run the block unchanged, in bash or zsh, with
+     `aws`, `jq` and `sha256sum` installed:
+     ```bash
+     REGION=<region>
+     POOL_ID=<pool-id>
+     CLIENT_ID=<client-id>
+     PARAMS=("/<platform>/<cluster>/grafana/cognito")
+     (
+         set -euo pipefail
+         printf '' | sha256sum >/dev/null
+         for p in "${PARAMS[@]}"; do
+             json=$(aws ssm get-parameter --region "${REGION}" --name "${p}" \
+                 --with-decryption --query Parameter.Value --output text)
+             jq -e --arg c "${CLIENT_ID}" '.client_id == $c' <<<"${json}" >/dev/null ||
+                 { echo "Stopped: ${p} is not for client ${CLIENT_ID}" >&2; exit 1; }
+         done
+         new_secret=$(aws cognito-idp add-user-pool-client-secret \
+             --region "${REGION}" --user-pool-id "${POOL_ID}" \
+             --client-id "${CLIENT_ID}" --output json |
+             jq -er '.ClientSecretDescriptor.ClientSecretValue')
+         [ -n "${new_secret}" ]
+         new_hash=$(printf '%s' "${new_secret}" | sha256sum)
+         echo "sha256 of the new secret: ${new_hash%% *}"
+         for p in "${PARAMS[@]}"; do
+             json=$(aws ssm get-parameter --region "${REGION}" --name "${p}" \
+                 --with-decryption --query Parameter.Value --output text)
+             json=$(jq -c --arg s "${new_secret}" '.client_secret = $s' <<<"${json}")
+             aws ssm put-parameter --region "${REGION}" --overwrite \
+                 --type SecureString --name "${p}" --value "${json}" >/dev/null
+             echo "Stored the new secret in ${p}"
+         done
+     )
+     ```
+     The block checks the tools and every parameter before it changes
+     anything, and stops at the first error. If it stops before it prints
+     the hash, nothing has changed. If it stops after that, the app client
+     has a new secret that no node uses yet: delete the newest secret with
+     the commands in 2d, then run the block again. If
+     `add-user-pool-client-secret` fails because the app client already has
+     two secrets, finish or undo that earlier rotation first.
+   - **2b. Load the new secret on each node.** On each head or login node
+     of the clusters in `PARAMS`, re-run the installer, then restart
+     Grafana, which reads the secret only when it starts. On v2.6.4 and
+     later, the installer is in `/opt`:
+     ```bash
+     sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
+     sudo docker restart grafana
+     ```
+     On v2.0 through v2.6.3, it is in the home directory of the cluster's
+     default OS user (`<cluster-user>`, such as `ec2-user` or `ubuntu`):
+     ```bash
+     sudo bash /home/<cluster-user>/aws-parallelcluster-monitoring/installer/install.sh
+     sudo docker restart grafana
+     ```
+   - **2c. Check each node.** The installer must print
+     `Cognito env file written to /run/grafana-secrets/cognito.env`, and
+     this command must print the hash from 2a:
+     ```bash
+     sudo sha256sum /run/grafana-secrets/cognito-client-secret
+     ```
+     Signing in through Cognito doesn't show which secret a node uses,
+     because Cognito accepts both secrets until you delete one.
+   - **2d. Delete the old secret** once every node passes 2c. The list shows
+     each secret's ID and creation date; delete the older one:
+     ```bash
+     aws cognito-idp list-user-pool-client-secrets --region <region> \
+         --user-pool-id <pool-id> --client-id <client-id> \
+         --query 'ClientSecrets[].[ClientSecretId,ClientSecretCreateDate]' --output text
+     aws cognito-idp delete-user-pool-client-secret --region <region> \
+         --user-pool-id <pool-id> --client-id <client-id> --client-secret-id <older-id>
+     ```
 3. **Remove the old copies of the trace.** After steps 1 and 2 they hold
    only revoked values.
    - On the head/login node, delete the old install log:
@@ -116,10 +156,13 @@ commands with credentials for the cluster's account.
          --name "/parallelcluster/<cluster>/grafana/admin-password"
      ```
    - If the cluster used Cognito SSO and its app client still exists,
-     rotate the client secret: run the first and last code blocks of step 2
-     and skip the commands that run on the node. If no running cluster uses
-     the app client, you can delete the old secret without the sign-in
-     check.
+     rotate the app client's secret once, with step 2. If a running cluster
+     uses the app client, for example a new cluster with the same name, run
+     all of step 2 once for that app client, with 2b and 2c on the running
+     cluster; if you already did that in step 2, there is nothing more to do
+     for the secret. If no running cluster uses the app client, run only
+     2a, with the deleted cluster's Cognito parameter in `PARAMS`, and then
+     2d.
    - Delete the retained log group, or only its head node's `*.cfn-init`
      stream with the commands in step 3. Each earlier cluster with that name
      left a group named `/aws/parallelcluster/<cluster>-<timestamp>`. The
