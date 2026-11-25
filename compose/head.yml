@@ -4,6 +4,9 @@
 #
 # HeadNode monitoring stack. Images are pinned; bump deliberately.
 #
+# Every service listens on 127.0.0.1 only, except nginx (ports 80 and 443)
+# and node-exporter (9100, which Prometheus scrapes at the private IP).
+#
 services:
   pushgateway:
     container_name: pushgateway
@@ -11,6 +14,7 @@ services:
     pid: host
     restart: unless-stopped
     image: prom/pushgateway:v1.11.3
+    command: ['--web.listen-address=127.0.0.1:9091']
 
   prometheus:
     container_name: prometheus
@@ -38,6 +42,7 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.external-url=/prometheus/'
       - '--web.route-prefix=/'
+      - '--web.listen-address=127.0.0.1:9090'
 
   grafana:
     container_name: grafana
@@ -50,6 +55,7 @@ services:
       # Rotate the SSM parameter and the timer will pick up the new value.
       - 'GF_SECURITY_ADMIN_PASSWORD__FILE=/run/grafana-secrets/admin-password'
       - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
+      - 'GF_SERVER_HTTP_ADDR=127.0.0.1'
       # Land every user on ParallelCluster Summary after login.
       - 'GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/ParallelCluster.json'
       # AWS creds for the CloudWatch datasource (Logs dashboard). Same
@@ -99,7 +105,12 @@ services:
 
   cloudwatch-exporter:
     container_name: cloudwatch-exporter
-    network_mode: host
+    # Not on the host network: the exporter takes a port but no listen
+    # address, so under network_mode: host it would listen on every
+    # interface. Published on 127.0.0.1 only; Prometheus scrapes
+    # localhost:9106.
+    ports:
+      - '127.0.0.1:9106:9106'
     pid: host
     restart: unless-stopped
     environment:

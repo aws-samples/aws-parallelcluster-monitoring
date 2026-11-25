@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Environment=PATH=/opt/slurm/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/prometheus-slurm-exporter
+ExecStart=/usr/bin/prometheus-slurm-exporter -web.listen-address=127.0.0.1:9092
 Restart=on-failure
 RestartSec=15
 Type=simple
