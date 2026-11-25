@@ -5,7 +5,8 @@
 Keeps secrets out of the install trace, speeds up compute-node boot on
 custom AMIs, and corrects the docs. Includes the #55 GPU metrics fix that
 shipped in v2.10.3. No breaking changes; the install log is now readable by
-root only.
+root only. Problems that validation found, which earlier releases share, are
+listed under Known issues at the end.
 
 ### Security
 - **The install trace exposed the Grafana admin password and the Cognito
@@ -235,9 +236,64 @@ custom-AMI CPU node reached `node-exporter`-running ~17 s faster than a
 stock-AMI control with zero Compose downloads and zero image pulls at boot;
 a GPU node served both `node-exporter` and the `dcgm-exporter` image (about
 410 MB on disk) from the pre-baked cache with zero pulls. This release was
-validated again on ParallelCluster 3.16.3 (Amazon Linux 2023 CPU and GPU
-nodes on the stock AMI and on custom AMIs, and Ubuntu 24.04) and on AWS PCS
-with Slurm 25.11 (the AL2023 sample AMI and the PCS-ready DLAMI).
+validated again on ParallelCluster 3.16.3 with Amazon Linux 2023 (the head
+node, and CPU and GPU nodes on the stock AMI and on custom AMIs) and on AWS
+PCS with Slurm 25.11 (login and CPU nodes on the AL2023 sample AMI, and a GPU
+node on the PCS-ready DLAMI). Ubuntu 24.04 head nodes on ParallelCluster need
+the workaround under Known issues.
+
+### Known issues
+These problems were found while validating v2.11. Earlier releases have them
+too; none comes from a v2.11 change. They are planned to be fixed in the next
+release (v2.12).
+
+- **ParallelCluster, Ubuntu 24.04 head node: the landing page and Grafana
+  are unreachable.** The official ParallelCluster Ubuntu 24.04 AMIs (checked
+  on 3.15.1 and 3.16.3) run `apache2` on port 80. The monitoring `nginx`
+  container uses the host network, so it can't bind port 80 and keeps
+  restarting; `sudo docker logs nginx` shows
+  `bind() to 0.0.0.0:80 failed (98: Address in use)`. The install still
+  reports success and the cluster reaches `CREATE_COMPLETE`. Compute nodes
+  aren't affected. On the head node, stop and disable `apache2`, then
+  restart `nginx`:
+  ```bash
+  sudo systemctl disable --now apache2
+  sudo docker restart nginx
+  ```
+  If you use `apache2` on the head node, move it off ports 80 and 443
+  instead.
+- **AWS PCS: a node's install can fail with "Cannot detect platform".** The
+  platform check pipes the instance's tag list into `grep -q` under
+  `set -o pipefail`. When `grep` exits early, `SIGPIPE` can kill the `echo`
+  that feeds it, and the check fails even though the `aws:pcs:cluster-id`
+  tag is present. This happened on 1 of 4 PCS node boots during validation.
+  The install stops, so the node runs none of the monitoring containers, and
+  `/var/log/parallelcluster-monitoring-install.log` ends with a
+  `Cannot detect platform` error. Re-run the installer on that node:
+  ```bash
+  sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
+  ```
+- **AWS PCS: the job-to-node mapping is empty.** On the login node,
+  `slurm-job-nodes.service` fails on every run. It looks for `squeue` in
+  `/opt/slurm/bin`, `/opt/aws-pcs/slurm/bin` and the service's `PATH`, but
+  PCS installs it in `/opt/aws/pcs/scheduler/slurm-<version>/bin`. So the
+  **Job ID** and **Job Name** columns of the Compute Node List stay empty on
+  PCS. There is no tested workaround.
+- **Some dashboard panels stay empty, because their queries don't match the
+  metrics the stack collects:**
+  - Compute Node List, on every platform: the **Load / Core** column. Its
+    query divides `node_load1` by a per-node CPU count without
+    `on(instance_id)`, so no series match.
+  - ParallelCluster: Cluster Summary **Top users (CPUs allocated)**, and
+    Slurm Detail **Top Users**, **Top Accounts** and the usage series of
+    **Account Quota Utilization**. These panels filter on `alloc|mix` or on
+    lowercase `running`/`pending`, but the Slurm exporter (rivosinc 1.8.0)
+    reports uppercase job states such as `state="RUNNING"`. It also doesn't
+    export the per-user and per-account memory series that some of them
+    use.
+  - ParallelCluster: Slurm Detail **Backfill Cycles per Minute**. The Slurm
+    exporter reports no backfill metrics, so the other two backfill panels
+    show 0.
 
 ## v2.10.3 — 2026-11-25
 

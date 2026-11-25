@@ -1,7 +1,8 @@
 # Example ParallelCluster 3.x config using aws-parallelcluster-monitoring.
-# Validated on ParallelCluster 3.16.3 with alinux2023 and ubuntu2404.
-# ubuntu2204 and rhel9 also work; alinux2 works only on ParallelCluster
-# 3.15 or earlier.
+# Validated on ParallelCluster 3.16.3 with alinux2023. ubuntu2404,
+# ubuntu2204 and rhel9 also work; ubuntu2404 head nodes need the apache2
+# workaround under Known issues in the v2.11 CHANGELOG. alinux2 works only
+# on ParallelCluster 3.15 or earlier.
 #
 # post-install.sh accepts up to two args:
 #   Args:
@@ -79,9 +80,10 @@ Scheduling:
           # session manager. The overbroad policies are HeadNode-only.
 Region: us-east-2
 Image:
-  # Validated on ParallelCluster 3.16.3 with alinux2023 and ubuntu2404.
-  # ubuntu2204 and rhel9 also work; alinux2 works only on ParallelCluster
-  # 3.15 or earlier.
+  # Validated on ParallelCluster 3.16.3 with alinux2023. ubuntu2404,
+  # ubuntu2204 and rhel9 also work; ubuntu2404 head nodes need the apache2
+  # workaround under Known issues in the v2.11 CHANGELOG. alinux2 works only
+  # on ParallelCluster 3.15 or earlier.
   Os: alinux2023
 Tags:
   - Key: 'Grafana'
