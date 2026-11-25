@@ -12,7 +12,7 @@
 #   PLATFORM_NODE_TYPE    head | compute | login
 #   PLATFORM_CLUSTER_NAME <string>   (unique cluster identifier)
 #   PLATFORM_REGION       <aws-region>
-#   PLATFORM_USER         <local-user>   (ec2-user, ubuntu, etc)
+#   PLATFORM_USER         <local-user>   (ec2-user, ubuntu, rocky, etc)
 #
 # Plus any platform-specific extras set by the sub-modules.
 #

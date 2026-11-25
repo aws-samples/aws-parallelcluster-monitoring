@@ -47,10 +47,13 @@ if [[ -r /etc/parallelcluster/cfnconfig ]]; then
     CLUSTER_USER="${cfn_cluster_user}"
 else
     # PCS / other: Detect the cluster user. Ubuntu-based AMIs use 'ubuntu',
-    # Amazon Linux 2023 uses 'ec2-user'.
+    # Amazon Linux and RHEL use 'ec2-user', and Rocky Linux AMIs use 'rocky'
+    # (they have no ec2-user).
     CLUSTER_USER="ec2-user"
     if [[ -d /home/ubuntu ]] && id ubuntu >/dev/null 2>&1; then
         CLUSTER_USER="ubuntu"
+    elif ! id ec2-user >/dev/null 2>&1 && id rocky >/dev/null 2>&1; then
+        CLUSTER_USER="rocky"
     fi
 fi
 # Install the monitoring tree on NODE-LOCAL disk, NOT under /home.

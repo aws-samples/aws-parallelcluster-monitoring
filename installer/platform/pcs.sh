@@ -58,10 +58,14 @@ _load_pcs() {
             --output text 2>/dev/null) || die "Could not resolve slurmctld endpoint"
     fi
 
-    # Detect the platform user. Ubuntu-based AMIs use 'ubuntu', AL2023 uses 'ec2-user'.
+    # Detect the platform user. Ubuntu-based AMIs use 'ubuntu', AL2023 and
+    # RHEL use 'ec2-user', Rocky Linux AMIs use 'rocky' (no ec2-user). Keep
+    # in sync with post-install.sh.
     local platform_user="ec2-user"
     if [[ -d /home/ubuntu ]] && id ubuntu >/dev/null 2>&1; then
         platform_user="ubuntu"
+    elif ! id ec2-user >/dev/null 2>&1 && id rocky >/dev/null 2>&1; then
+        platform_user="rocky"
     fi
 
     export PLATFORM="pcs"
