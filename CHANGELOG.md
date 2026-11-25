@@ -24,10 +24,14 @@ root only.
   cluster's CloudWatch log group, and Grafana users who can open the Cluster
   Logs dashboard (v2.7 and later) could read both secrets. With Cognito SSO,
   that includes every user who can sign in, because Grafana creates an
-  account on first sign-in. v2.11 suspends the trace around the code that
-  handles the two secrets, keeps the rest of the trace, and makes the
-  install log readable by root only, also when it replaces a log from an
-  older version.
+  account on first sign-in. Deleting a ParallelCluster cluster doesn't end
+  the exposure: ParallelCluster keeps the cluster's log group
+  (`/aws/parallelcluster/<cluster>-<timestamp>`) unless the cluster config
+  sets `DeletionPolicy: Delete` under `Monitoring/Logs/CloudWatch`, and the
+  group keeps its events for 180 days by default. v2.11 suspends the trace
+  around the code that handles the two secrets, keeps the rest of the
+  trace, and makes the install log readable by root only, also when it
+  replaces a log from an older version.
 
 #### If you deployed v2.0 through v2.10.3
 
@@ -60,13 +64,23 @@ commands with credentials for the cluster's account.
        --value "$(jq -c --arg s "${new_secret}" '.client_secret = $s' <<<"${cognito_json}")"
    unset new_secret cognito_json
    ```
-   Apply it on the head/login node:
+   Apply it on the head/login node. On v2.6.4 and later, the installer is in
+   `/opt`:
    ```bash
    sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
    sudo docker restart grafana
    ```
-   Then delete the old secret. The list shows each secret's ID and creation
-   date; delete the older one:
+   On v2.0 through v2.6.3, it is in the home directory of the cluster's
+   default OS user (`<cluster-user>`, such as `ec2-user` or `ubuntu`):
+   ```bash
+   sudo bash /home/<cluster-user>/aws-parallelcluster-monitoring/installer/install.sh
+   sudo docker restart grafana
+   ```
+   Sign in to Grafana through Cognito to check the new secret. Delete the
+   old secret only after that sign-in works on every cluster that uses this
+   app client. If the installer didn't run, `docker restart grafana`
+   reloads the old secret, and deleting it would break sign-in. The list
+   shows each secret's ID and creation date; delete the older one:
    ```bash
    aws cognito-idp list-user-pool-client-secrets --region <region> \
        --user-pool-id <pool-id> --client-id <client-id> \
@@ -90,7 +104,34 @@ commands with credentials for the cluster's account.
      ```
    - On AWS PCS, the login node's `/var/log/cloud-init-output.log` holds the
      same trace.
-4. **Use v2.11 from now on.** `latest` resolves to v2.11 once it is
+4. **If you deleted a ParallelCluster cluster that ran v2.0 through
+   v2.10.3, clean up what it left behind.** The installer's SSM parameters
+   are not part of the cluster stack, so they survive the deletion. A new
+   cluster with the same name reuses the stored admin password, also on
+   v2.11.
+   - Before you reuse the cluster name, delete the stored password, or
+     rotate it with step 1 once the new cluster is running:
+     ```bash
+     aws ssm delete-parameter --region <region> \
+         --name "/parallelcluster/<cluster>/grafana/admin-password"
+     ```
+   - If the cluster used Cognito SSO and its app client still exists,
+     rotate the client secret: run the first and last code blocks of step 2
+     and skip the commands that run on the node. If no running cluster uses
+     the app client, you can delete the old secret without the sign-in
+     check.
+   - Delete the retained log group, or only its head node's `*.cfn-init`
+     stream with the commands in step 3. Each earlier cluster with that name
+     left a group named `/aws/parallelcluster/<cluster>-<timestamp>`. The
+     prefix also lists clusters whose names start with `<cluster>-`, so
+     check the names before you delete:
+     ```bash
+     aws logs describe-log-groups --region <region> \
+         --log-group-name-prefix "/aws/parallelcluster/<cluster>-" \
+         --query 'logGroups[].logGroupName' --output text
+     aws logs delete-log-group --region <region> --log-group-name <log-group>
+     ```
+5. **Use v2.11 from now on.** `latest` resolves to v2.11 once it is
    released; pin `v2.11` in both the `Script` URL and `Args` to make that
    explicit. If you re-run `post-install.sh` on an existing head or login
    node, use v2.11 or later: older versions write the Cognito secret to the
@@ -135,8 +176,9 @@ commands with credentials for the cluster's account.
   point at `main`.
 - **Supported platforms.** ParallelCluster 3.14–3.16; 3.10–3.13 are past
   their AWS end-of-support date. Amazon Linux 2 only on 3.14–3.15, because
-  ParallelCluster 3.16 dropped it. On PCS, Ubuntu-based AMIs such as the
-  PCS-ready DLAMI are listed next to the AL2023 sample AMIs.
+  ParallelCluster 3.16 dropped it. On AWS PCS, Ubuntu 22.04/24.04 PCS AMIs,
+  such as the PCS-ready DLAMI (Ubuntu 24.04), are listed next to the AL2023
+  sample AMIs.
 - **Custom-AMI guide.** `docs/custom-ami.md` no longer claims that a custom
   AMI removes every per-boot network dependency. Nodes still download the
   installer from GitHub on every boot, and GPU nodes still contact the

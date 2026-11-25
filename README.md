@@ -352,7 +352,7 @@ rightsizing candidates stand out.
 | Platform | Slurm Source | Notes |
 |----------|-------------|-------|
 | ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
-| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu-based PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04) |
+| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04) |
 | Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
 ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the
