@@ -1,9 +1,100 @@
 # Changelog
 
-## v2.11 — 2026-07-17
+## v2.11 — 2026-11-25
 
-Faster compute-node boot via custom AMIs, plus an idempotent installer. No
-breaking changes.
+Keeps secrets out of the install trace, speeds up compute-node boot on
+custom AMIs, and corrects the docs. Includes the #55 GPU metrics fix that
+shipped in v2.10.3. No breaking changes; the install log is now readable by
+root only.
+
+### Security
+- **The install trace exposed the Grafana admin password and the Cognito
+  client secret** (v2.0 through v2.10.3). `post-install.sh` runs the
+  installer under `bash -x`. The trace printed the generated Grafana admin
+  password and, when Cognito SSO is configured, the Cognito JSON with the
+  app client secret. It was written to:
+  - `/var/log/parallelcluster-monitoring-install.log`, which was
+    world-readable (0644);
+  - on ParallelCluster, the head node's `/var/log/cfn-init.log`, which ships
+    to CloudWatch Logs by default and is shown in the cfn-init panel of the
+    Cluster Logs dashboard;
+  - on AWS PCS, the login node's `/var/log/cloud-init-output.log`.
+
+  So local users on the head or login node, principals that can read the
+  cluster's CloudWatch log group, and Grafana users who can open the Cluster
+  Logs dashboard (v2.7 and later) could read both secrets. With Cognito SSO,
+  that includes every user who can sign in, because Grafana creates an
+  account on first sign-in. v2.11 suspends the trace around the code that
+  handles the two secrets, keeps the rest of the trace, and makes the
+  install log readable by root only, also when it replaces a log from an
+  older version.
+
+#### If you deployed v2.0 through v2.10.3
+
+In these commands, `<platform>` is `parallelcluster` or `pcs`, and
+`<cluster>` is the cluster name (on PCS, the cluster ID). Run the `aws`
+commands with credentials for the cluster's account.
+
+1. **Rotate the Grafana admin password.**
+   ```bash
+   aws ssm put-parameter --region <region> --overwrite --type SecureString \
+       --name "/<platform>/<cluster>/grafana/admin-password" \
+       --value "$(openssl rand -hex 16)"
+   ```
+   `grafana-password-refresh.timer` on the head/login node applies the new
+   value within 5 minutes. To apply it at once, run
+   `sudo systemctl start grafana-password-refresh.service` on that node.
+   Also check Grafana's users and service accounts for entries you didn't
+   create.
+2. **If you use Cognito SSO, rotate the app client secret.** Add a second
+   secret and store it in the Cognito parameter:
+   ```bash
+   PARAM="/<platform>/<cluster>/grafana/cognito"
+   new_secret=$(aws cognito-idp add-user-pool-client-secret --region <region> \
+       --user-pool-id <pool-id> --client-id <client-id> \
+       --query ClientSecretDescriptor.ClientSecretValue --output text)
+   cognito_json=$(aws ssm get-parameter --region <region> --name "${PARAM}" \
+       --with-decryption --query Parameter.Value --output text)
+   aws ssm put-parameter --region <region> --overwrite --type SecureString \
+       --name "${PARAM}" \
+       --value "$(jq -c --arg s "${new_secret}" '.client_secret = $s' <<<"${cognito_json}")"
+   unset new_secret cognito_json
+   ```
+   Apply it on the head/login node:
+   ```bash
+   sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
+   sudo docker restart grafana
+   ```
+   Then delete the old secret. The list shows each secret's ID and creation
+   date; delete the older one:
+   ```bash
+   aws cognito-idp list-user-pool-client-secrets --region <region> \
+       --user-pool-id <pool-id> --client-id <client-id> \
+       --query 'ClientSecrets[].[ClientSecretId,ClientSecretCreateDate]' --output text
+   aws cognito-idp delete-user-pool-client-secret --region <region> \
+       --user-pool-id <pool-id> --client-id <client-id> --client-secret-id <older-id>
+   ```
+3. **Remove the old copies of the trace.** After steps 1 and 2 they hold
+   only revoked values.
+   - On the head/login node, delete the old install log:
+     `sudo rm -f /var/log/parallelcluster-monitoring-install.log`.
+   - On ParallelCluster, the head node's `/var/log/cfn-init.log` and its
+     `<hostname>.<instance-id>.cfn-init` stream in the cluster's log group
+     (`/aws/parallelcluster/<cluster>-<timestamp>`) hold the trace. To
+     remove the stream:
+     ```bash
+     aws logs describe-log-streams --region <region> --log-group-name <log-group> \
+         --query "logStreams[?ends_with(logStreamName, '.cfn-init')].logStreamName" --output text
+     aws logs delete-log-stream --region <region> --log-group-name <log-group> \
+         --log-stream-name <stream>
+     ```
+   - On AWS PCS, the login node's `/var/log/cloud-init-output.log` holds the
+     same trace.
+4. **Use v2.11 from now on.** `latest` resolves to v2.11 once it is
+   released; pin `v2.11` in both the `Script` URL and `Args` to make that
+   explicit. If you re-run `post-install.sh` on an existing head or login
+   node, use v2.11 or later: older versions write the Cognito secret to the
+   trace again.
 
 ### Added
 - **Custom compute-node AMI guide + tooling.** `docs/custom-ami.md` documents
@@ -23,22 +114,45 @@ breaking changes.
   already present.
 - **Pre-baked-AMI fast path.** `installer/install.sh` now skips the whole
   per-OS bootstrap when the docker daemon + compose plugin are already usable
-  (custom AMI or a prior run), via `docker_runtime_ready()`.
+  (custom AMI or a prior run), via `docker_runtime_ready()`. The skipped
+  bootstrap is also what installs `jq` and `bc`, so on head and login nodes
+  the fast path installs whichever of them is missing: the Cognito setup and
+  the credential refresh need `jq`, and the cost metrics need `bc`. It makes no
+  package-manager call when both are present, and compute nodes skip this
+  step.
 
 ### Fixed
-- **GPU nodes exported zero `DCGM_*` metrics** (#55). The `nvidia-dcgm`
-  container started but had no NVML inside: the runtime registered by
-  `nvidia-ctk runtime configure` is not the default, and the Compose
-  `deploy.resources` device reservation did not inject the GPU, so
-  dcgm-exporter logged "NVML doesn't exist on this system" and every GPU
-  panel stayed empty. `compose/compute.gpu.yml` now pins
-  `runtime: nvidia` on the dcgm-exporter service.
+- **Two landing-page quick links pointed at missing dashboards.** The
+  Compute Node List and Cluster Costs links used dashboard UIDs that no
+  longer exist. They now open `compute-node-list` and `cluster-costs`.
 
-Validated live on ParallelCluster 3.15.1 / Amazon Linux 2023: a custom-AMI
-CPU node reached `node-exporter`-running ~17 s faster than a stock-AMI control
-with zero Compose downloads and zero image pulls at boot; a GPU node served
-both `node-exporter` and the ~1.4 GB `dcgm-exporter` image from the pre-baked
-cache with zero pulls.
+### Documentation
+- **The README's complete example now boots.** It linked
+  `test-clusters/pc-cluster.yaml`, which downloads the installer from a
+  branch that doesn't exist (HTTP 404). It now links
+  `parallelcluster-setup/pcluster.yaml`, refreshed and pinned to `v2.11` in
+  both `Script` and `Args`. The dead branch refs in `test-clusters/` now
+  point at `main`.
+- **Supported platforms.** ParallelCluster 3.14–3.16; 3.10–3.13 are past
+  their AWS end-of-support date. Amazon Linux 2 only on 3.14–3.15, because
+  ParallelCluster 3.16 dropped it. On PCS, Ubuntu-based AMIs such as the
+  PCS-ready DLAMI are listed next to the AL2023 sample AMIs.
+- **Custom-AMI guide.** `docs/custom-ami.md` no longer claims that a custom
+  AMI removes every per-boot network dependency. Nodes still download the
+  installer from GitHub on every boot, and GPU nodes still contact the
+  NVIDIA repository and restart Docker. The guide also states that the fast
+  path needs v2.11 or later, and gives the measured `dcgm-exporter` image
+  size (about 142 MB to download, about 410 MB on disk) instead of
+  "~1.4 GB".
+
+Validated live on ParallelCluster 3.15.1 / Amazon Linux 2023 (July 2026): a
+custom-AMI CPU node reached `node-exporter`-running ~17 s faster than a
+stock-AMI control with zero Compose downloads and zero image pulls at boot;
+a GPU node served both `node-exporter` and the `dcgm-exporter` image (about
+410 MB on disk) from the pre-baked cache with zero pulls. This release was
+validated again on ParallelCluster 3.16.3 (Amazon Linux 2023 CPU and GPU
+nodes on the stock AMI and on custom AMIs, and Ubuntu 24.04) and on AWS PCS
+with Slurm 25.11 (the AL2023 sample AMI and the PCS-ready DLAMI).
 
 ## v2.10.3 — 2026-11-25
 
