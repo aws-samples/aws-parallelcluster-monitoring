@@ -18,7 +18,7 @@ The fix is to **bake the packages and images into a custom compute-node AMI**, s
 
 A ParallelCluster custom AMI is built **on top of the official ParallelCluster base AMI for a specific ParallelCluster version and OS**. You cannot use an AMI built for one ParallelCluster version with a different version — the cluster fails validation.
 
-For that reason **we do not publish a prebuilt AMI**. This page documents the procedure so you can build one against the exact ParallelCluster version and OS you run, and rebuild it whenever you upgrade ParallelCluster. (This solution supports ParallelCluster 3.10–3.15 on AL2, AL2023, Ubuntu 22.04/24.04, and RHEL 9.)
+For that reason **we do not publish a prebuilt AMI**. This page documents the procedure so you can build one against the exact ParallelCluster version and OS you run, and rebuild it whenever you upgrade ParallelCluster. (This solution supports ParallelCluster 3.14–3.16 on AL2023, Ubuntu 22.04/24.04 and RHEL 9, and Amazon Linux 2 on 3.14–3.15 only, because ParallelCluster 3.16 dropped it. ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the [support policy](https://docs.aws.amazon.com/parallelcluster/latest/ug/support-policy.html).)
 
 > When you adopt a new ParallelCluster release, repeat these steps to produce a matching AMI and update `CustomAmi` in your cluster config.
 
@@ -28,20 +28,20 @@ On a custom AMI, `installer/install.sh` detects that the container runtime is al
 
 | Compute node type | Standard method (installer runs full bootstrap every boot) | Custom AMI (runtime + images pre-baked) |
 |---|---|---|
-| CPU node | docker install + ~32 MB Compose plugin download + `node-exporter` image pull | OS bootstrap skipped, image served from cache — no monitoring-related downloads |
-| GPU node | above **plus** NVIDIA Container Toolkit install + Docker restart + large (~1.4 GB) `dcgm-exporter` image pull | toolkit install is a no-op, both images served from cache — only the Docker restart for the NVIDIA runtime remains |
+| CPU node | docker install + ~32 MB Compose plugin download + `node-exporter` image pull | OS bootstrap skipped, image served from cache; only the installer downloads from GitHub remain |
+| GPU node | above **plus** NVIDIA Container Toolkit install + Docker restart + `dcgm-exporter` image pull (about 142 MB to download, about 410 MB on disk) | toolkit install is a no-op and both images are served from cache; the node still contacts the NVIDIA package repository and restarts Docker for the NVIDIA runtime |
 
 > **Validated live** (ParallelCluster 3.15.1, Amazon Linux 2023). Custom-AMI compute nodes were compared against a control queue on the stock AMI, both running the same installer pinned to `main`:
 >
 > - **CPU (`c5.large`)**: time from EC2 launch to `node-exporter` running was **~109 s on the custom AMI vs ~126 s on the stock AMI (~17 s faster)**. On the custom node the installer logged *"Container runtime already present (pre-baked AMI) — skipping OS bootstrap"*: **zero** Compose-plugin downloads and **zero** image pulls at boot, versus one of each on the stock node. Both served 665 `node_` metrics.
-> - **GPU (`g4dn.xlarge`, Tesla T4)**: both the `node-exporter` and the ~1.4 GB `dcgm-exporter` images were served from the pre-baked cache with **zero pulls at boot**, the NVIDIA Container Toolkit install was a no-op, and the OS bootstrap was skipped. This is where pre-baking helps most, since the stock path would otherwise download the large `dcgm-exporter` image on every scale-up.
+> - **GPU (`g4dn.xlarge`, Tesla T4)**: both the `node-exporter` image and the `dcgm-exporter` image (about 142 MB to download, about 410 MB on disk) were served from the pre-baked cache with **zero pulls at boot**, the NVIDIA Container Toolkit install was a no-op, and the OS bootstrap was skipped. This is where pre-baking helps most, since the stock path would otherwise download the large `dcgm-exporter` image on every scale-up.
 >
 > The launch-to-ready times above are dominated by the OS boot and the ParallelCluster bootstrap (identical on both AMIs); the delta is the monitoring stack's contribution. Measure in your own environment before drawing conclusions.
 
 **Benefits of the custom AMI approach:**
 
 - Compute nodes become ready for Slurm much faster, so jobs start sooner and autoscaling is more responsive.
-- No per-boot dependency on external endpoints (GitHub, quay.io, nvcr.io, the NVIDIA repo), which removes a class of transient boot failures and rate-limit issues.
+- Boot no longer pulls images from quay.io or nvcr.io and no longer installs Docker or the Compose plugin, which removes a class of transient boot failures and rate-limit issues. Nodes still need outbound HTTPS: every boot downloads `post-install.sh` and the monitoring tree from GitHub (with `Args: latest`, it also calls the GitHub API), and GPU nodes still contact the NVIDIA package repository. See [Step 5](#step-5--reference-the-custom-ami-in-your-cluster-configuration).
 - More predictable, repeatable boot times across the fleet.
 
 **Trade-off:** you take on the maintenance of rebuilding the AMI for each ParallelCluster version you upgrade to (see note above).
@@ -77,7 +77,7 @@ The custom AMI must be built on the official ParallelCluster AMI matching your C
 pcluster list-official-images --region <your-region> --os alinux2023
 ```
 
-Note the `amiId` returned for your OS (e.g. `ami-0123456789abcdef0`) — you'll use it as the `ParentImage` below. Supported `--os` values for this solution: `alinux2`, `alinux2023`, `ubuntu2204`, `ubuntu2404`, `rhel9`.
+Note the `amiId` returned for your OS (e.g. `ami-0123456789abcdef0`) — you'll use it as the `ParentImage` below. Supported `--os` values for this solution: `alinux2023`, `ubuntu2204`, `ubuntu2404` and `rhel9`, plus `alinux2` with ParallelCluster 3.15 or earlier.
 
 ## Step 2 — Choose how to reference the build component script
 
@@ -185,9 +185,14 @@ Keep the existing `OnNodeConfigured` post-install action in place (see [the Quic
 - It **skips the entire per-OS bootstrap** — no docker install and no Compose plugin download — logging *"Container runtime already present (pre-baked AMI) — skipping OS bootstrap"*.
 - `docker compose ... up -d` starts the containers from the **pre-baked images** instead of pulling them. On GPU nodes this avoids the large `dcgm-exporter` download, and the NVIDIA Container Toolkit install is a no-op.
 
-This behavior is automatic (added in `installer/install.sh` via `docker_runtime_ready`); no extra flag or slimmed script is needed. The only compute-node boot step that remains is the Docker restart GPU nodes do to activate the NVIDIA runtime.
+This behavior is automatic (added in `installer/install.sh` via `docker_runtime_ready`); no extra flag or slimmed script is needed. It needs installer v2.11 or later, the version that `Args` selects. With an older release the node runs the full OS bootstrap on every boot, and the custom AMI saves only the image pulls.
 
-The head/login node still needs the full installer (it configures Prometheus, Grafana, TLS, SSM, etc.), so leave it on the official AMI unless you also pre-bake its images.
+These steps still run on every compute-node boot, even on the fast path:
+
+- ParallelCluster downloads `post-install.sh` from GitHub, and `post-install.sh` downloads the monitoring tree from GitHub. With `Args: latest` it also calls the GitHub API to resolve the newest release.
+- On GPU nodes, the installer downloads the NVIDIA Container Toolkit repository definition, runs the package manager against that repository (the toolkit install itself is a no-op), runs `nvidia-ctk runtime configure` and restarts Docker to activate the NVIDIA runtime.
+
+The head/login node still needs the full installer (it configures Prometheus, Grafana, TLS, SSM, etc.), so leave it on the official AMI unless you also pre-bake its images. On a head or login node, the fast path also installs `jq` and `bc` if the AMI lacks them.
 
 ## Maintenance reminder
 
