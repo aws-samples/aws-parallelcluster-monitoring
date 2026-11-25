@@ -164,6 +164,8 @@ See [iam/README.md](iam/README.md) for details.
 
 ## Quickstart — AWS PCS
 
+> On RHEL 10, Rocky Linux 10 or Ubuntu 26.04, build a custom AMI first; see [what it must include](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs).
+
 ### 1. Enable Slurm OpenMetrics on your cluster
 
 ```bash
@@ -403,11 +405,32 @@ rightsizing candidates stand out.
 | Platform | Slurm Source | Notes |
 |----------|-------------|-------|
 | ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
-| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade |
+| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade. RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on custom AMIs ([requirements](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs)) |
 | Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
 ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the
 [ParallelCluster support policy](https://docs.aws.amazon.com/parallelcluster/latest/ug/support-policy.html).
+
+### RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on AWS PCS
+
+AWS PCS provides no AMI for these operating systems, so build a custom AMI
+with the PCS agent and Slurm, as described in
+[Custom Amazon Machine Images (AMIs) for AWS PCS](https://docs.aws.amazon.com/pcs/latest/userguide/working-with_ami_custom.html).
+At boot, the installer adds Docker CE and the Docker Compose plugin from
+Docker's repository, unless the AMI already has them, and on GPU nodes the
+NVIDIA Container Toolkit. The AMI must provide the rest:
+
+- **The AWS CLI v2 on login nodes.** The installer and the login node's
+  password-refresh and cost jobs call it.
+- **The NVIDIA driver on GPU nodes.** The installer doesn't install it.
+- **A way to detect the GPU.** The installer treats a node as a GPU node when
+  `lspci` (package `pciutils`) lists an NVIDIA device or `/dev/nvidia0`
+  exists. Include `pciutils` in GPU AMIs, or make sure `/dev/nvidia0` exists
+  before the installer runs, for example with `nvidia-persistenced` enabled.
+
+The installer gives the AMI's default user ownership of the monitoring files
+and adds it to the `docker` group: `ec2-user` on RHEL, `rocky` on Rocky Linux
+and `ubuntu` on Ubuntu.
 
 ## Architecture
 
