@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.10.3 — 2026-11-25
+
+GPU metrics fix, backported from `main`. Patch on top of v2.10.2. No breaking
+changes. Changes one file (`compose/compute.gpu.yml`).
+
+### Fixed
+- **GPU nodes exported zero `DCGM_*` metrics** (#55). The `nvidia-dcgm`
+  container started but had no NVML inside: the runtime registered by
+  `nvidia-ctk runtime configure` is not the default, and the Compose
+  `deploy.resources` device reservation did not inject the GPU, so
+  dcgm-exporter logged "NVML doesn't exist on this system" and every GPU
+  panel stayed empty. `compose/compute.gpu.yml` now pins
+  `runtime: nvidia` on the dcgm-exporter service.
+
 ## v2.10.2 — 2026-06-22
 
 Prometheus EC2 service-discovery credential-rotation fix. No breaking changes.
