@@ -33,11 +33,13 @@ read-only and reads it via the standard AWS SDK credentials-file path.
 │     └─ IMDSv2 PUT /api/token   (root UID — allowed)        │
 │     └─ IMDSv2 GET .../security-credentials/<role>          │
 │     └─ writes /run/prometheus-ec2-creds/credentials        │
-│                      (mode 0640, owner root:65534,         │
-│                       tmpfs, atomic rename)                │
+│                      (file 0640, directory 0750, both      │
+│                       root:monitoring-creds; tmpfs,        │
+│                       atomic rename)                       │
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  Prometheus container (UID 65534)                    │  │
+│  │  group_add: GID of monitoring-creds                  │  │
 │  │                                                      │  │
 │  │  AWS_SHARED_CREDENTIALS_FILE=                        │  │
 │  │    /run/prometheus-ec2-creds/credentials             │  │
@@ -45,6 +47,9 @@ read-only and reads it via the standard AWS SDK credentials-file path.
 │  │                                                      │  │
 │  │  ec2_sd_configs uses these creds → DescribeInstances │  │
 │  └──────────────────────────────────────────────────────┘  │
+│                                                            │
+│  cloudwatch-exporter (UID 65534 since v0.18) and grafana   │
+│  (UID 472) mount the same file with the same group_add.    │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -88,18 +93,21 @@ and prometheus both publish non-root as the recommended default.
 1. **No persistent-disk exposure**: `/run/` is tmpfs. Credentials never
    touch the EBS root volume and disappear on reboot.
 2. **ACL-restricted**: `0750` directory, `0640` file, owner `root`,
-   group `65534` (nogroup / nobody). Only root and the Prometheus
-   process can read.
+   group `monitoring-creds`. Only root and the containers that get the
+   group through `group_add` can read the file: prometheus (UID 65534),
+   cloudwatch-exporter (UID 65534 since v0.18) and grafana (UID 472).
+   Cluster users get "Permission denied".
 3. **Short-lived**: IAM role credentials from IMDSv2 expire every
    ~6 hours automatically. We refresh every 5 minutes, so the window
    of exposure for any specific credential pair is ~5 minutes.
 4. **Atomic updates**: `tmp + rename` means Prometheus never sees a
    half-written file even mid-refresh.
-5. **Scoped permissions**: the role itself is scoped via the Phase 2a.2
-   least-privilege policy. Compromising Prometheus gets you a credential
-   that can only do what that policy allows: ec2:Describe\*, ssm:Get
-   on `/parallelcluster/<cluster>/grafana/*`, etc. No IAM, no EC2 writes,
-   no cross-cluster SSM access.
+5. **Same access as IMDS**: the file holds the instance role's
+   credentials. On ParallelCluster those include everything
+   ParallelCluster attaches to the head node's role plus the cluster's
+   `AdditionalIamPolicies`, not only the monitoring policy. Reading the
+   file is therefore equivalent to IMDS access, which `Imds.Secured`
+   limits to root, so the file is restricted the same way (property 2).
 
 ## What would change this design
 

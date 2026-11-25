@@ -204,7 +204,8 @@ The instance profile needs:
 **Option A — Public subnet (head/login node has a public IP):**
 
 If your head node or login node is in a public subnet with a public IP,
-just open port 443 in the instance's security group and browse directly:
+open port 443 in the instance's security group to your own address range
+(not `0.0.0.0/0`) and browse directly:
 
 ```
 https://<public-ip>/grafana/
@@ -212,6 +213,10 @@ https://<public-ip>/grafana/
 
 The self-signed certificate will trigger a browser warning — click
 through it (the connection is still encrypted).
+
+On this path `/prometheus/` and `/pushgateway/` return 403, because nginx
+serves them to local clients only. Use Option B, or Grafana's Explore
+view for PromQL queries.
 
 **Option B — Private subnet (SSM port-forward):**
 
@@ -362,19 +367,21 @@ ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the
 
 ```
 ParallelCluster HeadNode / PCS Login Node
-┌─────────────────────────────────────┐       Compute Nodes
-│ nginx (TLS)                         │       ┌──────────────────────┐
-│ grafana :3000                       │       │ node_exporter :9100   │
-│ prometheus :9090                    │◄──────│ dcgm-exporter :9400   │
-│ pushgateway :9091                   │       │   (GPU nodes only)    │
-│ node_exporter :9100                 │       └──────────────────────┘
-│ slurm_exporter :9092 (PC only)     │
-│ cost-metrics (cron)                 │       Slurm Controller
-│ slurm-job-nodes (timer)             │       │ :6817/metrics/*       │
-│   (head + PCS login)                │◄──────│   (PCS only)          │
-│ Prometheus recording rules          │       │   (PCS only)          │
-│   (PCS: native → compat names)     │       └──────────────────────┘
-└─────────────────────────────────────┘
+┌───────────────────────────────────────┐       Compute Nodes
+│ nginx (TLS)                           │       ┌──────────────────────┐
+│ grafana :3000 (127.0.0.1)             │       │ node_exporter :9100   │
+│ prometheus :9090 (127.0.0.1)          │◄──────│ dcgm-exporter :9400   │
+│ pushgateway :9091 (127.0.0.1)         │       │   (GPU nodes only)    │
+│ node_exporter :9100                   │       └──────────────────────┘
+│ slurm_exporter :9092 (127.0.0.1)      │
+│   (PC only)                           │
+│ cloudwatch-exporter :9106 (127.0.0.1) │
+│ cost-metrics (cron)                   │       Slurm Controller
+│ slurm-job-nodes (timer)               │       │ :6817/metrics/*       │
+│   (head + PCS login)                  │◄──────│   (PCS only)          │
+│ Prometheus recording rules            │       └──────────────────────┘
+│   (PCS: native → compat names)        │
+└───────────────────────────────────────┘
 ```
 
 ## Components
@@ -399,7 +406,8 @@ All images pinned — `latest` is never used.
 - **Cognito SSO**: optional OAuth2 login — see [cognito/README.md](cognito/README.md)
 - **IAM**: least-privilege policy available — see [iam/README.md](iam/README.md)
 - **TLS**: self-signed cert with SANs (localhost, private IP, hostname)
-- **IMDS**: works with `Imds.Secured=true` via credential sidecar
+- **IMDS**: works with `Imds.Secured=true` via credential sidecar; the credentials file is readable only by root and the monitoring containers — see [docs/imds-secured-design.md](docs/imds-secured-design.md)
+- **Network**: Grafana, Prometheus, the Pushgateway, the Slurm exporter and cloudwatch-exporter listen on 127.0.0.1; in the monitoring stack only nginx (80/443) and node_exporter (9100) listen on the network. nginx serves `/prometheus/` and `/pushgateway/` only to local clients (the node itself and SSM port forwarding)
 - **No secrets in code**: passwords, tokens, and keys are in SSM or tmpfs only
 
 ## Documentation

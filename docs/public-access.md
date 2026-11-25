@@ -13,6 +13,11 @@ aws ssm start-session --target <head-node-id> --region <region> \
 This is the recommended approach for most users — no public exposure,
 no domain required, works from anywhere with AWS CLI + SSM plugin.
 
+Prometheus (`/prometheus/`) and the Pushgateway (`/pushgateway/`) are
+available only on this path, for example at
+`https://localhost:8443/prometheus/`. nginx serves them to local clients
+only, and the SSM agent connects from 127.0.0.1. Other clients get 403.
+
 ## Self-signed certificate details
 
 The installer generates a 4096-bit RSA cert valid for 10 years with
@@ -153,6 +158,9 @@ Or set it via SSM parameter for the next install run.
 - Consider enabling WAF on the ALB for additional protection
 - The HeadNode's security group should only allow inbound 443 from the
   ALB's security group, not from `0.0.0.0/0`
+- ALB clients get the landing page and `/grafana/` only. `/prometheus/`
+  and `/pushgateway/` return 403, because nginx serves them to local
+  clients only. Reach them through SSM port forwarding (top of this page).
 
 ### Cleanup
 
