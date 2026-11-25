@@ -116,7 +116,9 @@ Iam:
 > release from the `main` branch.
 
 For a complete working example, see
-[test-clusters/pc-cluster.yaml](test-clusters/pc-cluster.yaml).
+[parallelcluster-setup/pcluster.yaml](parallelcluster-setup/pcluster.yaml).
+Before you create the cluster, set its `Region` and replace the placeholders:
+the subnet, security group, key pair, account ID and cluster name.
 
 Generate the least-privilege policy:
 

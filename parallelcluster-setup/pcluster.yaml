@@ -1,9 +1,11 @@
 # Example ParallelCluster 3.x config using aws-parallelcluster-monitoring.
-# Tested on alinux2, alinux2023, ubuntu22.04, ubuntu24.04, rhel9.
+# Validated on ParallelCluster 3.16.3 with alinux2023 and ubuntu2404.
+# ubuntu2204 and rhel9 also work; alinux2 works only on ParallelCluster
+# 3.15 or earlier.
 #
 # post-install.sh accepts up to two args:
 #   Args:
-#     - <ref>         # tag (e.g. v2.1) or branch (e.g. main). Default: v2.1
+#     - <ref>         # tag (e.g. v2.11), branch (e.g. main), or latest. Default: latest
 #     - <repo_slug>   # owner/repo. Default: aws-samples/aws-parallelcluster-monitoring
 #
 # Testing from a fork:
@@ -30,9 +32,9 @@ HeadNode:
       VolumeType: gp3
   CustomActions:
     OnNodeConfigured:
-      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.1/post-install.sh
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.11/post-install.sh
       Args:
-        - v2.1
+        - v2.11
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -66,9 +68,9 @@ Scheduling:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.1/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.11/post-install.sh
           Args:
-            - v2.1
+            - v2.11
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -77,7 +79,9 @@ Scheduling:
           # session manager. The overbroad policies are HeadNode-only.
 Region: us-east-2
 Image:
-  # alinux2023 is the PC 3.8+ default. alinux2, ubuntu22/24, rhel9 also work.
+  # Validated on ParallelCluster 3.16.3 with alinux2023 and ubuntu2404.
+  # ubuntu2204 and rhel9 also work; alinux2 works only on ParallelCluster
+  # 3.15 or earlier.
   Os: alinux2023
 Tags:
   - Key: 'Grafana'
