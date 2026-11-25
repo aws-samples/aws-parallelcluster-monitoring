@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.13 — 2026-11-25
+
+Adds AWS PCS support for RHEL 10, Rocky Linux 10 and Ubuntu 26.04. No
+breaking changes: on the operating systems that were already supported, the
+installer runs the same steps as before.
+
+### Added
+
+- **RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on AWS PCS**, for login and
+  compute nodes, CPU and GPU. AWS PCS added these operating systems on
+  2026-11-11, and the installer stopped on them with `Unsupported OS`.
+  ParallelCluster 3.16 doesn't offer them, so this applies to AWS PCS only.
+  - `installer/os/rhel10.sh` and `installer/os/ubuntu26.sh` install Docker CE
+    and the Docker Compose plugin from Docker's repository, as the RHEL 9 and
+    Ubuntu 24.04 scripts do. The installer also sends AlmaLinux 10 and CentOS
+    Stream 10 to `rhel10.sh`, as it does for 9.x; those two are not validated.
+  - Unlike `rhel9.sh`, `rhel10.sh` doesn't turn off signature checking for
+    Docker's repository when the key import fails. That fallback works around
+    a GPGME failure on some RHEL 9 AMIs (#41). On EL10, `rpm` verifies
+    signatures with rpm-sequoia, so a failed import now stops the install.
+  - GPU nodes install the NVIDIA Container Toolkit from NVIDIA's repository,
+    with the same commands as on the other operating systems.
+  - AWS PCS provides no AMI for these operating systems. The README lists what
+    a custom AMI must include: the AWS CLI on login nodes, and the NVIDIA
+    driver and a way to detect the GPU on GPU nodes.
+
+### Fixed
+
+- **PCS nodes on Rocky Linux AMIs failed before the installer started.**
+  Rocky Linux AMIs have a `rocky` user and no `ec2-user`, so `post-install.sh`
+  stopped at `chown: invalid user: 'ec2-user:ec2-user'`. `post-install.sh` and
+  `installer/platform/pcs.sh` now use `rocky` when `ec2-user` doesn't exist.
+  Nodes that have `ec2-user`, or `ubuntu` with `/home/ubuntu`, keep the user
+  they had.
+
 ## v2.12 — 2026-11-26
 
 Security fixes, the latest stable component versions, fixes for the AWS PCS
