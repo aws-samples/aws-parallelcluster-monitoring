@@ -123,9 +123,9 @@ the subnet, security group, key pair, account ID and cluster name.
 Generate the least-privilege policy:
 
 ```bash
-./iam/render-policy.sh <cluster-name> <region> > /tmp/policy.json
+./iam/render-policy.sh <cluster-name> <region> > policy.json
 aws iam create-policy --policy-name pcluster-monitoring-<cluster-name> \
-    --policy-document file:///tmp/policy.json
+    --policy-document file://policy.json
 ```
 
 See [iam/README.md](iam/README.md) for details.
@@ -167,9 +167,9 @@ node is reported as `instance_name=Compute`.
 
 ```bash
 #!/bin/bash
-curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh \
-    -o /tmp/post-install.sh
-bash /tmp/post-install.sh latest
+tmp="$(mktemp)" &&
+    curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh -o "${tmp}" &&
+    bash "${tmp}" latest
 ```
 
 **Compute node** launch template (runs node_exporter + dcgm-exporter):
@@ -291,7 +291,9 @@ Args:
   - <you>/aws-parallelcluster-monitoring
 
 # PCS (in user data)
-bash /tmp/post-install.sh <tag-or-branch> <you>/aws-parallelcluster-monitoring
+tmp="$(mktemp)" &&
+    curl -fsSL https://raw.githubusercontent.com/<you>/aws-parallelcluster-monitoring/<tag-or-branch>/post-install.sh -o "${tmp}" &&
+    bash "${tmp}" <tag-or-branch> <you>/aws-parallelcluster-monitoring
 ```
 
 ## Monitoring Amazon RES desktops
@@ -330,9 +332,9 @@ launch template, Linux script) so each desktop runs node_exporter (and
 dcgm-exporter on GPU desktops):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh \
-    -o /tmp/post-install.sh
-RES_ENVIRONMENT_NAME=<your-res-env-name> bash /tmp/post-install.sh latest
+tmp="$(mktemp)" &&
+    curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh -o "${tmp}" &&
+    RES_ENVIRONMENT_NAME=<your-res-env-name> bash "${tmp}" latest
 ```
 
 The desktop is detected as a RES compute node either from the

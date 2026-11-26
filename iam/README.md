@@ -41,7 +41,7 @@ if someone compromises the HeadNode they can't pivot to other resources.
 Render a concrete policy JSON:
 
 ```bash
-./iam/render-policy.sh <cluster-name> <region> [account-id] [s3-bucket] > /tmp/my-policy.json
+./iam/render-policy.sh <cluster-name> <region> [account-id] [s3-bucket] > my-policy.json
 ```
 
 Create an IAM managed policy from it:
@@ -49,7 +49,7 @@ Create an IAM managed policy from it:
 ```bash
 aws iam create-policy \
     --policy-name pcluster-monitoring-<cluster-name> \
-    --policy-document file:///tmp/my-policy.json
+    --policy-document file://my-policy.json
 ```
 
 Then in your `pcluster.yaml`, replace the 4 AWS-managed policies with

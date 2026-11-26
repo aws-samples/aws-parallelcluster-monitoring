@@ -84,15 +84,14 @@ case "${PLATFORM_NODE_TYPE}" in
 
         cp -rp "${MONITORING_HOME}/custom-metrics/"* /usr/local/bin/
 
-        # Cost estimator cron (every minute). Single unified script replaces
-        # the old 1m + 1h split. Runs as root (needs EC2 describe + pricing API).
-        crontab -l 2>/dev/null > /tmp/crontab.tmp || true
+        # Cost estimator cron (every minute), run as root (EC2 describe and
+        # pricing API). Built in a pipe: a fixed /tmp file could be
+        # pre-created by another local user, and root would install its lines.
         {
             echo 'MAILTO=""'
-            grep -v -E 'MAILTO|cost-metrics' /tmp/crontab.tmp || true
+            crontab -l 2>/dev/null | grep -v -E 'MAILTO|cost-metrics' || true
             echo '* * * * * /usr/local/bin/cost-metrics.sh >/dev/null 2>&1'
         } | crontab -
-        rm -f /tmp/crontab.tmp
 
         # Token replacement in dashboards/config. (Phase 3 will replace all
         # of this with Grafana template variables.)

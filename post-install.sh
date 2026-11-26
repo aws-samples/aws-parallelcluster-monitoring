@@ -18,7 +18,12 @@ set -euo pipefail
 REF="${1:-latest}"
 REPO_SLUG="${2:-aws-samples/aws-parallelcluster-monitoring}"
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
-TARBALL="/tmp/${MONITORING_DIR_NAME}.tar.gz"
+# Download into a private directory that is removed on exit. A fixed /tmp
+# path could be pre-created by another local user, who could then block the
+# install or replace the tarball before root extracts it.
+TARBALL_DIR="$(mktemp -d)"
+trap 'rm -rf "${TARBALL_DIR}"' EXIT
+TARBALL="${TARBALL_DIR}/${MONITORING_DIR_NAME}.tar.gz"
 LOG_FILE="/var/log/parallelcluster-monitoring-install.log"
 
 # Resolve "latest" to the most recent git tag via the GitHub API.
@@ -76,7 +81,7 @@ fetch_tarball() {
 mkdir -p "${MONITORING_HOME}"
 fetch_tarball
 tar xzf "${TARBALL}" -C "${MONITORING_HOME}" --strip-components 1
-rm -f "${TARBALL}"
+rm -rf "${TARBALL_DIR}"
 
 chown -R "${CLUSTER_USER}:${CLUSTER_USER}" "${MONITORING_HOME}"
 

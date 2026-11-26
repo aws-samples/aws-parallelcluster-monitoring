@@ -32,7 +32,12 @@ REF="${MONITORING_REF:-latest}"
 REPO_SLUG="${MONITORING_REPO_SLUG:-aws-samples/aws-parallelcluster-monitoring}"
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
 MONITORING_HOME="/opt/${MONITORING_DIR_NAME}"
-TARBALL="/tmp/${MONITORING_DIR_NAME}-ami.tar.gz"
+# Download into a private directory that is removed on exit. A fixed /tmp
+# path could be pre-created by another local user, who could then block the
+# build or replace the tarball before root extracts it.
+TARBALL_DIR="$(mktemp -d)"
+trap 'rm -rf "${TARBALL_DIR}"' EXIT
+TARBALL="${TARBALL_DIR}/${MONITORING_DIR_NAME}-ami.tar.gz"
 
 # Resolve "latest" to the newest release tag (same logic as post-install.sh).
 if [[ "${REF}" == "latest" ]]; then
@@ -58,7 +63,7 @@ else
     exit 1
 fi
 tar xzf "${TARBALL}" -C "${MONITORING_HOME}" --strip-components 1
-rm -f "${TARBALL}"
+rm -rf "${TARBALL_DIR}"
 
 INSTALLER_DIR="${MONITORING_HOME}/installer"
 
