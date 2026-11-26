@@ -65,8 +65,11 @@ services:
       # Grafana 13.3 runs the CloudWatch datasource as a separate plugin
       # process, which gets Grafana's environment, and with it the variable
       # above, only when its plugin id is listed here. That environment
-      # holds settings and file paths, not secrets, and the plugin runs as
-      # Grafana's user, so it can't read anything Grafana itself can't.
+      # also holds GF_SECURITY_ADMIN_PASSWORD and, with Cognito,
+      # GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: the image's entrypoint replaces
+      # each GF_*__FILE variable with one that holds the file's content.
+      # The plugin runs as Grafana's user in this container, and that user
+      # can read both files in /run/grafana-secrets/ anyway.
       - 'GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch'
     env_file:
       # Cognito OAuth2 config, materialized by installer from SSM.

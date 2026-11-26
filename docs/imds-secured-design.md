@@ -57,6 +57,8 @@ In Grafana, the CloudWatch datasource reads the file. Grafana 13.3 runs
 that datasource as a separate plugin process, which gets Grafana's
 environment, and with it `AWS_SHARED_CREDENTIALS_FILE`, only because
 `compose/head.yml` sets `GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch`.
+That environment also holds the Grafana admin password and, with Cognito,
+the OAuth client secret, which the Grafana container can read anyway.
 
 ## Alternatives we considered and rejected
 

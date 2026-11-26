@@ -141,9 +141,13 @@ Behavior changes:
   `cloudwatch`, so that the plugin reads the credentials file named by
   `AWS_SHARED_CREDENTIALS_FILE`; without it, the CloudWatch datasource and
   the Cluster Logs dashboard fail on ParallelCluster head nodes with
-  `Imds.Secured`. That environment holds settings and file paths, not
-  secrets. The image no longer contains `bash`, and `grafana-cli` is not on
-  its `PATH`; use `sh` and `grafana cli` in your own `docker exec` commands.
+  `Imds.Secured`. That environment also holds the Grafana admin password
+  and, with Cognito, the OAuth client secret, because the image's
+  entrypoint turns each `GF_*__FILE` setting into a variable that holds
+  the file's content. The plugin runs as Grafana's user in the Grafana
+  container, which can read both files anyway. The image no longer
+  contains `bash`, and `grafana-cli` is not on its `PATH`; use `sh` and
+  `grafana cli` in your own `docker exec` commands.
 - **The Slurm exporter collects Slurm's diagnostics** (ParallelCluster).
   `slurm_exporter.service` passes `-slurm.collect-diags`, so the exporter
   also reports the backfill, RPC, controller thread and DBD queue series
