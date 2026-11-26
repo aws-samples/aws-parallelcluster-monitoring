@@ -811,7 +811,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_daemon_thread_count or vector(0)",
+          "expr": "sum(slurm_daemon_thread_count) or vector(0)",
           "instant": true
         }
       ],
@@ -861,7 +861,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_dbd_agent_queue_size or vector(0)",
+          "expr": "sum(slurm_dbd_agent_queue_size) or vector(0)",
           "instant": true
         }
       ],
@@ -911,7 +911,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_backfill_cycle_count or vector(0)",
+          "expr": "sum(slurm_backfill_cycle_count) or vector(0)",
           "instant": true
         }
       ],
@@ -953,7 +953,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_backfill_last_depth or vector(0)",
+          "expr": "sum(slurm_backfill_last_depth) or vector(0)",
           "instant": true
         }
       ],
