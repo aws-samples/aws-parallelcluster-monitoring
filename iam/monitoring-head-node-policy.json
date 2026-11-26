@@ -5,7 +5,9 @@
       "Sid": "EC2DescribeForPrometheusSdAndCostMetrics",
       "Effect": "Allow",
       "Action": [
-        "ec2:DescribeInstances"
+        "ec2:DescribeInstances",
+        "ec2:DescribeSpotPriceHistory",
+        "ec2:DescribeVolumes"
       ],
       "Resource": "*",
       "Condition": {

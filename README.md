@@ -21,7 +21,7 @@ cluster for rightsizing.
 - **GPU-ready**: NVIDIA DCGM exporter with custom counters auto-deploys on GPU instances
 - **EFA fabric metrics**: bandwidth, packet rate, RDMA read/write throughput, SRD retransmits and work-request errors — collected automatically on EFA hardware
 - **Amazon RES desktop monitoring**: monitor Research and Engineering Studio VDI desktops (CPU, RAM, GPU) for rightsizing, on the same stack — opt-in, discovered by `res:EnvironmentName` tag
-- **Cost tracking**: real-time cost/hour estimates + accumulated total (includes PCS controller cost)
+- **Cost tracking**: estimated cost per hour, this month and projected, by component, queue, instance type and Spot vs On-Demand; idle cost, and per-user and per-account estimates
 - **Job mapping**: see which Slurm jobs run on which nodes
 - **Log search in Grafana**: CloudWatch Logs (slurmctld, slurmd, cluster daemons, bootstrap) browsable from a dashboard (ParallelCluster)
 - **Works with `Imds.Secured=true`**: no IMDS workarounds needed
@@ -41,7 +41,7 @@ cluster for rightsizing.
 | **GPU Health** | Both | Cluster-wide GPU faults: XID errors, throttle reasons, ECC, NVLink + PCIe errors, retired pages |
 | **HeadNode Details** | ParallelCluster | Head node metrics |
 | **Login Node List** | PCS | Login nodes table with click-through to node details |
-| **Cluster Costs** | Both | Cost/hour breakdown (headnode/login, compute, EBS, PCS controller) + accumulated total |
+| **Cluster Costs** | Both | Estimated cost per hour, this month and projected, by component, queue, instance type and Spot vs On-Demand. Idle cost, and per-user and per-account estimates |
 | **Storage (FSx + EFS)** | Both | FSx Lustre throughput, IOPS, capacity, CPU/disk utilization; EFS throughput, IO limit, connections, storage |
 | **Cluster Logs** | ParallelCluster | Searchable CloudWatch Logs (slurmctld, slurmd, clustermgtd, computemgtd, cfn-init, cloud-init) with log-group picker and text filter |
 
@@ -89,9 +89,12 @@ memory gauges. Click any row to open the detailed per-GPU dashboard.
 ![GPU Node List](docs/screenshots/gpu-node-list.png)
 
 ### Cluster Costs
-Real-time cost/hour and accumulated cost since cluster start, broken down by
-component (head/login node, compute, EBS, PCS controller). List prices via AWS
-Pricing API, cached for 24h.
+Estimated cost per hour, this month and projected, by component, queue,
+instance type and Spot vs On-Demand, from public list prices, current Spot
+prices, the attached EBS volumes and the AWS PCS fees. Idle and unallocated
+node cost, and per-user and per-account estimates from Slurm's allocations.
+A health row shows whether the estimate is complete and names any failing
+stage. See [how the estimates are made](docs/cost-estimates.md).
 
 ![Cluster Costs](docs/screenshots/cluster-costs.png)
 
@@ -160,6 +163,7 @@ See [iam/README.md](iam/README.md) for details.
 >       - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
 >       - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
 >       - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+>       - Policy: arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess   # Spot prices for Cluster Costs
 > ```
 
 ## Quickstart — AWS PCS
@@ -214,16 +218,20 @@ tmp="$(mktemp)" &&
 ### 3. IAM instance profile permissions
 
 The **login node** instance profile needs:
-- `pcs:GetCluster`, to find the slurmctld endpoint
+- `pcs:GetCluster`, to find the slurmctld endpoint, and for the cost
+  collector's PCS fees
 - `ec2:DescribeInstances`, for Prometheus EC2 service discovery and the cost
-  metrics
+  collector
+- `ec2:DescribeVolumes` and `ec2:DescribeSpotPriceHistory`, for the cost
+  collector (EBS volumes and Spot prices)
+- `pcs:ListComputeNodeGroups`, for the cost collector's node group names
 - `ssm:GetParameter`, `ssm:PutParameter` and `ssm:AddTagsToResource` on
   `arn:aws:ssm:<region>:<account-id>:parameter/pcs/<cluster-id>/grafana/*`,
   for the Grafana admin password and the optional Cognito config
 - `kms:Decrypt`, with the condition
   `kms:ViaService = ssm.<region>.amazonaws.com`, to read those SecureString
   parameters
-- `pricing:GetProducts`, for the cost metrics
+- `pricing:GetProducts`, for the cost collector
 - `cloudwatch:ListMetrics` and `cloudwatch:GetMetricStatistics`, for the FSx
   and EFS metrics of the Storage dashboard (cloudwatch-exporter)
 - `pcs:RegisterComputeNodeGroupInstance`, when a compute node group launches
@@ -362,12 +370,12 @@ resources):
 
 ```bash
 sudo RES_ENVIRONMENT_NAME=<your-res-env-name> bash /opt/aws-parallelcluster-monitoring/installer/install.sh
-sudo docker restart prometheus
 ```
 
 This appends a `res_instances` Prometheus scrape job that discovers every
 running instance tagged `res:EnvironmentName=<your-res-env-name>` and labels
-them `instance_name="RES"`. The head node's IAM role already has
+them `instance_name="RES"`. The installer restarts Prometheus itself, so the
+job takes effect without a manual restart. The head node's IAM role already has
 region-scoped `ec2:DescribeInstances`, so no IAM change is needed when RES is
 in the same region.
 
@@ -421,7 +429,9 @@ Docker's repository, unless the AMI already has them, and on GPU nodes the
 NVIDIA Container Toolkit. The AMI must provide the rest:
 
 - **The AWS CLI v2 on login nodes.** The installer and the login node's
-  password-refresh and cost jobs call it.
+  password-refresh job and the cost collector call it. Login nodes also need
+  `python3` 3.7 or later for the cost collector, which the installer installs
+  from the OS repositories when it's missing.
 - **The NVIDIA driver on GPU nodes.** The installer doesn't install it.
 - **A way to detect the GPU.** The installer treats a node as a GPU node when
   `lspci` (package `pciutils`) lists an NVIDIA device or `/dev/nvidia0`
@@ -457,7 +467,7 @@ ParallelCluster HeadNode / PCS Login Node
 │ slurm_exporter :9092 (127.0.0.1)      │
 │   (PC only)                           │
 │ cloudwatch-exporter :9106 (127.0.0.1) │
-│ cost-metrics (cron)                   │       Slurm Controller
+│ cluster-cost collector (timer)        │       Slurm Controller
 │ slurm-job-nodes (timer)               │       │ :6817/metrics/*       │
 │   (head + PCS login)                  │◄──────│   (PCS only)          │
 │ Prometheus recording rules            │       └──────────────────────┘
@@ -498,6 +508,7 @@ Images are pinned in `compose/*.yml` and never use `latest`: NGINX tracks the 1.
 - [Public access (ALB + ACM)](docs/public-access.md)
 - [IMDS credential sidecar design](docs/imds-secured-design.md)
 - [Least-privilege IAM policy](iam/README.md)
+- [How the Cluster Costs estimates are made](docs/cost-estimates.md)
 - [Cognito SSO setup](cognito/README.md)
 
 ## Roadmap

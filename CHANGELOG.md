@@ -1,5 +1,281 @@
 # Changelog
 
+## vNEXT — YYYY-MM-DD
+
+Rebuilds the Cluster Costs feature, collector and dashboard, on
+ParallelCluster and AWS PCS. The new collector prices every running cluster
+instance at its purchase option, counts the EBS volumes actually attached,
+adds every AWS PCS fee, splits compute node cost among Slurm users and
+accounts, and reports its own health instead of showing failures as zeros.
+It also fixes four dashboard defects that v2.12 lists under Known issues.
+[docs/cost-estimates.md](docs/cost-estimates.md) describes the model, the
+health states and the troubleshooting.
+
+### Breaking changes
+
+- **Metric names and labels change.** `cluster_cost_per_hour` and
+  `cluster_cost_accumulated` are removed. Custom dashboards or alerts on
+  them must move to the new names, in which S is
+  `job=~"ec2_instances|login_node",instance_name="HeadNode"`:
+
+  | Old | New |
+  |---|---|
+  | `cluster_cost_per_hour{component="total"}` | `cluster:cluster_cost_usd_per_hour:sum{job=""}` |
+  | `cluster_cost_per_hour{component="headnode"}` | `sum(cluster_cost_usd_per_hour{S, component="instance", node_role=~"head\|login"})`. On PCS it now covers every login node, not only the monitoring node. |
+  | `cluster_cost_per_hour{component="compute"}` | `sum(cluster_cost_usd_per_hour{S, component="instance", node_role="compute"})` |
+  | `cluster_cost_per_hour{component="ebs"}` | `sum(cluster_cost_usd_per_hour{S, component="ebs"})` |
+  | `cluster_cost_per_hour{component="pcs_controller"}` | `sum(cluster_cost_usd_per_hour{S, component="pcs_controller"})` |
+  | `cluster_cost_accumulated` | `sum(cluster_cost_accumulated_usd{S, period="since_start"})` |
+
+  S limits a query to the monitoring node's own figures. The new series come
+  from the monitoring node's node_exporter (job `ec2_instances` on
+  ParallelCluster, `login_node` on PCS), not from the Pushgateway group
+  `job="cost"`, so they carry that target's labels. To group cost by
+  instance type, use `ec2_instance_type`. `instance_type` on these series is
+  the monitoring node's own type.
+- **The cost cron job goes away.** The installer removes the
+  `cost-metrics.sh` entry from root's crontab and keeps every other line. If
+  only the `MAILTO=""` line that old releases added remains, it removes
+  root's crontab. If other entries remain, that `MAILTO=""` line stays, so
+  cron mail stays off for them; remove it to get cron mail back.
+  `/usr/local/bin/cost-metrics.sh` is deleted. Collection runs from
+  `cluster-cost.timer` and `cluster-cost.service`, every 60 seconds.
+- **Accumulated cost starts again from zero** at the upgrade. The old
+  accumulator and price cache in `/var/lib/prometheus/cost-cache` are
+  deleted, and so is the old Pushgateway group `job="cost"`. The collector
+  no longer uses the Pushgateway, and Prometheus no longer ingests the old
+  group's series even if the deletion fails (next item).
+- **Prometheus drops some series pushed to the Pushgateway.** On both
+  platforms, the `pushgateway` scrape job drops series named
+  `cluster_cost_*`, `cluster:cluster_cost_*` or `node_textfile_*`, so that
+  no local user can push cost figures or a fake freshness signal. Other
+  pushes are unaffected. Anyone who pushes their own series with these name
+  prefixes must rename them. Users who maintain their own `prometheus.yml`
+  must add the rule to keep the figures protected.
+
+### Added
+
+- **`cluster-cost-collector`** (`cost/cluster_cost.py`), a Python 3 collector
+  with the standard library only, run as root by `cluster-cost.timer` on the
+  ParallelCluster head node or the PCS login node. Each run, bounded to
+  120 seconds:
+  - finds the running cluster instances and their attached EBS volumes;
+  - prices them from the Pricing API (On-Demand, EBS, AWS PCS) and the Spot
+    price history, with the prices cached in
+    `/var/lib/aws-parallelcluster-monitoring/cost/prices.json`;
+  - reads Slurm's nodes and running jobs as JSON and splits each compute
+    node's cost among its jobs by their largest share of CPU, GPU or
+    (when Slurm schedules it) memory;
+  - accumulates the totals since start and for the UTC month in
+    `state.json`, with a backup copy;
+  - writes `cluster_cost.prom` to node_exporter's textfile directory, and a
+    run report, `last-run.json`.
+- **A new Cluster Costs dashboard** (same uid and URL): a notice on what the
+  figures are; collector health (status, last update, unpriced resources,
+  unaccounted time, unpriced resource-hours, and the stages with their
+  error codes); totals (cost per hour, since start, this month, projected);
+  breakdowns by component, queue (PCS: node group), instance type and
+  purchase option, now and this month; idle and unallocated cost; per-user
+  and per-account estimates; and the rates over time.
+- **Recording rules** in `prometheus/rules/cost.yml`: the freshness signal
+  `cluster_cost_collector:fresh`, the total rate
+  `cluster:cluster_cost_usd_per_hour:sum` and the projection
+  `cluster:cluster_cost_projected_month_usd:avg_24h`.
+- **Tests**: unit tests in `cost/tests` (run with
+  `python3 -m unittest discover -s cost/tests -t cost` on Python 3.7 or
+  later) and promtool tests for the rules and the dashboard queries in
+  `cost/tests/promtool`.
+
+### Changed
+
+- **The numbers change, mostly upwards.** Compute is priced for every
+  instance type. On PCS, compute no longer depends on `Name=Compute`. Spot
+  nodes use the Spot price. EBS uses the real attached volumes, including
+  gp3 IOPS and throughput above the baseline. PCS adds the node management
+  and accounting fees. The PCS controller uses the list price for the
+  cluster's actual size: $0.5825 per hour for Small in us-east-1, where the
+  old script used a fixed $0.59.
+- **Failures are shown, not hidden.** When an AWS or Slurm call fails, the
+  dashboard reads "Degraded" and names the failing stage and an error code,
+  in every run until the call succeeds again. The affected figures are
+  missing or come from a cached price. The old script reported zeros.
+- **New IAM permissions.**
+  - `ec2:DescribeSpotPriceHistory` is new on both platforms.
+  - `ec2:DescribeVolumes`, and `pcs:ListComputeNodeGroups` on PCS, come
+    back. v2.12 removed them as unused, so users who applied v2.12's policy
+    or list need them again. `pricing:GetProducts`, and `pcs:GetCluster` on
+    PCS, stay required.
+  - Users of the managed-policy alternative need `AmazonEC2ReadOnlyAccess`
+    added, because none of the listed policies, and not the head-node role
+    ParallelCluster creates, grants `ec2:DescribeSpotPriceHistory`. The
+    README's quick start, the commented quick start in
+    `parallelcluster-setup/pcluster.yaml` and `iam/README.md` all list it,
+    so there are five managed policies instead of four.
+  - Without these permissions, Spot nodes or other parts are unpriced and
+    the dashboard reads "Degraded", naming the missing parts, instead of
+    showing zeros.
+- **python3 3.7 or later is required on head and login nodes.** The
+  installer installs it from the OS repositories if it's missing. If it
+  can't, the node's bootstrap fails before the monitoring stack is
+  configured. `bc` stays installed, although nothing uses it any more.
+- **The installer restarts Prometheus on head and login nodes, on every
+  run.** This loads `rules/cost.yml`, which is new on ParallelCluster, and
+  the Pushgateway drop rule. The restart leaves a scrape gap of a few
+  seconds, or of several minutes on a large Prometheus while it replays its
+  write-ahead log. It also applies other `prometheus.yml` changes that
+  re-runs make, such as the RES job, which until now waited for a manual
+  restart. The README's RES steps drop that manual restart.
+
+  The install now fails when Prometheus doesn't stay up after that restart,
+  for example because `prometheus.yml` is invalid (after a second RES re-run
+  on ParallelCluster) or another process holds port 9090. That shows within
+  a few seconds, and the log then holds the port's listeners and the end of
+  `docker logs prometheus`. When Prometheus runs but isn't ready 300 s after
+  the restart, for example while it replays a very large write-ahead log,
+  the install only warns, and Prometheus loads the cost rules when it is
+  ready. It also only warns when Prometheus is up but hasn't loaded the cost
+  rules. This is the rule of v2.13's `wait_for_prometheus`. The restart is
+  the installer's last step on these nodes, so everything else is installed
+  by then.
+- **The Cluster Costs dashboard keeps its uid and URL**, with an entirely
+  new layout. As with every release, local edits to the provisioned
+  dashboard are overwritten at install. The landing page's Cluster Costs
+  card describes the new dashboard.
+- **On PCS, the queue breakdown shows compute node group names**, because a
+  PCS queue can span several node groups.
+- **Per-user and per-account cost estimates are new data, and wide audiences
+  can see them.** They are visible to:
+  - every Grafana user who can open the dashboard, including Cognito
+    self-signups;
+  - every local user on the monitoring node, through Prometheus on
+    loopback;
+  - anyone who can open an SSM port-forwarding session to the node, through
+    nginx's `/prometheus/`. v2.12's loopback-only lock-down gives network
+    clients 403 there;
+  - every host that can reach the monitoring node's port 9100, where
+    node_exporter listens on all interfaces without authentication. On
+    ParallelCluster the head node's security group admits all traffic from
+    the compute nodes, so any Slurm job can read them. On PCS the login
+    node's security groups decide. The same port already serves
+    `slurm_jobs.prom`, with usernames and job names.
+
+  Grafana OSS can restrict who opens the dashboard, but not who queries the
+  data source. Only root and the cluster's default user
+  (`cfn_cluster_user` on ParallelCluster; `ec2-user`, `ubuntu` or `rocky` on
+  PCS) on the monitoring node can change the figures, as long as only
+  node_exporter answers on the node's port 9100. The installer has made
+  that user root-equivalent since earlier releases, through the `docker`
+  group and its ownership of the monitoring files.
+- **New files on monitoring nodes:**
+  - `/etc/aws-parallelcluster-monitoring/cluster-cost.env`;
+  - `/var/lib/aws-parallelcluster-monitoring/cost/` (state, price cache,
+    last-run report);
+  - `/var/lib/prometheus/node-exporter/cluster_cost.prom`;
+  - `/usr/local/bin/cluster-cost-collector`.
+
+  Every install sets `/var/lib/prometheus/node-exporter` to root:root 0755.
+  The collector stops writing (exit 2, "Not reporting") when that directory
+  belongs to another user or its group or others can write to it. Textfile
+  writers that don't run as root must write elsewhere or run as root.
+- **AWS China regions are rejected.** The collector exits with "AWS China
+  regions are not supported: their price lists are in CNY", and the
+  dashboard reads "Not reporting". The old script reported zeros there.
+  GovCloud and the European Sovereign Cloud are not validated.
+- **The collector uses only the instance profile, and needs a drop-in to use
+  a proxy.** The old cron script ran with root's cron environment, so it
+  could pick up root's `~/.aws` profile and keys and, on OSes whose cron
+  reads `/etc/environment`, a proxy set there. The new collector ignores
+  root's `~/.aws` files (it sets `AWS_CONFIG_FILE` and
+  `AWS_SHARED_CREDENTIALS_FILE` to `/nonexistent`), and also ignores
+  credential variables such as `AWS_ACCESS_KEY_ID` and `AWS_PROFILE`
+  exported in a root shell, `--dry-run` included. A systemd service doesn't
+  read `/etc/environment`. A cluster that reached AWS only through a proxy
+  configured that way reads Degraded with `EndpointUnreachable` or
+  `Timeout` until it adds
+  `/etc/systemd/system/cluster-cost.service.d/proxy.conf`
+  ([docs/cost-estimates.md](docs/cost-estimates.md#endpointunreachable-or-timeout)).
+
+### Fixed
+
+- **Cluster Costs under-reported** (the repo review's P1-4). Compute read $0
+  for instance types that started after the daily price cache was built,
+  PCS compute read $0 unless the operator set `Name=Compute`, Spot nodes
+  were priced at On-Demand, EBS was a fixed 35 GB of gp3 per instance, two
+  of the three PCS fees were missing, and failures pushed zeros. The cron
+  job also ran with cron's default `PATH`, `/usr/bin:/bin`. Now every
+  instance type is priced in the run where it first appears, at its
+  purchase option, the attached volumes and all PCS fees are counted, and a
+  failure shows as Degraded. The unit's `PATH` covers `/usr/local/bin` and
+  `/usr/bin`, where the supported AMIs install the AWS CLI.
+- **The cost collector no longer needs a root cron job** (P1-6, for this
+  feature). v2.12 moved the cron entry's edit from a fixed `/tmp` file into
+  a pipe, but kept the job in root's crontab. The installer now only removes
+  the old entry, without temporary files and with tracing suspended, so no
+  line of root's crontab reaches the install log, and none of the new
+  install steps uses a path under `/tmp`.
+- **ParallelCluster: HeadNode Details could open on a compute node.** Its
+  hidden instance selector now lists only the head node, so the dashboard
+  opens on the head node. If you override the head node's `Name` tag, the
+  panels read "No data" instead of another node's data.
+- **ParallelCluster: Compute Node Details could open on a node's previous
+  instance.** The hidden `node_instance_id` variable now lists the node's
+  instances newest first. It reads only the node's own `node_uname_info`
+  series, one step every 15 s of the range. The links from Compute Node
+  List and Login Node List add `var-node_instance_id` to the URL, so a click
+  opens exactly the instance of that row. After ParallelCluster replaces a
+  static node, the dashboard opens on the replacement.
+- **Cluster Summary: Idle node-hours and Idle CPU-hours (last 24h)
+  overstated idle capacity**, on both platforms. The steps without an idle
+  node, or without data, now count as 0. The values drop, often by far, to
+  the idle time actually recorded: v2.12's validation measured 24.0
+  node-hours where the right value was 0.25. On a head or login node with
+  less than 24 hours of data, the stats cover only the recorded time, and
+  their descriptions say so. Alerts or reports built on the old values need
+  new thresholds.
+- **Storage: the EFS Storage Bytes graph had no Infrequent Access line.**
+  Series C now asks for `storage_class="IA"`, the name CloudWatch uses, and
+  the IA line appears.
+
+As with every release, local edits to these provisioned dashboards are
+overwritten at install.
+
+### Documentation
+
+- New [docs/cost-estimates.md](docs/cost-estimates.md): what the dashboard
+  shows, sources and formulas with a worked example, the per-user model,
+  idle and unallocated cost, what's left out, accumulation, health states,
+  stages and error codes, troubleshooting (including the proxy drop-in),
+  IAM, the metric reference with the old-to-new mapping, who can see and
+  change the figures, PCS login node groups, supported partitions, upgrade
+  notes and validation.
+- README: the Features bullet, the Dashboards row and the Cluster Costs
+  section describe the new dashboard; the managed-policy quick start adds
+  `AmazonEC2ReadOnlyAccess`; the PCS login-node permissions add
+  `ec2:DescribeVolumes`, `ec2:DescribeSpotPriceHistory` and
+  `pcs:ListComputeNodeGroups`; the RES steps drop the manual Prometheus
+  restart; the custom-AMI requirements for RHEL 10, Rocky Linux 10 and
+  Ubuntu 26.04 name the cost collector and `python3` 3.7; the architecture
+  diagram shows the `cluster-cost` timer.
+- `iam/README.md`: the policy replaces five managed policies, and the EC2
+  statement grants `ec2:DescribeVolumes` and `ec2:DescribeSpotPriceHistory`
+  too.
+- `parallelcluster-setup/pcluster.yaml` pins this release and lists
+  `AmazonEC2ReadOnlyAccess` in its commented quick start.
+
+### Validation
+
+This release's live validation is planned on ParallelCluster 3.16.3
+(Amazon Linux 2023 with On-Demand, Spot and GPU queues, upgraded in place
+from v2.13; and Ubuntu 24.04) and on AWS PCS with Slurm 25.11, upgraded in
+place to 26.05 (Amazon Linux 2023 sample AMI, accounting `STANDARD`, a login
+node group and a standalone login node). It covers the in-place upgrade, an
+independent calculation of every figure within $0.000001 per hour, failure
+injection (denied permissions, an unreachable endpoint, a stopped
+collector), the integrity of the figures against forged pushes and
+exporters, accumulation across gaps and restarts, the dashboards and the
+four fixes in headless Chrome, and the IAM policy simulator for every
+documented policy.
+
 ## v2.13 — 2026-11-26
 
 Adds AWS PCS support for RHEL 10, Rocky Linux 10 and Ubuntu 26.04. On the

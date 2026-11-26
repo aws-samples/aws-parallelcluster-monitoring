@@ -5,7 +5,7 @@
 #
 # post-install.sh accepts up to two args:
 #   Args:
-#     - <ref>         # tag (e.g. v2.12), branch (e.g. main), or latest. Default: latest
+#     - <ref>         # tag (e.g. vNEXT), branch (e.g. main), or latest. Default: latest
 #     - <repo_slug>   # owner/repo. Default: aws-samples/aws-parallelcluster-monitoring
 #
 # Testing from a fork:
@@ -16,7 +16,7 @@
 #
 # IAM: this example uses the least-privilege policy you create with
 # iam/render-policy.sh — see iam/README.md. If you have not generated
-# that policy yet, the four AWS-managed policies listed in
+# that policy yet, the five AWS-managed policies listed in
 # `# Quick start (overbroad) alternative` work too; they're just much
 # broader than what the monitoring stack actually needs.
 HeadNode:
@@ -32,9 +32,9 @@ HeadNode:
       VolumeType: gp3
   CustomActions:
     OnNodeConfigured:
-      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.12/post-install.sh
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/vNEXT/post-install.sh
       Args:
-        - v2.12
+        - vNEXT
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -48,6 +48,7 @@ HeadNode:
       # - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
       # - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
       # - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      # - Policy: arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
 Scheduling:
   Scheduler: slurm
   SlurmQueues:
@@ -68,9 +69,9 @@ Scheduling:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.12/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/vNEXT/post-install.sh
           Args:
-            - v2.12
+            - vNEXT
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
