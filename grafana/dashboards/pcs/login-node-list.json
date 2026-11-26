@@ -58,7 +58,7 @@
           "links": [
             {
               "title": "View node details",
-              "url": "/grafana/d/compute-node-details/?var-node=${__data.fields[\"Node Name\"]}",
+              "url": "/grafana/d/compute-node-details/?var-node=${__data.fields[\"Node Name\"]}&var-node_instance_id=${__data.fields[\"Instance ID\"]}",
               "targetBlank": false
             }
           ]

@@ -674,6 +674,7 @@
     {
       "type": "stat",
       "title": "Idle node-hours (last 24h)",
+      "description": "Idle nodes summed over the 5-minute steps of the last 24 hours. Steps without data count as 0, so on a head or login node with less than 24 hours of data the value covers only that time.",
       "gridPos": {
         "h": 5,
         "w": 6,
@@ -683,7 +684,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg_over_time(sum(slurm_node_count_per_state{state=~\"idle.*\", state!~\".*~.*\"})[24h:5m]) * 24 or vector(0)",
+          "expr": "avg_over_time((sum(slurm_node_count_per_state{state=~\"idle.*\", state!~\".*~.*\"}) or vector(0))[24h:5m]) * 24",
           "instant": true
         }
       ],
@@ -726,6 +727,7 @@
     {
       "type": "stat",
       "title": "Idle CPU-hours (last 24h)",
+      "description": "Idle CPUs summed over the 5-minute steps of the last 24 hours. Steps without data count as 0, so on a head or login node with less than 24 hours of data the value covers only that time.",
       "gridPos": {
         "h": 5,
         "w": 6,
@@ -735,7 +737,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~\"idle.*\", state=~\".*~.*\"}) or vector(0)))[24h:5m]) * 24 or vector(0)",
+          "expr": "avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~\"idle.*\", state=~\".*~.*\"}) or vector(0)) or vector(0))[24h:5m]) * 24",
           "instant": true
         }
       ],

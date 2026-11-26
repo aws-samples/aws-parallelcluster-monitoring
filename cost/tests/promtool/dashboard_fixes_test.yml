@@ -1,0 +1,117 @@
+# promtool tests for the dashboard fixes in design.md, "Dashboard fixes":
+# R14 (Cluster Summary idle waste, last 24h) and the F10 variable query.
+# Run: promtool test rules dashboard_fixes_test.yml (no rule files needed).
+rule_files: []
+evaluation_interval: 1m
+tests:
+  # R14 on ParallelCluster: rivosinc exports no series for a state without
+  # nodes. One node idle for 15 minutes (three 5-minute steps) in 24 hours
+  # is 0.25 node-hours. v2.12's form averages only the 3 steps with a value
+  # and reads 24, as measured on PC-EX.
+  - interval: 5m
+    input_series:
+      - series: 'slurm_node_count_per_state{state="idle"}'
+        values: '_x120 1 1 1 _x166'
+      - series: 'slurm_node_count_per_state{state="idle~"}'
+        values: '3x288'
+      - series: 'slurm_partition_idle_cpus{partition="q"}'
+        values: '_x120 2 2 2 _x166'
+    promql_expr_test:
+      - expr: avg_over_time((sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"}) or vector(0))[24h:5m]) * 24
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 0.25
+      - expr: avg_over_time(sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"})[24h:5m]) * 24 or vector(0)
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 24
+      # Idle CPUs: 2 for 15 minutes is 0.5 CPU-hours (v2.12: 48).
+      - expr: avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~"idle.*", state=~".*~.*"}) or vector(0)) or vector(0))[24h:5m]) * 24
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 0.5
+      - expr: avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~"idle.*", state=~".*~.*"}) or vector(0)))[24h:5m]) * 24 or vector(0)
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 48
+  # R14 on PCS: Slurm exports zeros, but a login node with 35 minutes of
+  # history has only 7 steps of data. One node idle in 3 of them is 0.25
+  # node-hours; v2.12's form reads 24 * 3/7 = 10.29 (measured: 10.3).
+  - interval: 5m
+    input_series:
+      - series: 'slurm_node_count_per_state{state="idle"}'
+        values: '_x282 1 1 1 0 0 0 0'
+      - series: 'slurm_partition_idle_cpus{partition="q"}'
+        values: '_x282 2 2 2 0 0 0 0'
+      - series: 'slurm_cpus_per_state{state="idle~"}'
+        values: '_x282 0 0 0 0 0 0 0'
+    promql_expr_test:
+      - expr: avg_over_time((sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"}) or vector(0))[24h:5m]) * 24
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 0.25
+      - expr: avg_over_time(sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"})[24h:5m]) * 24 or vector(0)
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 10.285714285714285
+      - expr: avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~"idle.*", state=~".*~.*"}) or vector(0)) or vector(0))[24h:5m]) * 24
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 0.5
+  # No idle node at all in 24 hours, no series: 0, not "No data".
+  - interval: 5m
+    input_series:
+      - series: 'slurm_node_count_per_state{state="alloc"}'
+        values: '4x288'
+    promql_expr_test:
+      - expr: avg_over_time((sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"}) or vector(0))[24h:5m]) * 24
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      - expr: avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~"idle.*", state=~".*~.*"}) or vector(0)) or vector(0))[24h:5m]) * 24
+        eval_time: 24h
+        exp_samples:
+          - labels: '{}'
+            value: 0
+  # F10 (review finding 61): cpu-st-c5l-1 moved from i-0111 (series until
+  # 30m) to i-0eee (series from 25m). The variable query reads only the
+  # node's own node_uname_info series, one step every 15 s of the range, and
+  # keeps each instance's newest sample time, so sort_desc puts the
+  # replacement first. With $__range = 15m, at 35m both are in range: the
+  # replacement reads 2100 (35m) and the replaced instance 1800 (30m). At
+  # 50m only the replacement is left, with 3000. cpu-st-c5l-2 and the head
+  # node never match.
+  # Review finding 63: promtool compares the returned samples as a set, not
+  # in their order. build-checks/grafana-vars/ checks the order in Grafana,
+  # and through /api/v1/query (data.result[0] is the replacement).
+  - interval: 1m
+    input_series:
+      - series: 'node_uname_info{instance_id="i-01111111111111111",instance_name="Compute",nodename="cpu-st-c5l-1"}'
+        values: '1x30'
+      - series: 'node_uname_info{instance_id="i-0eeeeeeeeeeeeeeee",instance_name="Compute",nodename="cpu-st-c5l-1"}'
+        values: '_x25 1x35'
+      - series: 'node_uname_info{instance_id="i-0aaaaaaaaaaaaaaaa",instance_name="Compute",nodename="cpu-st-c5l-2"}'
+        values: '1x60'
+      - series: 'node_uname_info{instance_id="i-0cccccccccccccccc",instance_name="HeadNode",nodename="ip-10-0-0-10"}'
+        values: '1x60'
+    promql_expr_test:
+      - expr: sort_desc(max by (instance_id) (max_over_time(timestamp(node_uname_info{nodename="cpu-st-c5l-1"})[15m:15s])))
+        eval_time: 35m
+        exp_samples:
+          - labels: '{instance_id="i-0eeeeeeeeeeeeeeee"}'
+            value: 2100
+          - labels: '{instance_id="i-01111111111111111"}'
+            value: 1800
+      - expr: sort_desc(max by (instance_id) (max_over_time(timestamp(node_uname_info{nodename="cpu-st-c5l-1"})[15m:15s])))
+        eval_time: 50m
+        exp_samples:
+          - labels: '{instance_id="i-0eeeeeeeeeeeeeeee"}'
+            value: 3000

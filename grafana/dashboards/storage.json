@@ -733,7 +733,7 @@
         },
         {
           "refId": "C",
-          "expr": "aws_efs_storage_bytes_average{storage_class=\"InfrequentAccess\"}",
+          "expr": "aws_efs_storage_bytes_average{storage_class=\"IA\"}",
           "legendFormat": "IA {{file_system_id}}"
         }
       ],
