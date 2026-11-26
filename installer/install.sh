@@ -342,9 +342,11 @@ COGENV
         # the __MONITORING_HOME__ substitution above (node-local /opt path), so
         # no compose env file is needed.
         cd "${MONITORING_HOME}"
+        release_web_ports_from_apache2
         docker compose \
             -f "${MONITORING_HOME}/compose/head.yml" \
             -p monitoring-head up -d
+        wait_for_nginx
 
         # Slurm job-to-node textfile collector (Phase 3c).
         # Runs every 30s, writes /var/lib/prometheus/node-exporter/slurm_jobs.prom

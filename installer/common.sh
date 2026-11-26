@@ -230,6 +230,41 @@ ensure_jq_and_bc() {
 }
 
 # ---------------------------------------------------------------------------
+# The official ParallelCluster Ubuntu 24.04 AMIs run apache2 on port 80. The
+# monitoring nginx uses the host network and needs ports 80 and 443, so stop
+# and disable apache2 when it holds either port. apache2 on other ports is
+# left alone.
+# ---------------------------------------------------------------------------
+release_web_ports_from_apache2() {
+    local listeners
+    listeners="$(ss -Hltnp '( sport = :80 or sport = :443 )' 2>/dev/null)" || listeners=""
+    if grep -q '"apache2"' <<<"${listeners}"; then
+        log "apache2 holds port 80 or 443, which the monitoring nginx needs: stopping and disabling apache2"
+        systemctl disable --now apache2
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# docker compose up succeeds even when nginx then fails to bind and
+# restarts in a loop, so check that it serves the landing page.
+# ---------------------------------------------------------------------------
+wait_for_nginx() {
+    local _ body
+    for _ in $(seq 1 30); do
+        body="$(curl -fsk --max-time 5 https://127.0.0.1/ 2>/dev/null)" || body=""
+        if grep -q '<title>HPC Cluster Monitoring</title>' <<<"${body}"; then
+            log "nginx is serving https://127.0.0.1/"
+            return 0
+        fi
+        sleep 2
+    done
+    warn "listeners on ports 80 and 443:"
+    ss -Hltnp '( sport = :80 or sport = :443 )' >&2 || true
+    docker logs --tail 20 nginx >&2 || true
+    die "nginx is not serving https://127.0.0.1/ after 60 s; another process may hold port 80 or 443"
+}
+
+# ---------------------------------------------------------------------------
 # Verify that "docker" and "docker compose" (v2) both work.
 # ---------------------------------------------------------------------------
 verify_docker() {
