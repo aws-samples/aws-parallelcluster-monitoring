@@ -683,7 +683,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg_over_time(sum(slurm_node_count_per_state{state=~\"idle.*\"})[24h:5m]) * 24 or vector(0)",
+          "expr": "avg_over_time(sum(slurm_node_count_per_state{state=~\"idle.*\", state!~\".*~.*\"})[24h:5m]) * 24 or vector(0)",
           "instant": true
         }
       ],
@@ -735,7 +735,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg_over_time(sum(slurm_partition_idle_cpus)[24h:5m]) * 24 or vector(0)",
+          "expr": "avg_over_time((sum(slurm_partition_idle_cpus) - (sum(slurm_cpus_per_state{state=~\"idle.*\", state=~\".*~.*\"}) or vector(0)))[24h:5m]) * 24 or vector(0)",
           "instant": true
         }
       ],

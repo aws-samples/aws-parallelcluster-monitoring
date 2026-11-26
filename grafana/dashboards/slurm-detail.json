@@ -41,7 +41,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(partition) (slurm_partition_node_count) - sum by(partition) (slurm_partition_node_count{state=~\"idle.*\"}) - sum by(partition) (slurm_partition_node_count{state=~\"down.*|drain.*\"}) or sum by(partition) (slurm_partition_node_count) * 0",
+          "expr": "sum by(partition) (slurm_partition_node_count{state!~\"idle.*|down.*|drain.*|drng.*\"}) or sum by(partition) (slurm_partition_node_count) * 0",
           "format": "table",
           "instant": true
         },
@@ -53,7 +53,7 @@
         },
         {
           "refId": "C",
-          "expr": "sum by(partition) (slurm_partition_node_count{state=~\"down.*|drain.*\"})",
+          "expr": "sum by(partition) (slurm_partition_node_count{state=~\"down.*|drain.*|drng.*\"})",
           "format": "table",
           "instant": true
         },

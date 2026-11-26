@@ -223,9 +223,22 @@ Behavior changes:
   (not responding), `~` (powered down) or `#` (powering up), so a drained
   node that stops responding (`drain*`) counts under Down/Drain, and a
   powered-down dynamic node (`idle~`) under Idle, as `sinfo` counts them.
-  The same goes for **Nodes Idle**, **Node States** and **Idle node-hours
-  (last 24h)**. **Top partitions (CPUs allocated)** no longer filters on
-  the node state, so it counts every allocated CPU.
+  The same goes for **Nodes Idle** and **Node States**. **Idle node-hours
+  (last 24h)** matches the flags too, except `~`: a powered-down node has
+  no instance, so it isn't idle capacity, and v2.11 left it out as well.
+  **Top partitions (CPUs allocated)** no longer filters on the node state,
+  so it counts every allocated CPU.
+- **ParallelCluster: the Slurm Detail Partitions table showed 0 Nodes
+  Busy** unless the partition also had idle nodes and down or drained
+  nodes. The column subtracted those counts from the partition's total,
+  but a PromQL subtraction keeps only the partitions found on both sides,
+  and the Slurm exporter reports only the states that have nodes. Nodes
+  Busy now counts the nodes in every state other than idle, down, drain
+  and `drng`. Earlier releases have this too. Nodes Down/Drain now also
+  counts `drng`, so on ParallelCluster a draining node (`drng`: drain
+  flag, jobs still running) counts under Nodes Down/Drain in both Cluster
+  Summary and Slurm Detail. On AWS PCS it counts under Nodes Allocated and
+  Nodes Busy (see Known issues).
 - **ParallelCluster: node names longer than 30 characters merged into one
   node.** The Slurm exporter's default `sinfo` format cuts node names at
   30 characters and partition names at 15, and the exporter keys nodes by
@@ -241,8 +254,9 @@ Behavior changes:
   node. **CPUs Allocated**, **CPUs Idle**, **CPU Allocation** and **Idle
   CPU-hours (last 24h)** now sum the allocated and idle CPUs per partition
   (`slurm_partition_alloc_cpus`, `slurm_partition_idle_cpus`), which add
-  up to `sinfo -o %C`. On PCS, the compatibility rules record the same two
-  series. Earlier releases have this too.
+  up to `sinfo -o %C`; Idle CPU-hours leaves out the CPUs of powered-down
+  nodes. On PCS, the compatibility rules record the same two series.
+  Earlier releases have this too.
 - **AWS PCS: Total Nodes, Nodes Idle and CPUs Idle counted the login node,
   and a drained node as idle.** PCS registers the login node as a Slurm
   node without a partition, and Slurm's cluster-wide node counts include
@@ -351,9 +365,15 @@ Found while preparing v2.12.
   nodes**, which `sinfo` reports as other, because Slurm's per-partition
   series count them as idle. Earlier releases count them too. A draining
   node, one with the drain flag and jobs still running, counts under Nodes
-  Allocated, as in Slurm's own counts, while `sinfo` shows it as draining.
+  Allocated, and under Nodes Busy in the Slurm Detail Partitions table, as
+  in Slurm's own counts, while `sinfo` shows it as draining.
   A node in several partitions counts once in each in the node and CPU
   panels.
+- **AWS PCS: Idle node-hours and Idle CPU-hours (last 24h) count
+  powered-down nodes**, which have no instance. Slurm counts a
+  powered-down node as idle in its per-partition series, and the
+  compatibility rules have no power state that the panels could leave out.
+  Earlier releases count them too.
 - **ParallelCluster: the job counts read 0.** Earlier releases have this
   too. Cluster Summary **Jobs
   Running**, **Jobs Pending**, **Jobs Completed**, **Jobs Failed** and
