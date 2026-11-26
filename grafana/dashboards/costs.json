@@ -7,172 +7,250 @@
     "from": "now-24h",
     "to": "now"
   },
+  "refresh": "1m",
   "panels": [
     {
-      "type": "stat",
-      "title": "Current Cost/Hour",
+      "id": 1,
+      "type": "row",
+      "title": "About these numbers",
       "gridPos": {
-        "h": 6,
-        "w": 6,
+        "h": 1,
+        "w": 24,
         "x": 0,
         "y": 0
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 3
-        }
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "title": "Notice",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 1
       },
-      "targets": [
-        {
-          "expr": "cluster_cost_per_hour{component=\"total\"}",
-          "refId": "A"
-        }
-      ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
+        "mode": "markdown",
+        "content": "**Estimates, not your AWS bill.** The figures come from public On-Demand list prices and current Spot prices, the EBS volumes attached to cluster instances, and the AWS PCS fees.\n\n**Left out:** discounts, Savings Plans, Reserved Instances, credits, taxes, data transfer, public IPv4 addresses ($0.005 per address-hour), FSx and EFS, snapshots, load balancers, NAT gateways, CloudWatch, Marketplace software charges, Capacity Block and Dedicated Host instances, and PCS accounting storage.\n\nMonth and since-start totals leave out a resource for the time it was unpriced or its volumes couldn't be listed (such an instance counts as one volume). The Unpriced resource-hours stat shows how much.\n\n**Per user:** a running job gets the largest of its CPU, GPU and memory shares of each node it runs on (memory only when Slurm schedules it), and the rest of a node's cost is unallocated, or idle when the node runs no job. [How the estimates are made](https://github.com/aws-samples/aws-parallelcluster-monitoring/blob/main/docs/cost-estimates.md)"
       }
     },
     {
-      "type": "stat",
-      "title": "Accumulated Cost",
+      "id": 3,
+      "type": "row",
+      "title": "Collector health",
       "gridPos": {
-        "h": 6,
-        "w": 6,
-        "x": 6,
-        "y": 0
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 2
-        }
-      },
-      "targets": [
-        {
-          "expr": "cluster_cost_accumulated",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
+      "collapsed": false,
+      "panels": []
     },
     {
+      "id": 4,
       "type": "stat",
-      "title": "Head/Login Node $/hr",
+      "title": "Status",
       "gridPos": {
-        "h": 6,
+        "h": 4,
         "w": 4,
-        "x": 12,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 3
-        }
-      },
-      "targets": [
-        {
-          "expr": "cluster_cost_per_hour{component=\"headnode\"}",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Compute $/hr",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 16,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 3
-        }
-      },
-      "targets": [
-        {
-          "expr": "cluster_cost_per_hour{component=\"compute\"}",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "EBS $/hr",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 20,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 4
-        }
-      },
-      "targets": [
-        {
-          "expr": "cluster_cost_per_hour{component=\"ebs\"}",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "PCS Controller $/hr",
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 24,
-        "y": 0
+        "x": 0,
+        "y": 10
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "cluster_cost_per_hour{component=\"pcs_controller\"}",
-          "instant": true
+          "expr": "(max(cluster_cost_collector_up{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}) or on() vector(-1)",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyUSD",
+          "unit": "none",
           "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Degraded",
+                  "color": "orange",
+                  "index": 1
+                },
+                "-1": {
+                  "text": "Not reporting",
+                  "color": "red",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Last update",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(node_textfile_mtime_seconds{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",file=~\".*/cluster_cost\\\\.prom\"})",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Unpriced resources",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((sum(cluster_cost_unpriced_resources{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",stage=\"discovery\"}) == 1)) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Unaccounted time this month",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (family) (cluster_cost_unaccounted_seconds{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"}) / 3600",
+          "legendFormat": "{{family}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "thresholds": {
+            "mode": "absolute",
             "steps": [
               {
                 "color": "blue",
@@ -180,13 +258,619 @@
               }
             ]
           },
-          "noValue": "0"
-        }
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lines"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cost lines"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "alloc"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Users and idle"
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
         "colorMode": "value",
         "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Unpriced resource-hours this month",
+      "description": "Resource-hours that the month total leaves out because the resource had no price. Capacity Block and Dedicated Host instances are listed in the notice instead.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(cluster_cost_unpriced_resource_seconds{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\",reason!~\"capacity_block|dedicated_host\"}) or on() (0 * max(cluster_cost_period_start_timestamp_seconds{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"}))) / 3600",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Stages",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (stage) (cluster_cost_collector_stage_ok{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "max by (stage, code) (cluster_cost_collector_stage_error{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value #B": true
+            },
+            "renameByName": {
+              "stage": "Stage",
+              "Value #A": "Status",
+              "code": "Error code"
+            },
+            "indexByName": {
+              "stage": 0,
+              "Value #A": 1,
+              "code": 2
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "OK",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "Failed",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Stage",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Totals",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Est. cost per hour",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cluster:cluster_cost_usd_per_hour:sum{job=\"\"}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Cost since start",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 5,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"since_start\"})",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Tracking since",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 10,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(cluster_cost_period_start_timestamp_seconds{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"since_start\"}) * 1000",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Cost this month",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 14,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"})",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Projected this month",
+      "description": "Month-to-date cost plus the average cost per hour of the last 24 hours, for the hours left in the UTC month. When tracking started this month, the projection covers only the tracked part of the month.",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 19
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cluster:cluster_cost_projected_month_usd:avg_24h{job=\"\"}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Breakdown now ($/h)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "bargauge",
+      "title": "By component",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (node_role) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",component=\"instance\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{node_role}}",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (component) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",component!=\"instance\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{component}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "head"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Head node"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "login"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Login nodes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "compute"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Compute instances"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ebs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "EBS volumes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_controller"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS controller"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_node_management"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS node management"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_accounting"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS accounting"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -197,80 +881,1706 @@
       }
     },
     {
-      "type": "timeseries",
-      "title": "Cost/Hour Over Time",
+      "id": 18,
+      "type": "bargauge",
+      "title": "By queue (PCS: node group)",
       "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 3
-        }
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 24
       },
       "targets": [
         {
-          "expr": "cluster_cost_per_hour{component=\"total\"}",
-          "legendFormat": "Total",
-          "refId": "A"
-        },
-        {
-          "expr": "cluster_cost_per_hour{component=\"compute\"}",
-          "legendFormat": "Compute",
-          "refId": "B"
-        },
-        {
-          "expr": "cluster_cost_per_hour{component=\"headnode\"}",
-          "legendFormat": "Head/Login",
-          "refId": "C"
-        },
-        {
-          "expr": "cluster_cost_per_hour{component=\"ebs\"}",
-          "legendFormat": "EBS",
-          "refId": "D"
-        },
-        {
-          "refId": "E",
-          "expr": "cluster_cost_per_hour{component=\"pcs_controller\"}",
-          "legendFormat": "PCS Controller"
+          "refId": "A",
+          "expr": "sum by (queue) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",node_role=\"compute\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{queue}}",
+          "instant": true,
+          "range": false
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         }
       }
     },
     {
-      "type": "timeseries",
-      "title": "Accumulated Cost",
+      "id": 19,
+      "type": "bargauge",
+      "title": "By instance type",
       "gridPos": {
-        "h": 10,
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (ec2_instance_type) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",ec2_instance_type!=\"\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{ec2_instance_type}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": "piechart",
+      "title": "Spot vs On-Demand",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 24
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (purchase_option) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",purchase_option!=\"\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{purchase_option}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "on_demand"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "On-Demand"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "spot"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Spot"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "row",
+      "title": "Breakdown this month ($)",
+      "gridPos": {
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 32
       },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 22,
+      "type": "bargauge",
+      "title": "By component",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 33
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (node_role) (cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\",component=\"instance\"})",
+          "legendFormat": "{{node_role}}",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (component) (cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\",component!=\"instance\"})",
+          "legendFormat": "{{component}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "head"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Head node"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "login"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Login nodes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "compute"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Compute instances"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ebs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "EBS volumes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_controller"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS controller"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_node_management"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS node management"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_accounting"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS accounting"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 23,
+      "type": "bargauge",
+      "title": "By queue (PCS: node group)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 33
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (queue) (cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\",node_role=\"compute\"})",
+          "legendFormat": "{{queue}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": "bargauge",
+      "title": "By instance type",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 33
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (ec2_instance_type) (cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\",ec2_instance_type!=\"\"})",
+          "legendFormat": "{{ec2_instance_type}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 25,
+      "type": "piechart",
+      "title": "Spot vs On-Demand",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 33
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (purchase_option) (cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\",purchase_option!=\"\"})",
+          "legendFormat": "{{purchase_option}}",
+          "instant": true,
+          "range": false
+        }
+      ],
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
           "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "on_demand"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "On-Demand"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "spot"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Spot"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
         }
+      }
+    },
+    {
+      "id": 26,
+      "type": "row",
+      "title": "Idle and unallocated",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 27,
+      "type": "stat",
+      "title": "Idle nodes",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 42
       },
       "targets": [
         {
-          "expr": "cluster_cost_accumulated",
-          "legendFormat": "Total accumulated",
-          "refId": "A"
+          "refId": "A",
+          "expr": "((sum(cluster_cost_idle_nodes{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",stage=\"slurm\"}) == 1)) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "instant": true,
+          "range": false
         }
       ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 28,
+      "type": "stat",
+      "title": "Idle node cost per hour",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 4,
+        "y": 42
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((sum(cluster_cost_unallocated_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",reason=\"idle_node\"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",stage=\"slurm\"}) == 1)) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 29,
+      "type": "stat",
+      "title": "Unallocated on busy nodes per hour",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 9,
+        "y": 42
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((sum(cluster_cost_unallocated_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",reason=\"partial_node\"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",stage=\"slurm\"}) == 1)) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Idle and unallocated this month",
+      "gridPos": {
+        "h": 4,
+        "w": 10,
+        "x": 14,
+        "y": 42
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (cluster_cost_unallocated_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"})",
+          "legendFormat": "{{reason}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "idle_node"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Idle nodes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "partial_node"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Unallocated on busy nodes"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "Idle cost by queue and type",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 46
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (queue, ec2_instance_type, purchase_option) (cluster_cost_unallocated_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",reason=\"idle_node\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "queue": "Queue",
+              "ec2_instance_type": "Instance type",
+              "purchase_option": "Purchase option",
+              "Value": "Idle cost, per hour"
+            },
+            "indexByName": {
+              "queue": 0,
+              "ec2_instance_type": 1,
+              "purchase_option": 2,
+              "Value": 3
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Idle cost, per hour",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Over time",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 46
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (cluster_cost_unallocated_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{reason}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "idle_node"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Idle nodes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "partial_node"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Unallocated on busy nodes"
+              }
+            ]
+          }
+        ]
+      },
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 33,
+      "type": "row",
+      "title": "Users and accounts",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 34,
+      "type": "stat",
+      "title": "Allocated to jobs per hour",
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 55
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((sum(cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",stage=\"slurm\"}) == 1)) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 35,
+      "type": "bargauge",
+      "title": "Top users now",
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 4,
+        "y": 55
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (username) (cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"})) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{username}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 36,
+      "type": "bargauge",
+      "title": "Top accounts now",
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 55
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (account) (cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"})) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{account}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 37,
+      "type": "table",
+      "title": "Users",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 63
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (username) (cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (username) (sum_over_time((cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"} and on() cluster_cost_collector:fresh{job=\"\"})[$__range:1m])) / 60",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (username) (cluster_cost_user_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "expr": "sum by (username) (cluster_cost_user_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"since_start\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "username": "User",
+              "Value #A": "Now, per hour",
+              "Value #B": "Selected range (limited by Prometheus retention)",
+              "Value #C": "This month",
+              "Value #D": "Since start"
+            },
+            "indexByName": {
+              "username": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3,
+              "Value #D": 4
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Now, per hour"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "This month",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 38,
+      "type": "table",
+      "title": "Accounts",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 63
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (account) (cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (account) (sum_over_time((cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"} and on() cluster_cost_collector:fresh{job=\"\"})[$__range:1m])) / 60",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (account) (cluster_cost_user_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "D",
+          "expr": "sum by (account) (cluster_cost_user_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"since_start\"})",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "account": "Account",
+              "Value #A": "Now, per hour",
+              "Value #B": "Selected range (limited by Prometheus retention)",
+              "Value #C": "This month",
+              "Value #D": "Since start"
+            },
+            "indexByName": {
+              "account": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3,
+              "Value #D": 4
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Now, per hour"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "This month",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "type": "timeseries",
+      "title": "Per user over time",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (username) (cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"})) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{username}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Users and accounts, detail",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 80
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 41,
+          "type": "table",
+          "title": "Users and accounts",
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 81
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (username, account) (cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "refId": "B",
+              "expr": "sum by (username, account) (sum_over_time((cluster_cost_user_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\"} and on() cluster_cost_collector:fresh{job=\"\"})[$__range:1m])) / 60",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "refId": "C",
+              "expr": "sum by (username, account) (cluster_cost_user_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"})",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "refId": "D",
+              "expr": "sum by (username, account) (cluster_cost_user_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"since_start\"})",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "username": "User",
+                  "account": "Account",
+                  "Value #A": "Now, per hour",
+                  "Value #B": "Selected range (limited by Prometheus retention)",
+                  "Value #C": "This month",
+                  "Value #D": "Since start"
+                },
+                "indexByName": {
+                  "username": 0,
+                  "account": 1,
+                  "Value #A": 2,
+                  "Value #B": 3,
+                  "Value #C": 4,
+                  "Value #D": 5
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              },
+              "unit": "currencyUSD",
+              "decimals": 2
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Now, per hour"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false,
+              "reducer": [
+                "sum"
+              ],
+              "fields": ""
+            },
+            "sortBy": [
+              {
+                "displayName": "This month",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "type": "row",
+      "title": "Over time",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 81
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 43,
+      "type": "timeseries",
+      "title": "Cost per hour by component",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 82
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (node_role) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",component=\"instance\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{node_role}}",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (component) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",component!=\"instance\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{component}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 20,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "head"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Head node"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "login"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Login nodes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "compute"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Compute instances"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ebs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "EBS volumes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_controller"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS controller"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_node_management"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS node management"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pcs_accounting"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PCS accounting"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 44,
+      "type": "timeseries",
+      "title": "Cost per hour by purchase option",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 82
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (purchase_option) (cluster_cost_usd_per_hour{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",purchase_option!=\"\"}) and on() cluster_cost_collector:fresh{job=\"\"}",
+          "legendFormat": "{{purchase_option}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "on_demand"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "On-Demand"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "spot"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Spot"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 45,
+      "type": "timeseries",
+      "title": "Cost this month, running total",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 90
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(cluster_cost_accumulated_usd{job=~\"ec2_instances|login_node\",instance_name=\"HeadNode\",period=\"month\"})",
+          "legendFormat": "This month",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
         }
       }
     }

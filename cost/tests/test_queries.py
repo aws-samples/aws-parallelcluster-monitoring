@@ -1,4 +1,5 @@
-"""Queries and Prometheus configs (AC 42): the recording rules and the configs.
+"""Queries and Prometheus configs (AC 42): the recording rules, the Cluster
+Costs dashboard and the configs.
 
 Cost series are trusted only from the monitoring node's own node_exporter
 (design D13). Raw cluster_cost_* and node_textfile_* series must be selected
@@ -7,6 +8,7 @@ cost look-alikes, and it must stay the only job with honor_labels: true.
 Standard-library regex scans are enough, because the expressions and the
 configs are ours.
 """
+import json
 import os
 import re
 import unittest
@@ -15,8 +17,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, os.pardir, os.pardir))
 PROMETHEUS = os.path.join(REPO, "prometheus")
 RULES = os.path.join(PROMETHEUS, "rules", "cost.yml")
+DASHBOARD = os.path.join(REPO, "grafana", "dashboards", "costs.json")
 CONFIGS = ("prometheus.yml", "prometheus-pcs.yml")
 ALL_CONFIGS = CONFIGS + ("prometheus-res.yml",)
+# Review finding 60: the Notice says what the totals leave out.
+UNPRICED_SENTENCE = (
+    "Month and since-start totals leave out a resource for the time it was unpriced or its volumes "
+    "couldn't be listed (such an instance counts as one volume). The Unpriced resource-hours stat "
+    "shows how much.")
 
 S = 'job=~"ec2_instances|login_node",instance_name="HeadNode"'
 RULE_OUTPUTS = ("cluster_cost_collector:fresh",
@@ -105,6 +113,27 @@ def rule_output_problems(exprs):
     return problems, count
 
 
+def walk_panels(panels):
+    """Every panel of a dashboard, the panels inside collapsed rows included."""
+    for panel in panels:
+        yield panel
+        for nested in walk_panels(panel.get("panels") or []):
+            yield nested
+
+
+def dashboard_expressions(dashboard):
+    return [t["expr"] for p in walk_panels(dashboard["panels"]) for t in p.get("targets") or [] if "expr" in t]
+
+
+def key_count(obj, name):
+    """How many times the key `name` appears anywhere in a JSON document."""
+    if isinstance(obj, dict):
+        return sum((k == name) + key_count(v, name) for k, v in obj.items())
+    if isinstance(obj, list):
+        return sum(key_count(v, name) for v in obj)
+    return 0
+
+
 def without_comments(text):
     return "\n".join(l for l in text.split("\n") if not l.lstrip().startswith("#")) + "\n"
 
@@ -166,6 +195,50 @@ class RulesTest(unittest.TestCase):
         problems, count = rule_output_problems(self.exprs)
         self.assertEqual(problems, [])
         self.assertEqual(count, 3)
+
+
+class DashboardTest(unittest.TestCase):
+    """grafana/dashboards/costs.json."""
+
+    def setUp(self):
+        with open(DASHBOARD) as f:
+            self.dashboard = json.load(f)
+        self.exprs = dashboard_expressions(self.dashboard)
+
+    def test_identity(self):
+        d = self.dashboard
+        self.assertEqual((d["uid"], d["title"], d["schemaVersion"]), ("cluster-costs", "Cluster Costs", 39))
+
+    def test_no_datasource_key(self):
+        # Panels and targets use the provisioned default data source "prometheus".
+        self.assertEqual(key_count(self.dashboard, "datasource"), 0)
+
+    def test_raw_series_selected_with_s(self):
+        problems, count = raw_selector_problems(self.exprs)
+        self.assertEqual(problems, [])
+        self.assertEqual((len(self.exprs), count), (48, 52))
+
+    def test_rule_outputs_selected_with_empty_job(self):
+        problems, count = rule_output_problems(self.exprs)
+        self.assertEqual(problems, [])
+        self.assertEqual(count, 29)
+
+    def test_collapsed_row_panels_are_scanned(self):
+        rows = [p for p in self.dashboard["panels"] if p["type"] == "row" and p.get("collapsed")]
+        nested = [t["expr"] for r in rows for p in r["panels"] for t in p["targets"]]
+        self.assertEqual(len(nested), 4)
+        for expr in nested:
+            self.assertIn(expr, self.exprs)
+            self.assertNotIn(expr, [t["expr"] for p in self.dashboard["panels"] for t in p.get("targets") or []])
+
+    def test_notice_says_what_is_left_out(self):
+        notices = [p for p in walk_panels(self.dashboard["panels"]) if p["type"] == "text"]
+        self.assertEqual(len(notices), 1)
+        content = notices[0]["options"]["content"]
+        for phrase in ("Estimates, not your AWS bill.", "public IPv4 addresses", "PCS accounting storage",
+                       "Capacity Block", "Dedicated Host", UNPRICED_SENTENCE):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, content)
 
 
 class ConfigsTest(unittest.TestCase):

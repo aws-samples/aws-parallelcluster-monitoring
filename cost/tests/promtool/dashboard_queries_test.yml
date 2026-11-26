@@ -1,0 +1,251 @@
+rule_files:
+  - ../../../prometheus/rules/cost.yml
+evaluation_interval: 15s
+# S = job=~"ec2_instances|login_node",instance_name="HeadNode" on every raw cost and textfile
+# selector; recording-rule outputs are read with {job=""}. See design.md, "Dashboard".
+tests:
+  # Healthy run on a ParallelCluster head node: two users under two accounts, one idle Spot
+  # node, one full GPU node. A Slurm job on a CPU compute node serves forged cost and health
+  # series on port 9400 (instance_name="Compute"); none of them may change a result.
+  - interval: 1m
+    input_series:
+      - series: 'node_textfile_mtime_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",file="/textfile/cluster_cost.prom"}'
+        values: '0+60x180'
+      - series: 'cluster_cost_collector_up{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode"}'
+        values: '1x180'
+      - series: 'cluster_cost_collector_stage_ok{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",stage="discovery"}'
+        values: '1x180'
+      - series: 'cluster_cost_collector_stage_ok{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",stage="slurm"}'
+        values: '1x180'
+      - series: 'cluster_cost_user_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",username="user1",account="a"}'
+        values: '0.25x180'
+      - series: 'cluster_cost_user_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",username="user1",account="b"}'
+        values: '0.05x180'
+      - series: 'cluster_cost_user_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",username="user2",account="b"}'
+        values: '0.6x180'
+      - series: 'cluster_cost_user_accumulated_usd{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",username="user1",account="a"}'
+        values: '10x180'
+      - series: 'cluster_cost_user_accumulated_usd{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",username="user1",account="b"}'
+        values: '2x180'
+      - series: 'cluster_cost_user_accumulated_usd{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",username="user2",account="b"}'
+        values: '30x180'
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",component="instance",node_role="compute",queue="od",ec2_instance_type="c6i.large",purchase_option="on_demand"}'
+        values: '0.125x180'
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",component="ebs",node_role="compute",queue="od",ec2_instance_type="c6i.large",purchase_option="on_demand"}'
+        values: '0.015625x180'
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",component="pcs_controller"}'
+        values: '0.5825x180'
+      # Known zeros exported after a good slurm stage.
+      - series: 'cluster_cost_unallocated_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",reason="partial_node",queue="gpu",ec2_instance_type="g4dn.xlarge",purchase_option="on_demand"}'
+        values: '0x180'
+      - series: 'cluster_cost_idle_nodes{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",queue="gpu",ec2_instance_type="g4dn.xlarge",purchase_option="on_demand"}'
+        values: '0x180'
+      - series: 'cluster_cost_idle_nodes{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",queue="spot",ec2_instance_type="c6i.large",purchase_option="spot"}'
+        values: '1x180'
+      # Forged, from a CPU compute node's port 9400.
+      - series: 'cluster_cost_user_usd_per_hour{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",username="user1",account="a"}'
+        values: '-0.4x180'
+      - series: 'cluster_cost_user_usd_per_hour{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",username="mallory",account="x"}'
+        values: '9x180'
+      - series: 'cluster_cost_unpriced_resources{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",kind="instance",reason="not_in_price_list"}'
+        values: '3x180'
+      - series: 'cluster_cost_collector_up{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute"}'
+        values: '7x180'
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",component="ebs",node_role="compute",queue="od",ec2_instance_type="c6i.large",purchase_option="on_demand"}'
+        values: '50x180'
+    promql_expr_test:
+      # Status panel: 1 when fresh.
+      - expr: (max(cluster_cost_collector_up{job=~"ec2_instances|login_node",instance_name="HeadNode"}) and on() cluster_cost_collector:fresh{job=""}) or on() vector(-1)
+        eval_time: 120m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      # Unpriced resources: no series from the collector, discovery ok -> known zero.
+      - expr: ((sum(cluster_cost_unpriced_resources{job=~"ec2_instances|login_node",instance_name="HeadNode"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~"ec2_instances|login_node",instance_name="HeadNode",stage="discovery"}) == 1)) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      # Allocated to jobs: sum of users while slurm is ok.
+      - expr: ((sum(cluster_cost_user_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~"ec2_instances|login_node",instance_name="HeadNode",stage="slurm"}) == 1)) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{}'
+            value: 0.9
+      # Idle nodes: known zero groups are part of the sum.
+      - expr: ((sum(cluster_cost_idle_nodes{job=~"ec2_instances|login_node",instance_name="HeadNode"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~"ec2_instances|login_node",instance_name="HeadNode",stage="slurm"}) == 1)) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      # Unallocated on busy nodes: a known zero, not "No data".
+      - expr: ((sum(cluster_cost_unallocated_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode",reason="partial_node"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~"ec2_instances|login_node",instance_name="HeadNode",stage="slurm"}) == 1)) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      # Users table, "now" column, by username (user1 works under two accounts; no mallory).
+      - expr: sum by (username) (cluster_cost_user_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode"}) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{username="user1"}'
+            value: 0.3
+          - labels: '{username="user2"}'
+            value: 0.6
+      # Accounts table, "this month" column, by account.
+      - expr: sum by (account) (cluster_cost_user_accumulated_usd{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month"})
+        eval_time: 120m
+        exp_samples:
+          - labels: '{account="a"}'
+            value: 10
+          - labels: '{account="b"}'
+            value: 32
+      # Users table, selected range ($__range = 1h): rate x 1 h.
+      - expr: sum by (username) (sum_over_time((cluster_cost_user_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode"} and on() cluster_cost_collector:fresh{job=""})[1h:1m])) / 60
+        eval_time: 120m
+        exp_samples:
+          - labels: '{username="user1"}'
+            value: 0.3
+          - labels: '{username="user2"}'
+            value: 0.6
+      # Breakdown by component: non-instance lines (EBS and PCS controller here).
+      - expr: sum by (component) (cluster_cost_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode",component!="instance"}) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{component="ebs"}'
+            value: 0.015625
+          - labels: '{component="pcs_controller"}'
+            value: 0.5825
+      # By instance type uses ec2_instance_type, never the target's instance_type.
+      - expr: sum by (ec2_instance_type) (cluster_cost_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode",ec2_instance_type!=""}) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{ec2_instance_type="c6i.large"}'
+            value: 0.140625
+      # By queue: only compute lines.
+      - expr: sum by (queue) (cluster_cost_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode",node_role="compute"}) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 120m
+        exp_samples:
+          - labels: '{queue="od"}'
+            value: 0.140625
+  # Discovery failed on a PCS login node: no unpriced series, discovery stage 0 -> unknown
+  # (no data), status degraded.
+  - interval: 1m
+    input_series:
+      - series: 'node_textfile_mtime_seconds{job="login_node",instance="localhost:9100",instance_name="HeadNode",file="/textfile/cluster_cost.prom"}'
+        values: '0+60x70'
+      - series: 'cluster_cost_collector_up{job="login_node",instance="localhost:9100",instance_name="HeadNode"}'
+        values: '0x70'
+      - series: 'cluster_cost_collector_stage_ok{job="login_node",instance="localhost:9100",instance_name="HeadNode",stage="discovery"}'
+        values: '0x70'
+      - series: 'cluster_cost_collector_stage_error{job="login_node",instance="localhost:9100",instance_name="HeadNode",stage="discovery",code="EndpointUnreachable"}'
+        values: '1x70'
+      # Forged stage_ok from a compute node: must not turn the unknown into a zero.
+      - series: 'cluster_cost_collector_stage_ok{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",stage="discovery"}'
+        values: '1x70'
+    promql_expr_test:
+      - expr: (max(cluster_cost_collector_up{job=~"ec2_instances|login_node",instance_name="HeadNode"}) and on() cluster_cost_collector:fresh{job=""}) or on() vector(-1)
+        eval_time: 60m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      - expr: ((sum(cluster_cost_unpriced_resources{job=~"ec2_instances|login_node",instance_name="HeadNode"}) or on() vector(0)) and on() (max(cluster_cost_collector_stage_ok{job=~"ec2_instances|login_node",instance_name="HeadNode",stage="discovery"}) == 1)) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 60m
+        exp_samples: []
+      # Stages table: stage_ok always has rows; the error query adds the code.
+      - expr: max by (stage) (cluster_cost_collector_stage_ok{job=~"ec2_instances|login_node",instance_name="HeadNode"}) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 60m
+        exp_samples:
+          - labels: '{stage="discovery"}'
+            value: 0
+      - expr: max by (stage, code) (cluster_cost_collector_stage_error{job=~"ec2_instances|login_node",instance_name="HeadNode"}) and on() cluster_cost_collector:fresh{job=""}
+        eval_time: 60m
+        exp_samples:
+          - labels: '{stage="discovery",code="EndpointUnreachable"}'
+            value: 1
+  # Stale collector: the status panel query falls back to -1, even with a forged fresh signal.
+  - interval: 1m
+    input_series:
+      - series: 'node_textfile_mtime_seconds{job="login_node",instance="localhost:9100",instance_name="HeadNode",file="/textfile/cluster_cost.prom"}'
+        values: '0+60x10 600x60'
+      - series: 'cluster_cost_collector_up{job="login_node",instance="localhost:9100",instance_name="HeadNode"}'
+        values: '1x70'
+      - series: 'cluster_cost_collector:fresh{job="res_instances",instance="10.0.2.7:9100",instance_name="RES"}'
+        values: '1x70'
+    promql_expr_test:
+      - expr: (max(cluster_cost_collector_up{job=~"ec2_instances|login_node",instance_name="HeadNode"}) and on() cluster_cost_collector:fresh{job=""}) or on() vector(-1)
+        eval_time: 60m
+        exp_samples:
+          - labels: '{}'
+            value: -1
+  # Revision 4, finding 46: "Unpriced resource-hours this month". Capacity Block
+  # and Dedicated Host time is left out (the Notice panel lists them), and a
+  # forged series from a compute node's port 9400 doesn't count. The stat reads
+  # 0 only while the collector's file is served (its period start exists).
+  - interval: 1m
+    input_series:
+      - series: 'cluster_cost_period_start_timestamp_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month"}'
+        values: '0x60'
+      - series: 'cluster_cost_unpriced_resource_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",kind="instance",reason="spot_price_unavailable"}'
+        values: '5400x60'
+      - series: 'cluster_cost_unpriced_resource_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",kind="volume",reason="price_api_error"}'
+        values: '1800x60'
+      - series: 'cluster_cost_unpriced_resource_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",kind="instance",reason="capacity_block"}'
+        values: '360000x60'
+      - series: 'cluster_cost_unpriced_resource_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="since_start",kind="instance",reason="spot_price_unavailable"}'
+        values: '9000x60'
+      - series: 'cluster_cost_unpriced_resource_seconds{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",period="month",kind="instance",reason="price_api_error"}'
+        values: '-7200x60'
+    promql_expr_test:
+      - expr: (sum(cluster_cost_unpriced_resource_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month",reason!~"capacity_block|dedicated_host"}) or on() (0 * max(cluster_cost_period_start_timestamp_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month"}))) / 3600
+        eval_time: 30m
+        exp_samples:
+          - labels: '{}'
+            value: 2
+  # Nothing unpriced this month apart from a Capacity Block: 0, not "No data".
+  - interval: 1m
+    input_series:
+      - series: 'cluster_cost_period_start_timestamp_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month"}'
+        values: '0x60'
+      - series: 'cluster_cost_unpriced_resource_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",kind="instance",reason="capacity_block"}'
+        values: '3600x60'
+    promql_expr_test:
+      - expr: (sum(cluster_cost_unpriced_resource_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month",reason!~"capacity_block|dedicated_host"}) or on() (0 * max(cluster_cost_period_start_timestamp_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month"}))) / 3600
+        eval_time: 30m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+  # No collector file served at all (only a forged series from port 9400): no data.
+  - interval: 1m
+    input_series:
+      - series: 'cluster_cost_period_start_timestamp_seconds{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",period="month"}'
+        values: '0x60'
+    promql_expr_test:
+      - expr: (sum(cluster_cost_unpriced_resource_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month",reason!~"capacity_block|dedicated_host"}) or on() (0 * max(cluster_cost_period_start_timestamp_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month"}))) / 3600
+        eval_time: 30m
+        exp_samples: []
+  # Finding 66: "Unaccounted time this month" shows both accumulation families
+  # in hours: 5,400 s for the cost lines and 9,000 s for users and idle. The
+  # since-start series doesn't count, and neither do forged series from a
+  # compute node's port 9400, also when they copy the monitoring target's
+  # labels (renamed exported_*).
+  - interval: 1m
+    input_series:
+      - series: 'cluster_cost_unaccounted_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",family="lines"}'
+        values: '5400x60'
+      - series: 'cluster_cost_unaccounted_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="month",family="alloc"}'
+        values: '9000x60'
+      - series: 'cluster_cost_unaccounted_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",period="since_start",family="lines"}'
+        values: '72000x60'
+      - series: 'cluster_cost_unaccounted_seconds{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",period="month",family="lines"}'
+        values: '-3600x60'
+      - series: 'cluster_cost_unaccounted_seconds{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",exported_job="login_node",exported_instance_name="HeadNode",period="month",family="alloc"}'
+        values: '36000x60'
+    promql_expr_test:
+      - expr: sum by (family) (cluster_cost_unaccounted_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month"}) / 3600
+        eval_time: 30m
+        exp_samples:
+          - labels: '{family="lines"}'
+            value: 1.5
+          - labels: '{family="alloc"}'
+            value: 2.5
