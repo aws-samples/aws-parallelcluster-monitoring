@@ -14,15 +14,28 @@ set -euo pipefail
 TEXTFILE_DIR="/var/lib/prometheus/node-exporter"
 OUTPUT="${TEXTFILE_DIR}/slurm_jobs.prom"
 
-# Find squeue. ParallelCluster installs at /opt/slurm/bin; PCS AMIs vary
-# (some use /opt/slurm/bin, some /opt/aws-pcs/slurm/bin). Fall back to
-# PATH so we don't need to hardcode every layout.
+# Find a Slurm client command. ParallelCluster installs it in /opt/slurm/bin.
+# AWS PCS installs one tree per Slurm version under
+# /opt/aws/pcs/scheduler/slurm-<version>/bin and puts the cluster's version
+# on the login PATH, which a systemd service doesn't get, so ask a login
+# shell. If that finds nothing and there is exactly one PCS tree, use it.
+# Prints nothing when not found; the caller then exits quietly.
 find_slurm_bin() {
-    local cmd="$1"
+    local cmd="$1" prefix found
+    local -a trees
     for prefix in /opt/slurm/bin /opt/aws-pcs/slurm/bin; do
         [[ -x "${prefix}/${cmd}" ]] && { echo "${prefix}/${cmd}"; return 0; }
     done
-    command -v "${cmd}" 2>/dev/null
+    found="$(command -v "${cmd}" 2>/dev/null)" || found=""
+    if [[ -z "${found}" ]]; then
+        found="$(bash -lc "command -v ${cmd}" 2>/dev/null </dev/null | tail -n 1)" || found=""
+    fi
+    if [[ -z "${found}" ]]; then
+        trees=(/opt/aws/pcs/scheduler/slurm-*/bin/"${cmd}")
+        [[ ${#trees[@]} -eq 1 && -x "${trees[0]}" ]] && found="${trees[0]}"
+    fi
+    [[ -n "${found}" && -x "${found}" ]] && echo "${found}"
+    return 0
 }
 SQUEUE="$(find_slurm_bin squeue)"
 SCONTROL="$(find_slurm_bin scontrol)"
