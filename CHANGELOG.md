@@ -13,8 +13,8 @@ Behavior changes:
 - A port conflict on 9090 now fails the install instead of passing
   silently (see Changed).
 - On Ubuntu GPU nodes (22.04, 24.04 and 26.04), the NVIDIA Container
-  Toolkit install waits up to 10 minutes for the apt and dpkg locks instead
-  of failing (see Fixed).
+  Toolkit's `apt-get install` waits up to 10 minutes for the dpkg lock
+  instead of failing (see Fixed).
 
 ### Added
 
@@ -42,10 +42,11 @@ Behavior changes:
     Rocky Linux 10.3 (running kernel 6.12.0-264.20.1, newest 6.12.0-264.21.1).
     `rhel10.sh` now installs `kernel-modules-extra` for the running kernel
     when the modules are missing.
-  - `ubuntu26.sh` waits up to 10 minutes for the apt and dpkg locks
-    (`DPkg::Lock::Timeout=600`). On a node booted from an AMI that is more
-    than a day old, `apt-daily-upgrade.timer` starts unattended-upgrades in
-    the first minutes after boot.
+  - The `apt-get install` calls in `ubuntu26.sh` wait up to 10 minutes for
+    the dpkg lock (`DPkg::Lock::Timeout=600`). On a node booted from an AMI
+    that is more than a day old, `apt-daily-upgrade.timer` starts
+    unattended-upgrades, which can hold that lock, in the first minutes
+    after boot.
   - The Rocky Linux EC2 images enable `cockpit.socket` on port 9090, where
     Prometheus listens, so Prometheus restarted in a loop on Rocky login
     nodes. Before it starts the containers on a head or login node, the
@@ -83,8 +84,8 @@ Behavior changes:
   once with `Could not get lock /var/lib/dpkg/lock-frontend`. In the live
   validation, unattended-upgrades held the lock on an Ubuntu 26.04 GPU node a
   few minutes after boot; the same step runs on Ubuntu 22.04 and 24.04 GPU
-  nodes. The toolkit's `apt-get update` and `apt-get install` now wait up to
-  10 minutes for the locks (`DPkg::Lock::Timeout=600`).
+  nodes. The toolkit's `apt-get install` now waits up to 10 minutes for the
+  dpkg lock (`DPkg::Lock::Timeout=600`).
 
 This release was validated live on 2026-11-26 on AWS PCS with Slurm 26.05
 (x86_64), one cluster per operating system, on custom AMIs of RHEL 10.3,
