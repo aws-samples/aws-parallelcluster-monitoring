@@ -1,5 +1,264 @@
 # Changelog
 
+## v2.12 — 2026-11-26
+
+Security fixes, the latest stable component versions, fixes for the AWS PCS
+compatibility rules and three dashboard gaps, and corrected IAM documents.
+It fixes the problems listed under Known issues in v2.11; only the memory
+columns of the Slurm user and account panels can stay empty (see Fixed).
+
+Behavior changes:
+- The monitoring services on the head/login node listen on 127.0.0.1 only,
+  and nginx serves `/prometheus/` and `/pushgateway/` only to local clients,
+  which includes SSM port forwarding. Other clients get HTTP 403 on those
+  two paths, and pushes to the Pushgateway from other hosts stop working.
+  Grafana and the landing page are unchanged.
+- dcgm-exporter 4.9.0 exports the GPU metrics under their DCGM 4.7 names
+  and units, with a `hostname` label instead of `Hostname`. The dashboards
+  are updated; your own GPU queries and alerts need the new names. A
+  `DCGM_EXPORTER_IMAGE` override must be dcgm-exporter 4.9.0 or later.
+- On ParallelCluster Ubuntu 24.04 head nodes, the installer stops and
+  disables `apache2` when it holds port 80 or 443.
+
+### Security
+- **Every local user could read the instance role's credentials.**
+  `refresh-ec2-credentials.sh` writes them to `/run/prometheus-ec2-creds/`
+  for the containers that call AWS. The directory was 0755 and the file
+  0644, both `root:root`, so any user on the head or login node could read
+  credentials that, on ParallelCluster, carry everything ParallelCluster
+  attaches to the head node plus your `AdditionalIamPolicies`. That also
+  defeated `Imds.Secured`, which limits IMDS to root. The directory is now
+  0750 and the file 0640, both `root:monitoring-creds`, a system group
+  that the installer creates. Only the prometheus, grafana and
+  cloudwatch-exporter containers get the group, and cluster users get
+  "Permission denied". To fix a running cluster, re-run the installer on
+  the head/login node (see Upgrade notes): it creates the group, rewrites
+  the file and recreates the containers with the group.
+- **`/prometheus/` and `/pushgateway/` answered any client that could reach
+  nginx, and the monitoring services listened on every interface.**
+  Neither Prometheus nor the Pushgateway has authentication, and the
+  Pushgateway accepts writes and deletes. Grafana (3000), Prometheus (9090),
+  the Pushgateway (9091), the Slurm exporter (9092) and cloudwatch-exporter
+  (9106) now listen on 127.0.0.1 only. nginx serves `/prometheus/` and
+  `/pushgateway/` only to the node itself
+  (`allow 127.0.0.1; allow ::1; deny all;`), which includes SSM port
+  forwarding, because the SSM agent connects from 127.0.0.1. HTTP basic
+  auth was rejected: it would make the Grafana admin password a second
+  credential to distribute and rotate, add browser credential prompts, and
+  exclude Cognito users. What changes:
+  1. Clients that reach nginx over the network get HTTP 403 on
+     `/prometheus/` and `/pushgateway/`. That covers README Option A (public
+     IP), the ALB setup in `docs/public-access.md`, and other hosts in the
+     VPC, compute nodes included. Use SSM port forwarding (README Option B),
+     or Grafana's Explore view for PromQL queries.
+  2. Pushes to the Pushgateway from other hosts stop working. The stack's
+     own pushes go to 127.0.0.1:9091 and are unaffected.
+  3. Grafana and the landing page don't change. The landing page's
+     Prometheus card says that it needs SSM port forwarding.
+
+  Ports 3000, 9090, 9091, 9092 and 9106 no longer answer on the network.
+  nginx (80/443) and node_exporter (9100, which Prometheus scrapes at the
+  node's private IP) still do.
+- **Root used predictable `/tmp` paths.** `post-install.sh` and the
+  custom-AMI component downloaded the tree to fixed `/tmp` names, the
+  installer copied root's crontab through `/tmp/crontab.tmp`, and the README
+  user-data snippets ran `/tmp/post-install.sh`. A local user who created
+  such a path first could change it between root's write and read, and so
+  add lines to root's crontab or have root run a modified tarball or
+  script. Downloads now go to a `mktemp -d` directory that is removed on
+  exit, the crontab is edited in a pipe, and the documented snippets use
+  `mktemp`.
+- **The Slurm exporter download wasn't verified.** The installer now checks
+  the rivosinc `prometheus-slurm-exporter` 1.8.0 tarball with
+  `sha256sum -c` against the SHA-256 that the release publishes, pinned in
+  `installer/common.sh`, before it extracts it. On a mismatch the install
+  fails.
+- **The README put the monitoring policy on compute nodes too.** Its
+  ParallelCluster Quickstart showed the policy in a snippet for both
+  `HeadNode` and each `SlurmQueue`. Compute nodes make no AWS calls for
+  monitoring, and on a compute node the policy lets any job read and change
+  the Grafana admin password. If you followed that snippet, remove the
+  policy from your queues' `AdditionalIamPolicies` and keep it on the
+  `HeadNode`. If untrusted users run jobs on the cluster, also rotate the
+  Grafana admin password, as in step 1 of the v2.11 notes below.
+
+### Changed
+- **Component versions**, the latest stable releases on 2026-11-25:
+
+  | Component | v2.11 | v2.12 |
+  |---|---|---|
+  | Grafana | 13.0.2 | 13.3.2 |
+  | Prometheus | v3.12.0 | v3.16.0 |
+  | Pushgateway | v1.11.3 | v1.11.4 |
+  | Node Exporter | v1.11.1 | v1.13.1 |
+  | NGINX | `1.27-alpine` | `1.30-alpine` (stable branch, 1.30.8 at release) |
+  | NVIDIA DCGM Exporter | `4.2.0-4.1.0-ubuntu22.04` | 4.9.0 (`4.7.0-4.9.0`, DCGM 4.7.0, pinned by digest) |
+  | CloudWatch Exporter | v0.16.0 | v0.19.0 |
+  | Docker Compose plugin (Amazon Linux 2/2023) | 5.1.4 | 5.8.0 |
+  | prometheus-slurm-exporter | 1.8.0 | 1.8.0, now SHA-256 verified |
+
+  On Ubuntu and RHEL, the Compose plugin still comes from the docker-ce
+  repository.
+- **dcgm-exporter 4.9.0 uses the DCGM 4.7 field names and units.**
+  `dcgm/counters.csv` and the GPU dashboards use the new names. For
+  example, `DCGM_FI_DEV_GPU_UTIL` (percent) is now
+  `DCGM_FI_DEV_GPU_UTIL_RATIO` (0–1), `DCGM_FI_DEV_SM_CLOCK` (MHz) is
+  `DCGM_FI_DEV_SM_CLOCK_HERTZ` (Hz), `DCGM_FI_DEV_FB_USED` (MiB) is
+  `DCGM_FI_DEV_FB_USED_BYTES` (bytes), and `DCGM_FI_DEV_THERMAL_VIOLATION`
+  (µs) is `DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL` (s). Every series
+  has a `hostname` label instead of `Hostname`. The dashboard panels show
+  the same numbers and units as before. If you have your own queries,
+  recording rules or alerts on the old names or on `Hostname`, update them:
+  `dcgm/counters.csv` lists the 48 fields with their new names and units,
+  and `git diff v2.11 v2.12 -- dcgm/counters.csv` shows each old name next
+  to its replacement.
+- **A `DCGM_EXPORTER_IMAGE` override must be dcgm-exporter 4.9.0 or later**,
+  because older images don't know the DCGM 4.7 field names. The default
+  image now covers B300 (p6-b300), so most clusters need no override.
+- **cloudwatch-exporter runs as a non-root user, on a bridge network.**
+  v0.19.0 runs as uid 65534 and reads the credentials file through the
+  `monitoring-creds` group. It takes a listen port but no address, so it
+  left the host network and is published on 127.0.0.1:9106 only.
+- **Grafana 13.3.2.** The dashboards and datasources provision unchanged.
+  The image no longer contains `bash`, and `grafana-cli` is not on its
+  `PATH`; use `sh` and `grafana cli` in your own `docker exec` commands.
+- **The Slurm exporter collects Slurm's diagnostics** (ParallelCluster).
+  `slurm_exporter.service` passes `-slurm.collect-diags`, so the exporter
+  also reports the backfill, RPC, controller thread and DBD queue series
+  that the Slurm Detail dashboard uses.
+
+### Fixed
+- **ParallelCluster, Ubuntu 24.04 head node: the landing page and Grafana
+  were unreachable.** The official ParallelCluster Ubuntu 24.04 AMIs run
+  `apache2` on port 80, so the monitoring nginx couldn't bind, while the
+  install still reported success. Before it starts the containers, the
+  installer now stops and disables `apache2` when it holds port 80 or 443,
+  as `ss` shows; `apache2` on other ports is left alone. If you use
+  `apache2` on the head node, move it off ports 80 and 443 before you
+  install. After it starts the containers, the installer waits up to 60 s
+  for nginx to serve `https://127.0.0.1/`. If nginx doesn't, the install
+  fails and prints the port 80/443 listeners and the nginx log. Closes the
+  v2.11 known issue "ParallelCluster, Ubuntu 24.04 head node: the landing
+  page and Grafana are unreachable".
+- **AWS PCS: a node's install could fail with "Cannot detect platform".**
+  Under `set -o pipefail`, a `producer | grep -q` pipeline fails when
+  `grep` exits at the first match and `SIGPIPE` kills the producer. The
+  platform check, the GPU check and the Grafana password refresh now match
+  against here-strings. Closes the v2.11 known issue "AWS PCS: a node's
+  install can fail with 'Cannot detect platform'".
+- **AWS PCS: the job-to-node mapping was empty.** `slurm-job-nodes.sh` now
+  finds `squeue` on PCS: after the usual paths, it asks a root login shell,
+  which has the `PATH` that PCS sets, and then uses
+  `/opt/aws/pcs/scheduler/slurm-<version>/bin` if there is exactly one. The
+  **Job ID** and **Job Name** columns of the Compute Node List fill in on
+  PCS, and a node without Slurm exits quietly. Closes the v2.11 known issue
+  "AWS PCS: the job-to-node mapping is empty".
+- **AWS PCS: panels that depend on the compatibility rules were empty.**
+  `prometheus/rules/pcs-compat.yml` read three names that Slurm doesn't
+  emit (`slurm_partition_cpus_alloc`, `slurm_partition_cpus_idle` and
+  `slurm_bf_last_depth_cycle`) and wrote lowercase job states. It now maps
+  the names that Slurm 25.11 and 26.05 emit, adds per-state partition node
+  counts, per-user and per-account CPU allocation, the controller thread
+  count and the DBD queue, and writes the job states the ParallelCluster
+  exporter reports (`RUNNING`, `PENDING`). On PCS, Cluster Summary **Top
+  users** and **Top partitions**, and the Slurm Detail **Partitions** table
+  (except CPU load), **Top Users**, **Top Accounts**, **Controller
+  Threads**, **DBD Agent Queue** and **Last Backfill Depth** now show data.
+  The memory columns stay empty on PCS, because the unit of Slurm's
+  per-user memory series is unclear.
+- **Dashboard panels that stayed empty.** Closes the v2.11 known issue
+  "Some dashboard panels stay empty, because their queries don't match the
+  metrics the stack collects":
+  - **Load / Core** in the Compute Node List and the RES Node List, on
+    every platform: the query now matches the per-node CPU count on
+    `instance_id`.
+  - ParallelCluster: Cluster Summary **Top users (CPUs allocated)**, and
+    Slurm Detail **Top Users**, **Top Accounts** and the usage series of
+    **Account Quota Utilization**: the panels filter on the job states the
+    exporter reports (`RUNNING`, `PENDING`). Their memory columns stay
+    empty when the exporter reports no per-user or per-account memory, as
+    on the v2.11 validation clusters.
+  - ParallelCluster: Slurm Detail **Backfill Cycles per Minute**: the
+    exporter now runs with `-slurm.collect-diags` (see Changed).
+
+### IAM
+- **The least-privilege ParallelCluster policy didn't grant what the stack
+  calls.** With only the rendered policy, cloudwatch-exporter couldn't read
+  the FSx and EFS metrics of the Storage dashboard, the Cluster Logs
+  dashboard couldn't run its Logs Insights queries, and the Grafana
+  CloudWatch datasource health check failed (`cloudwatch:ListMetrics`
+  denied). `iam/monitoring-head-node-policy.json` now grants
+  `cloudwatch:ListMetrics` and `cloudwatch:GetMetricStatistics` in the
+  cluster's region, `logs:StartQuery` and `logs:GetLogGroupFields` on the
+  cluster's log groups, and `logs:DescribeLogGroups`, `logs:GetQueryResults`
+  and `logs:StopQuery` in the cluster's region. It no longer grants what
+  nothing calls: the CloudFormation and FSx statements,
+  `ec2:DescribeVolumes`, `pricing:DescribeServices` and
+  `logs:DescribeLogStreams`. If you created the policy from an earlier
+  release, render it again and make the new document the default version:
+  ```bash
+  ./iam/render-policy.sh <cluster-name> <region> [account-id] [s3-bucket] > my-policy.json
+  aws iam create-policy-version \
+      --policy-arn arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name> \
+      --policy-document file://my-policy.json --set-as-default
+  ```
+  `iam/README.md` lists each statement and what calls it.
+- **The PCS permission list was incomplete and too broad.** The README now
+  lists what the login node calls: `pcs:GetCluster`,
+  `ec2:DescribeInstances`, `ssm:GetParameter`, `ssm:PutParameter` and
+  `ssm:AddTagsToResource` on `/pcs/<cluster-id>/grafana/*`, `kms:Decrypt`
+  through SSM, `pricing:GetProducts`, and `cloudwatch:ListMetrics` and
+  `cloudwatch:GetMetricStatistics`. Compute node groups need only
+  `pcs:RegisterComputeNodeGroupInstance`, which PCS itself requires.
+  `ec2:CreateTags`, `ec2:DescribeVolumes` and `pcs:ListComputeNodeGroups`
+  are no longer listed. Check your login node role against the new list.
+
+### Documentation
+- README: the ParallelCluster Quickstart puts the monitoring policy on the
+  `HeadNode` only. Option A opens port 443 to your own address range
+  instead of `0.0.0.0/0`, and says that `/prometheus/` and `/pushgateway/`
+  return 403 there. The Architecture diagram marks the localhost-only
+  services and adds cloudwatch-exporter, the Security section describes the
+  credentials file and the services that listen on the network, and the
+  Components table matches the pins.
+- `docs/imds-secured-design.md` gives the credentials-file permissions and
+  the containers that read it, and no longer says that the credentials are
+  limited to the monitoring policy.
+- `docs/public-access.md`: through the ALB, `/prometheus/` and
+  `/pushgateway/` return 403; use SSM port forwarding for them.
+- `docs/custom-ami.md`: the default dcgm-exporter image covers B300, and is
+  about 49 MB to download and about 150 MB on disk; the Compose plugin is
+  about 34 MB.
+- `iam/README.md` describes the new policy, and keeps it on the `HeadNode`.
+- `parallelcluster-setup/pcluster.yaml` pins `v2.12` and no longer needs
+  the apache2 workaround on Ubuntu 24.04.
+
+### Upgrade notes
+- **New clusters:** pin `v2.12` in both the `Script` URL and `Args`, as in
+  `parallelcluster-setup/pcluster.yaml`. `latest` resolves to v2.12 once
+  it is released.
+- **Running clusters:** re-run the installer from v2.12 on the
+  ParallelCluster head node or the PCS login node:
+  ```bash
+  tmp="$(mktemp)" &&
+      curl -fsSL https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.12/post-install.sh -o "${tmp}" &&
+      sudo bash "${tmp}" v2.12
+  ```
+  Then replace the compute nodes, so that they run node_exporter v1.13.1
+  and dcgm-exporter 4.9.0. Until they do, the GPU panels stay empty for
+  them, because the dashboards query the DCGM 4.7 names. If your cluster
+  config or user data pins an older ref, change it to `v2.12` first.
+  Custom AMIs built for v2.11 hold the v2.11 images; rebuild them
+  (`docs/custom-ami.md`) so that nodes don't pull the new images at boot.
+- **Least-privilege policy:** render it again and create a new default
+  version, as shown under IAM.
+- **`DCGM_EXPORTER_IMAGE`:** remove an old override. If you need one, it
+  must be dcgm-exporter 4.9.0 or later.
+
+The v2.12 validation results are added here before the release is
+published: live on ParallelCluster 3.16.3 with Amazon Linux 2023 and
+Ubuntu 24.04, and on AWS PCS with Slurm 25.11, upgraded in place to 26.05.
+
 ## v2.11 — 2026-11-25
 
 Keeps secrets out of the install trace, speeds up compute-node boot on
