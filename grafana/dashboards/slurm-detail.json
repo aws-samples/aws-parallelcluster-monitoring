@@ -911,7 +911,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(slurm_backfill_cycle_count) or vector(0)",
+          "expr": "sum(slurm_backfill_cycle_counter) or vector(0)",
           "instant": true
         }
       ],
@@ -995,7 +995,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(slurm_backfill_cycle_count[5m]) * 60",
+          "expr": "rate(slurm_backfill_cycle_counter[5m]) * 60",
           "legendFormat": "Cycles/min"
         }
       ],

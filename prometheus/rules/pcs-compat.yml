@@ -95,7 +95,10 @@ groups:
   - name: pcs_slurm_scheduler
     interval: 30s
     rules:
-      - record: slurm_backfill_cycle_count
+      # The number of backfill cycles (sdiag bf_cycle_counter). rivosinc's
+      # slurm_backfill_cycle_count is their summed duration in microseconds
+      # (bf_cycle_sum).
+      - record: slurm_backfill_cycle_counter
         expr: slurm_bf_cycle_cnt
       - record: slurm_backfill_last_depth
         expr: slurm_bf_last_depth
