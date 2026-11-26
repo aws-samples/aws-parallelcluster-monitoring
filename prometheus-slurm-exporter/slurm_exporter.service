@@ -8,7 +8,12 @@ Environment=PATH=/opt/slurm/bin:/usr/local/bin:/usr/bin:/bin
 # -slurm.collect-diags adds the backfill, RPC, controller thread and DBD
 # queue series (slurm_backfill_*, slurm_rpc_*, slurm_daemon_thread_count,
 # slurm_dbd_agent_queue_size) that the Slurm Detail dashboard uses.
-ExecStart=/usr/bin/prometheus-slurm-exporter -web.listen-address=127.0.0.1:9092 -slurm.collect-diags
+# -slurm.sinfo-cli is the exporter's default sinfo command (1.8.0) with
+# NodeHost and Partition widened from 30 and 15 characters to 100. sinfo
+# cuts each field to its width, and the exporter keys nodes by NodeHost,
+# so longer names, such as queue0-dy-queue0-compute-resource-0-1 in
+# parallelcluster-setup/pcluster.yaml, merged into one node.
+ExecStart=/usr/bin/prometheus-slurm-exporter -web.listen-address=127.0.0.1:9092 -slurm.collect-diags -slurm.sinfo-cli "sinfo -h -O StateCompact:12|,Memory:15|,NodeHost:100|,CPUsLoad:12|,Partition:100|,FreeMem:15|,CPUsState:15|,Weight:10|,AllocMem:15"
 Restart=on-failure
 RestartSec=15
 Type=simple
