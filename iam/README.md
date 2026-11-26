@@ -120,4 +120,9 @@ v2.12 checks the rendered policy in two ways:
   Logs panels return rows, and the Grafana CloudWatch datasource passes
   its health check.
 
-The v2.12 results are added here when the live validation is complete.
+Both passed for v2.12 on 2026-11-26. The simulator allowed the 16 actions
+on their intended resources and denied all 8 negative cases it tested,
+the ones listed above among them. A ParallelCluster 3.16.3 cluster built
+from `parallelcluster-setup/pcluster.yaml`, with only this policy and
+`AmazonSSMManagedInstanceCore` on the HeadNode, passed all four live
+checks, with no AccessDenied error.

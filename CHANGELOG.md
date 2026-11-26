@@ -401,9 +401,51 @@ Found while preparing v2.12.
   **Top Accounts** panels show the running and pending jobs per user and
   account on both platforms.
 
-The v2.12 validation results are added here before the release is
-published: live on ParallelCluster 3.16.3 with Amazon Linux 2023 and
-Ubuntu 24.04, and on AWS PCS with Slurm 25.11, upgraded in place to 26.05.
+Seen in the v2.12 validation. Earlier releases have these too, and they
+will be fixed in a later release:
+- **ParallelCluster: HeadNode Details can open on a compute node.** The
+  dashboard selects the first instance ID, in sort order, of all the nodes
+  that Prometheus scrapes, not the head node, and its instance selector is
+  hidden. In the v2.12 validation it opened on the head node on two of four
+  clusters. On the other two it opened on a compute node that no longer had
+  an instance: 7 and 16 of its 17 panels showed "No data", and the others
+  showed that node's last values under the HeadNode title. To see the head
+  node, add `&var-instance_id=<head node instance ID>` to the dashboard's
+  URL.
+- **ParallelCluster: Compute Node Details can open on a node's previous
+  instance.** When a node name moves to a new instance, as when
+  ParallelCluster replaces a static node, the name maps to both instances
+  for some time, and the dashboard selects the first instance ID in sort
+  order. The link from the Compute Node List passes only the node name. If
+  the old instance comes first, most panels show "No data": 23 of 25 in the
+  v2.12 validation, 74 minutes after the replacement. Add
+  `&var-node_instance_id=<instance ID>` to the dashboard's URL, with the
+  Instance ID that the Compute Node List shows.
+- **Idle node-hours and Idle CPU-hours (last 24h) overstate idle
+  capacity.** Both panels average the idle count over the 5-minute steps of
+  the last 24 hours that have a value, then multiply by 24. A step has no
+  value when no node, or no CPU, is idle (ParallelCluster), and when
+  Prometheus has no data for it yet, as in the first 24 hours of a head or
+  login node (both platforms). Measured in the v2.12 validation: on the
+  example cluster in `parallelcluster-setup/pcluster.yaml`, after one
+  25-minute job, Idle node-hours read 24.0 where its 5-minute samples add
+  up to 0.25, and Idle CPU-hours read 17.6 against 0.92. On AWS PCS, on a
+  login node with 35 minutes of data, Idle node-hours read 10.3 against
+  0.25.
+- **Storage: the EFS Storage Bytes graph has no Infrequent Access line.**
+  Its query asks for `storage_class="InfrequentAccess"`, but CloudWatch,
+  and so cloudwatch-exporter, names that storage class `IA`. The Total and
+  Standard lines are correct.
+
+This release was validated live on 2026-11-26. On ParallelCluster 3.16.3:
+Amazon Linux 2023 (the head node with `Imds.Secured`, and CPU and GPU
+nodes, T4 and L4, on the stock AMI and on custom AMIs built with
+`build-ami.sh`), Ubuntu 24.04 (the head node, and CPU and T4 GPU nodes),
+the example cluster in `parallelcluster-setup/pcluster.yaml` with only the
+least-privilege policy, and a v2.11 cluster upgraded in place as the
+Upgrade notes say. On AWS PCS: Slurm 25.11 (login and CPU nodes on the
+AL2023 sample AMI, and a GPU node on the PCS-ready DLAMI), upgraded in
+place to 26.05, before and after the nodes were replaced.
 
 ## v2.11 — 2026-11-25
 

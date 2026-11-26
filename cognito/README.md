@@ -105,9 +105,17 @@ aws ssm get-parameter --region <region> \
 - At runtime, the installer materializes it to a file mode 0640 owned
   by `root:nobody` on tmpfs (`/run/grafana-secrets/cognito-client-secret`),
   readable only by the Grafana container.
-- The secret is referenced by Grafana via
-  `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE`, so it does not appear
-  in `docker inspect` or environment variable dumps.
+- The container's configuration references the secret through
+  `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE`, so `docker inspect` and
+  `docker exec grafana env` show only the file's path. The Grafana
+  image's entrypoint reads the file and starts Grafana with the secret in
+  `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET`, so the Grafana server process
+  holds it in its environment. Grafana also passes that environment to
+  its CloudWatch plugin process (`GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch`
+  in `compose/head.yml`), which therefore holds the client secret and the
+  Grafana admin password (`GF_SECURITY_ADMIN_PASSWORD`) too. Both
+  processes run as Grafana's user (472) in the Grafana container, which
+  can read the secret files anyway.
 - The main Cognito env file (`cognito.env`) contains the non-secret
   values (client ID, domain, endpoints, allowed domains). These are
   not sensitive.

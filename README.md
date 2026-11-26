@@ -313,9 +313,18 @@ sudo docker restart grafana
 When the SSM parameter is present, Grafana shows a **Sign in with
 Cognito** button on the login page. The client secret is materialized
 to tmpfs (`/run/grafana-secrets/cognito-client-secret`, mode 0640,
-owned `472:472`) and read by Grafana via
-`GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE` so it never appears in
-container env or `docker inspect`.
+owned `472:472`). The container's configuration names only that file,
+through `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE`, so `docker inspect`
+and `docker exec grafana env` show the file's path, not the secret.
+Inside the container, the Grafana image's entrypoint reads the file and
+starts Grafana with the secret in `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET`.
+Grafana passes its environment to the CloudWatch plugin process
+(`GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch` in `compose/head.yml`,
+so that the plugin finds the AWS credentials file). So both the Grafana
+server and the CloudWatch plugin process hold the client secret and the
+Grafana admin password (`GF_SECURITY_ADMIN_PASSWORD`) in their
+environment. Both run as Grafana's user in the Grafana container, which
+can read the secret files anyway.
 
 ### Testing from a fork
 
@@ -393,8 +402,8 @@ rightsizing candidates stand out.
 
 | Platform | Slurm Source | Notes |
 |----------|-------------|-------|
-| ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023) |
-| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04) |
+| ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
+| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade |
 | Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
 ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the
