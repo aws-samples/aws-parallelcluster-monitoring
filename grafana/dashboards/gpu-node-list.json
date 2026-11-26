@@ -24,25 +24,25 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg by(instance_id, instance_type, modelName, Hostname) (DCGM_FI_DEV_GPU_UTIL)",
+          "expr": "avg by(instance_id, instance_type, modelName, hostname) (DCGM_FI_DEV_GPU_UTIL_RATIO) * 100",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "avg by(instance_id) (DCGM_FI_DEV_GPU_TEMP)",
+          "expr": "avg by(instance_id) (DCGM_FI_DEV_GPU_TEMP_CELSIUS)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "avg by(instance_id) (DCGM_FI_DEV_POWER_USAGE)",
+          "expr": "avg by(instance_id) (DCGM_FI_DEV_BOARD_POWER_WATTS)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "avg by(instance_id) (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100)",
+          "expr": "avg by(instance_id) (DCGM_FI_DEV_FB_USED_BYTES / (DCGM_FI_DEV_FB_USED_BYTES + DCGM_FI_DEV_FB_FREE_BYTES) * 100)",
           "format": "table",
           "instant": true
         }
@@ -58,7 +58,7 @@
           "links": [
             {
               "title": "View GPU node details",
-              "url": "/grafana/d/hpcsyl6zhqk/?var-gpu_node=${__data.fields.Hostname}",
+              "url": "/grafana/d/hpcsyl6zhqk/?var-gpu_node=${__data.fields.hostname}",
               "targetBlank": false
             }
           ]
@@ -225,10 +225,10 @@
               "Value #B": "Temp \u00b0C",
               "Value #C": "Power W",
               "Value #D": "Mem %",
-              "Hostname": "Hostname"
+              "hostname": "Hostname"
             },
             "indexByName": {
-              "Hostname": 0,
+              "hostname": 0,
               "modelName": 1,
               "instance_type": 2,
               "instance_id": 3,

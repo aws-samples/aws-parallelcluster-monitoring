@@ -542,7 +542,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(DCGM_FI_DEV_GPU_UTIL) or vector(0)",
+          "expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) or vector(0)",
           "instant": true
         }
       ],
@@ -585,7 +585,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg(DCGM_FI_DEV_GPU_UTIL) or vector(0)",
+          "expr": "avg(DCGM_FI_DEV_GPU_UTIL_RATIO) * 100 or vector(0)",
           "instant": true
         }
       ],

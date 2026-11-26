@@ -298,7 +298,7 @@
         },
         {
           "refId": "H",
-          "expr": "avg by(instance_id) (DCGM_FI_DEV_GPU_UTIL{instance_name=\"RES\"}) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
+          "expr": "(avg by(instance_id) (DCGM_FI_DEV_GPU_UTIL_RATIO{instance_name=\"RES\"}) * 100) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""

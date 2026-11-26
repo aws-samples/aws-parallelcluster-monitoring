@@ -92,7 +92,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(DCGM_FI_DEV_GPU_UTIL) or vector(0)",
+          "expr": "count(DCGM_FI_DEV_GPU_UTIL_RATIO) or vector(0)",
           "instant": true
         }
       ],
@@ -134,7 +134,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(max_over_time(DCGM_FI_DEV_XID_ERRORS{}[1h]) > 0) or vector(0)",
+          "expr": "count(max_over_time(DCGM_FI_DEV_XID_ERROR{}[1h]) > 0) or vector(0)",
           "instant": true
         }
       ],
@@ -180,7 +180,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(DCGM_FI_DEV_ROW_REMAP_FAILURE > 0) or vector(0)",
+          "expr": "count(DCGM_FI_DEV_ROW_REMAP_FAILED > 0) or vector(0)",
           "instant": true
         }
       ],
@@ -238,7 +238,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "changes(DCGM_FI_DEV_XID_ERRORS[5m])",
+          "expr": "changes(DCGM_FI_DEV_XID_ERROR[5m])",
           "legendFormat": "{{instance_id}} GPU{{gpu}} XID={{xid_err}}"
         }
       ],
@@ -270,7 +270,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "DCGM_FI_DEV_XID_ERRORS != 0",
+          "expr": "DCGM_FI_DEV_XID_ERROR != 0",
           "format": "table",
           "instant": true
         }
@@ -343,7 +343,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_THERMAL_VIOLATION[5m])",
+          "expr": "rate(DCGM_FI_DEV_GPU_THERMAL_THROTTLE_SECONDS_TOTAL[5m]) * 1e6",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -374,7 +374,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_POWER_VIOLATION[5m])",
+          "expr": "rate(DCGM_FI_DEV_GPU_POWER_THROTTLE_SECONDS_TOTAL[5m]) * 1e6",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -405,7 +405,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_SYNC_BOOST_VIOLATION[5m])",
+          "expr": "rate(DCGM_FI_DEV_GPU_SYNC_BOOST_THROTTLE_SECONDS_TOTAL[5m]) * 1e6",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -436,7 +436,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_BOARD_LIMIT_VIOLATION[5m])",
+          "expr": "rate(DCGM_FI_DEV_GPU_LIMIT_THROTTLE_SECONDS_TOTAL[5m]) * 1e6",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -467,7 +467,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_RELIABILITY_VIOLATION[5m])",
+          "expr": "rate(DCGM_FI_DEV_GPU_RELIABILITY_THROTTLE_SECONDS_TOTAL[5m]) * 1e6",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -573,37 +573,37 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_RETIRED_SBE)",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_PAGE_RETIRED_SBE_TOTAL)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_RETIRED_DBE)",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_PAGE_RETIRED_DBE_TOTAL)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_RETIRED_PENDING)",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_PAGE_RETIRED_PENDING)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS)",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_ROW_REMAP_CORRECTABLE_TOTAL)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "E",
-          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS)",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_ROW_REMAP_UNCORRECTABLE_TOTAL)",
           "format": "table",
           "instant": true
         },
         {
           "refId": "F",
-          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_ROW_REMAP_FAILURE)",
+          "expr": "max by(instance_id, gpu, modelName) (DCGM_FI_DEV_ROW_REMAP_FAILED)",
           "format": "table",
           "instant": true
         }
@@ -747,7 +747,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_COUNT_TOTAL[5m])",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_CRC_FLIT_ERROR_TOTAL[5m])",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -778,7 +778,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_COUNT_TOTAL[5m])",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_CRC_DATA_ERROR_TOTAL[5m])",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
@@ -809,12 +809,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_NVLINK_RECOVERY_ERROR_COUNT_TOTAL[5m])",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_RECOVERY_ERROR_TOTAL[5m])",
           "legendFormat": "{{instance_id}} GPU{{gpu}} recovery"
         },
         {
           "refId": "B",
-          "expr": "rate(DCGM_FI_DEV_NVLINK_REPLAY_ERROR_COUNT_TOTAL[5m])",
+          "expr": "rate(DCGM_FI_DEV_NVLINK_REPLAY_ERROR_TOTAL[5m])",
           "legendFormat": "{{instance_id}} GPU{{gpu}} replay"
         }
       ],
@@ -845,7 +845,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(DCGM_FI_DEV_PCIE_REPLAY_COUNTER[5m])",
+          "expr": "rate(DCGM_FI_DEV_PCIE_REPLAY_TOTAL[5m])",
           "legendFormat": "{{instance_id}} GPU{{gpu}}"
         }
       ],
