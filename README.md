@@ -405,7 +405,7 @@ rightsizing candidates stand out.
 | Platform | Slurm Source | Notes |
 |----------|-------------|-------|
 | ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
-| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade. RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on custom AMIs ([requirements](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs)) |
+| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade. RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on custom AMIs ([requirements](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs)), validated live on Slurm 26.05 (x86_64) |
 | Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
 ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the
@@ -436,6 +436,13 @@ The Rocky Linux EC2 images enable the Cockpit web console (`cockpit.socket`)
 on port 9090, where Prometheus listens. On login nodes the installer stops
 and disables `cockpit.socket` when it listens on 9090. To keep Cockpit, move
 it to another port in the AMI.
+
+Validated live on AWS PCS with Slurm 26.05 (x86_64), on custom AMIs of
+RHEL 10.3, Rocky Linux 10.3 and Ubuntu 26.04.1 with the PCS agent 1.6.0-1.
+Each operating system ran a login node and a CPU compute node (m6i.large),
+and a GPU compute node (g4dn.xlarge, NVIDIA T4, driver 620.70.10). Not
+validated: arm64, Slurm 25.11 on these operating systems, GPUs other than
+the T4, AlmaLinux 10 and CentOS Stream 10.
 
 ## Architecture
 

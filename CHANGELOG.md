@@ -86,6 +86,15 @@ Behavior changes:
   nodes. The toolkit's `apt-get update` and `apt-get install` now wait up to
   10 minutes for the locks (`DPkg::Lock::Timeout=600`).
 
+This release was validated live on 2026-11-26 on AWS PCS with Slurm 26.05
+(x86_64), one cluster per operating system, on custom AMIs of RHEL 10.3,
+Rocky Linux 10.3 and Ubuntu 26.04.1 with the PCS agent 1.6.0-1. Each
+cluster had a login node and a CPU compute node (m6i.large), and a GPU
+compute node (g4dn.xlarge, NVIDIA T4, driver 620.70.10). At boot every node
+installed Docker CE 29.10.1 and the Docker Compose plugin 5.8.0, and the GPU
+nodes the NVIDIA Container Toolkit 1.20.2. arm64, Slurm 25.11 on these
+operating systems, AlmaLinux 10 and CentOS Stream 10 were not validated.
+
 ## v2.12 — 2026-11-26
 
 Security fixes, the latest stable component versions, fixes for the AWS PCS
