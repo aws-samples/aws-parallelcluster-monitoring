@@ -145,9 +145,14 @@ Behavior changes:
   and, with Cognito, the OAuth client secret, because the image's
   entrypoint turns each `GF_*__FILE` setting into a variable that holds
   the file's content. The plugin runs as Grafana's user in the Grafana
-  container, which can read both files anyway. The image no longer
-  contains `bash`, and `grafana-cli` is not on its `PATH`; use `sh` and
-  `grafana cli` in your own `docker exec` commands.
+  container, which can read both files anyway. `compose/head.yml` also
+  sets `GF_PLUGINS_PREINSTALL_AUTO_UPDATE=false`, so Grafana runs the
+  plugins that the image bundles, among them CloudWatch 12.11.3 and
+  Prometheus 13.2.7; by default Grafana 13.3 updates them from grafana.com
+  when it starts. It still downloads the default app plugins that its data
+  volume doesn't have yet, such as the Drilldown apps, from grafana.com.
+  The image no longer contains `bash`, and `grafana-cli` is not on its
+  `PATH`; use `sh` and `grafana cli` in your own `docker exec` commands.
 - **The Slurm exporter collects Slurm's diagnostics** (ParallelCluster).
   `slurm_exporter.service` passes `-slurm.collect-diags`, so the exporter
   also reports the backfill, RPC, controller thread and DBD queue series

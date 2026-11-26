@@ -71,6 +71,11 @@ services:
       # The plugin runs as Grafana's user in this container, and that user
       # can read both files in /run/grafana-secrets/ anyway.
       - 'GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch'
+      # Run the plugins that the image bundles. By default Grafana updates
+      # them from grafana.com when it starts (CloudWatch 12.11.3 to 12.11.5,
+      # for example), so the plugin that reads the credentials file would
+      # change without a new image pin.
+      - 'GF_PLUGINS_PREINSTALL_AUTO_UPDATE=false'
     env_file:
       # Cognito OAuth2 config, materialized by installer from SSM.
       # Empty file when Cognito is not configured (no-op).
