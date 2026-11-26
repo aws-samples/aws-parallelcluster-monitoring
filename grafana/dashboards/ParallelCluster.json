@@ -65,7 +65,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(slurm_node_count_per_state{state=~\"alloc|mix\"}) or vector(0)",
+          "expr": "sum(slurm_node_count_per_state{state=~\"(alloc|mix).*\"}) or vector(0)",
           "instant": true
         }
       ],
@@ -107,7 +107,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(slurm_node_count_per_state{state=\"idle\"}) or vector(0)",
+          "expr": "sum(slurm_node_count_per_state{state=~\"idle.*\"}) or vector(0)",
           "instant": true
         }
       ],
@@ -149,7 +149,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(slurm_node_count_per_state{state=~\"down|drain\"}) or vector(0)",
+          "expr": "sum(slurm_node_count_per_state{state=~\"(down|drain|drng).*\"}) or vector(0)",
           "instant": true
         }
       ],
@@ -195,7 +195,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(slurm_cpus_per_state{state=\"alloc\"}) or vector(0)",
+          "expr": "sum(slurm_partition_alloc_cpus) or vector(0)",
           "instant": true
         }
       ],
@@ -237,7 +237,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(slurm_cpus_per_state{state=\"idle\"}) or vector(0)",
+          "expr": "sum(slurm_partition_idle_cpus) or vector(0)",
           "instant": true
         }
       ],
@@ -279,27 +279,27 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_node_count_per_state{state=\"alloc\"}",
+          "expr": "sum(slurm_node_count_per_state{state=~\"alloc.*\"})",
           "legendFormat": "Allocated"
         },
         {
           "refId": "B",
-          "expr": "slurm_node_count_per_state{state=\"idle\"}",
+          "expr": "sum(slurm_node_count_per_state{state=~\"idle.*\"})",
           "legendFormat": "Idle"
         },
         {
           "refId": "C",
-          "expr": "slurm_node_count_per_state{state=\"mix\"}",
+          "expr": "sum(slurm_node_count_per_state{state=~\"mix.*\"})",
           "legendFormat": "Mixed"
         },
         {
           "refId": "D",
-          "expr": "slurm_node_count_per_state{state=\"down\"}",
+          "expr": "sum(slurm_node_count_per_state{state=~\"down.*\"})",
           "legendFormat": "Down"
         },
         {
           "refId": "E",
-          "expr": "slurm_node_count_per_state{state=\"drain\"}",
+          "expr": "sum(slurm_node_count_per_state{state=~\"(drain|drng).*\"})",
           "legendFormat": "Drain"
         }
       ],
@@ -326,12 +326,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_cpus_per_state{state=\"alloc\"}",
+          "expr": "sum(slurm_partition_alloc_cpus)",
           "legendFormat": "Allocated"
         },
         {
           "refId": "B",
-          "expr": "slurm_cpus_per_state{state=\"idle\"}",
+          "expr": "sum(slurm_partition_idle_cpus)",
           "legendFormat": "Idle"
         }
       ],
@@ -683,7 +683,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg_over_time(sum(slurm_node_count_per_state{state=\"idle\"})[24h:5m]) * 24 or vector(0)",
+          "expr": "avg_over_time(sum(slurm_node_count_per_state{state=~\"idle.*\"})[24h:5m]) * 24 or vector(0)",
           "instant": true
         }
       ],
@@ -735,7 +735,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg_over_time(sum(slurm_cpus_per_state{state=\"idle\"})[24h:5m]) * 24 or vector(0)",
+          "expr": "avg_over_time(sum(slurm_partition_idle_cpus)[24h:5m]) * 24 or vector(0)",
           "instant": true
         }
       ],
@@ -832,7 +832,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(5, sum by(partition) (slurm_partition_alloc_cpus{state=~\"alloc|mix\"}))",
+          "expr": "topk(5, sum by(partition) (slurm_partition_alloc_cpus))",
           "legendFormat": "{{partition}}",
           "instant": true
         }
