@@ -1,42 +1,56 @@
 # Least-privilege IAM policy
 
-This directory contains a replacement IAM policy for the monitoring stack
-on the HeadNode. It replaces **four** AWS-managed policies that the
-default `pcluster.yaml` example uses:
+This directory contains a least-privilege IAM policy for the monitoring
+stack on the ParallelCluster HeadNode. It replaces the **four**
+AWS-managed policies of the README's quick-start alternative:
 
-- `AWSCloudFormationReadOnlyAccess` → only need DescribeStacks on our own stack
-- `CloudWatchFullAccess` → only need Logs:Read on our cluster's log groups
-- `AWSPriceListServiceFullAccess` → read-only but global; scoped here anyway
-- `AmazonSSMFullAccess` → **very** overbroad; only need our own parameters
+- `CloudWatchFullAccess` → only reads of CloudWatch metrics in the
+  cluster's region, plus Logs reads and Logs Insights queries on the
+  cluster's log groups
+- `AWSPriceListServiceFullAccess` → only `pricing:GetProducts`
+- `AmazonSSMFullAccess` → **very** overbroad; only the cluster's own Grafana
+  parameters
+- `AWSCloudFormationReadOnlyAccess` → not needed: the monitoring stack makes
+  no CloudFormation calls
+
+Attach it to the **HeadNode only**. Compute nodes run only node_exporter
+(and dcgm-exporter on GPU nodes) and make no AWS calls for monitoring.
 
 The policy is resource-scoped to your cluster's name and region, so even
 if someone compromises the HeadNode they can't pivot to other resources.
 
 ## What the policy grants
 
-| Sid | Purpose | Resource scope |
+| Sid | Actions and what calls them | Resource scope |
 |---|---|---|
-| EC2Describe | ec2_sd_configs (Prometheus), cost scripts | Region-scoped via condition |
-| CFNDescribeOwn | cost scripts read stack parameters | Only `${ClusterName}*` stacks |
-| FSxDescribe | cost scripts | Region-scoped |
-| PricingRead | cost scripts | Global (pricing is a global service) |
-| S3ReadBucket | installer pulls cluster-config.json | Only the postinstall bucket |
-| SSMCluster | Grafana password refresh | Only `/parallelcluster/${ClusterName}/grafana/*` |
-| KMSForSSM | decrypt the SecureString password | Only via ssm.${Region}.amazonaws.com |
-| LogsRead | Grafana CloudWatch datasource | Only `/aws/parallelcluster/${ClusterName}*` |
+| EC2DescribeForPrometheusSdAndCostMetrics | `ec2:DescribeInstances`: Prometheus EC2 service discovery, cost metrics | Region-scoped via condition |
+| PricingReadForCostMetrics | `pricing:GetProducts`: cost metrics | Global (pricing is a global service) |
+| S3ReadPostInstallBucketOnly | `s3:GetObject`, `s3:GetObjectVersion`, `s3:ListBucket`: only if you host `post-install.sh` in your own S3 bucket. `render-policy.sh` adds this statement only when you pass the bucket | Only that bucket |
+| SSMGrafanaPasswordForThisClusterOnly | `ssm:GetParameter`, `ssm:PutParameter`, `ssm:AddTagsToResource`: the installer stores the Grafana admin password and reads the optional Cognito config; the password refresh reads the password | Only `/parallelcluster/${ClusterName}/grafana/*` |
+| KMSForSSMSecureString | `kms:Decrypt`: decrypt the SecureString parameters | Only via `ssm.${Region}.amazonaws.com` |
+| CloudWatchMetricsReadForStorageDashboard | `cloudwatch:ListMetrics`, `cloudwatch:GetMetricStatistics`: cloudwatch-exporter (FSx and EFS metrics for the Storage dashboard) and the Grafana CloudWatch datasource health check | Region-scoped via condition |
+| CloudWatchLogsReadForClusterLogs | `logs:StartQuery`, `logs:GetLogGroupFields`, `logs:FilterLogEvents`, `logs:GetLogEvents`: the Cluster Logs dashboard, which runs Logs Insights queries through the Grafana CloudWatch datasource | Only `/aws/parallelcluster/${ClusterName}*` |
+| CloudWatchLogsQueryAndListForClusterLogs | `logs:DescribeLogGroups`, `logs:GetQueryResults`, `logs:StopQuery`: the log group list, Logs Insights results, and the datasource health check | Region-scoped via condition. `DescribeLogGroups` and `StopQuery` can't be scoped to a log group |
 
 ## What the policy does NOT grant
 
-- Writing to CloudWatch metrics (Grafana only reads)
-- EC2 actions besides DescribeInstances / DescribeVolumes
+- Writing CloudWatch metrics or logs (Grafana and cloudwatch-exporter only
+  read)
+- EC2 actions besides DescribeInstances
+- CloudFormation or FSx API calls (FSx metrics come from CloudWatch)
 - Any IAM action
-- S3 access to any bucket other than the cluster's postinstall bucket
+- S3 access, unless you pass a bucket to `render-policy.sh`; then only read
+  access to that bucket
 - SSM parameters outside `/parallelcluster/${ClusterName}/grafana/*`
-- Cross-region access (all non-pricing actions are region-scoped)
+- Log events and Logs Insights queries outside
+  `/aws/parallelcluster/${ClusterName}*` (`logs:DescribeLogGroups` lists the
+  region's log group names, not their events)
+- Access in other regions (every statement except pricing and the optional
+  S3 bucket is limited to the cluster's region)
 
 ## How to use it
 
-### Option 1: inline in your pcluster.yaml
+### Option 1: a managed policy in your pcluster.yaml
 
 Render a concrete policy JSON:
 
@@ -52,8 +66,20 @@ aws iam create-policy \
     --policy-document file://my-policy.json
 ```
 
-Then in your `pcluster.yaml`, replace the 4 AWS-managed policies with
-the ARN you just got:
+If you created the policy from an earlier release, render it again and
+make the new document the default version instead:
+
+```bash
+aws iam create-policy-version \
+    --policy-arn arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name> \
+    --policy-document file://my-policy.json --set-as-default
+```
+
+A managed policy keeps at most five versions. If yours has five, delete an
+old non-default version first with `aws iam delete-policy-version`.
+
+Then in your `pcluster.yaml`, replace the 4 AWS-managed policies on the
+HeadNode with the ARN you just got:
 
 ```yaml
 HeadNode:
@@ -69,6 +95,11 @@ HeadNode:
       - Policy: arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name>
 ```
 
+Don't add it to your `SlurmQueues`. Compute nodes make no AWS calls for
+monitoring, and the policy can read and change the Grafana admin password,
+so on a compute node any job could do that. Queues need only
+`AmazonSSMManagedInstanceCore`, and only for SSM access to the nodes.
+
 ### Option 2: CloudFormation
 
 Embed the template as an inline policy in a custom IAM role; pass that
@@ -77,8 +108,16 @@ ParallelCluster docs for inline custom roles.
 
 ## Validation
 
-The policy has been verified against the IAM Policy Simulator for:
-- All 9 AWS API calls our code actually makes (all allowed)
-- Region-scoped denial (wrong region → denied)
-- Cross-resource denial (other cluster's stack / SSM param → denied)
-- Overbroad-action denial (iam:CreateUser, ec2:TerminateInstances → denied)
+v2.12 checks the rendered policy in two ways:
+- **IAM policy simulator** (`aws iam simulate-custom-policy`): every action
+  in the table is allowed on its intended resource in the cluster's region.
+  `ec2:DescribeInstances` in another region, another cluster's SSM
+  parameter and log group, and actions the policy doesn't list (such as
+  `ec2:TerminateInstances`) are denied.
+- **A live cluster whose HeadNode has only this policy** and
+  `AmazonSSMManagedInstanceCore`: Prometheus EC2 service discovery finds
+  the nodes, the Storage dashboard shows FSx and EFS metrics, the Cluster
+  Logs panels return rows, and the Grafana CloudWatch datasource passes
+  its health check.
+
+The v2.12 results are added here when the live validation is complete.

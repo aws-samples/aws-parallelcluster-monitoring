@@ -5,33 +5,7 @@
       "Sid": "EC2DescribeForPrometheusSdAndCostMetrics",
       "Effect": "Allow",
       "Action": [
-        "ec2:DescribeInstances",
-        "ec2:DescribeVolumes"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "aws:RequestedRegion": "${Region}"
-        }
-      }
-    },
-    {
-      "Sid": "CloudFormationDescribeOwnStackOnly",
-      "Effect": "Allow",
-      "Action": [
-        "cloudformation:DescribeStacks",
-        "cloudformation:DescribeStackResources"
-      ],
-      "Resource": [
-        "arn:${Partition}:cloudformation:${Region}:${AccountId}:stack/${ClusterName}/*",
-        "arn:${Partition}:cloudformation:${Region}:${AccountId}:stack/${ClusterName}-*/*"
-      ]
-    },
-    {
-      "Sid": "FSxDescribeForCostMetrics",
-      "Effect": "Allow",
-      "Action": [
-        "fsx:DescribeFileSystems"
+        "ec2:DescribeInstances"
       ],
       "Resource": "*",
       "Condition": {
@@ -44,8 +18,7 @@
       "Sid": "PricingReadForCostMetrics",
       "Effect": "Allow",
       "Action": [
-        "pricing:GetProducts",
-        "pricing:DescribeServices"
+        "pricing:GetProducts"
       ],
       "Resource": "*"
     },
@@ -86,17 +59,46 @@
       }
     },
     {
+      "Sid": "CloudWatchMetricsReadForStorageDashboard",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:ListMetrics",
+        "cloudwatch:GetMetricStatistics"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "${Region}"
+        }
+      }
+    },
+    {
       "Sid": "CloudWatchLogsReadForClusterLogs",
       "Effect": "Allow",
       "Action": [
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams",
+        "logs:StartQuery",
+        "logs:GetLogGroupFields",
         "logs:FilterLogEvents",
         "logs:GetLogEvents"
       ],
       "Resource": [
         "arn:${Partition}:logs:${Region}:${AccountId}:log-group:/aws/parallelcluster/${ClusterName}*"
       ]
+    },
+    {
+      "Sid": "CloudWatchLogsQueryAndListForClusterLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:GetQueryResults",
+        "logs:StopQuery"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "${Region}"
+        }
+      }
     }
   ]
 }

@@ -9,7 +9,9 @@
 #   iam/render-policy.sh <cluster-name> <region> [account-id] [s3-bucket] > out.json
 #
 # If account-id is omitted, it's pulled from sts get-caller-identity.
-# If s3-bucket is omitted, the PostInstall S3 statements are removed.
+# s3-bucket is optional: pass it only if you host post-install.sh in your
+# own S3 bucket, to grant read access to that bucket. Without it, the S3
+# statement is removed.
 #
 set -euo pipefail
 
