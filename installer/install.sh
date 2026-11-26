@@ -154,7 +154,8 @@ case "${PLATFORM_NODE_TYPE}" in
                "${MONITORING_HOME}/grafana/dashboards/pcluster"
 
         # Cluster Logs dashboard (ParallelCluster only): substitute the
-        # CloudWatch log group name + ARN so the Logs panels resolve.
+        # CloudWatch log group name + ARN and the region so the Logs panels
+        # resolve.
         # PC writes the cluster log group into /etc/chef/dna.json as
         # cluster.log_group_name (it carries a creation-timestamp suffix,
         # so it can't be hardcoded). The Grafana CloudWatch logs query
@@ -177,6 +178,8 @@ except Exception:
                 lg_arn="arn:aws:logs:${PLATFORM_REGION}:${acct_id}:log-group:${lg_name}:*"
                 sed -i "s|__LOG_GROUP_NAME__|${lg_name}|g" "${logs_dash}"
                 sed -i "s|__LOG_GROUP_ARN__|${lg_arn}|g"   "${logs_dash}"
+                # Each Logs panel query names its region too.
+                sed -i "s/__AWS_REGION__/${PLATFORM_REGION}/g" "${logs_dash}"
                 log "Cluster Logs dashboard wired to ${lg_name}"
             else
                 log "WARN: could not resolve PC log group (logging disabled?); removing Logs dashboard"
