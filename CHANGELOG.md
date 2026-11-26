@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.13 — 2026-11-25
+## v2.13 — 2026-11-26
 
 Adds AWS PCS support for RHEL 10, Rocky Linux 10 and Ubuntu 26.04. On the
 operating systems that were already supported, the installer runs the same
