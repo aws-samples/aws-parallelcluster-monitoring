@@ -232,7 +232,7 @@
       "type": "stat",
       "title": "Unaccounted time this month",
       "gridPos": {
-        "h": 4,
+        "h": 5,
         "w": 6,
         "x": 0,
         "y": 14
@@ -308,7 +308,7 @@
       "title": "Unpriced resource-hours this month",
       "description": "Resource-hours that the month total leaves out because the resource had no price. Capacity Block and Dedicated Host instances are listed in the notice instead.",
       "gridPos": {
-        "h": 4,
+        "h": 5,
         "w": 6,
         "x": 6,
         "y": 14
@@ -357,7 +357,7 @@
       "type": "table",
       "title": "Stages",
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 12,
         "y": 10
@@ -409,7 +409,8 @@
             "align": "auto",
             "cellOptions": {
               "type": "auto"
-            }
+            },
+            "wrapHeaderText": true
           }
         },
         "overrides": [
@@ -475,7 +476,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 19
       },
       "collapsed": false,
       "panels": []
@@ -488,7 +489,7 @@
         "h": 4,
         "w": 5,
         "x": 0,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -537,7 +538,7 @@
         "h": 4,
         "w": 5,
         "x": 5,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -586,7 +587,7 @@
         "h": 4,
         "w": 4,
         "x": 10,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -634,7 +635,7 @@
         "h": 4,
         "w": 5,
         "x": 14,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -684,7 +685,7 @@
         "h": 4,
         "w": 5,
         "x": 19,
-        "y": 19
+        "y": 20
       },
       "targets": [
         {
@@ -733,7 +734,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 24
       },
       "collapsed": false,
       "panels": []
@@ -746,7 +747,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 24
+        "y": 25
       },
       "targets": [
         {
@@ -888,7 +889,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 24
+        "y": 25
       },
       "targets": [
         {
@@ -912,7 +913,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.queue}"
         },
         "overrides": []
       },
@@ -938,7 +940,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 24
+        "y": 25
       },
       "targets": [
         {
@@ -962,7 +964,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.ec2_instance_type}"
         },
         "overrides": []
       },
@@ -988,7 +991,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 24
+        "y": 25
       },
       "targets": [
         {
@@ -1026,6 +1029,18 @@
               {
                 "id": "displayName",
                 "value": "Spot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "capacity_block"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Capacity Block"
               }
             ]
           }
@@ -1066,7 +1081,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 33
       },
       "collapsed": false,
       "panels": []
@@ -1079,7 +1094,7 @@
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -1221,7 +1236,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -1245,7 +1260,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.queue}"
         },
         "overrides": []
       },
@@ -1271,7 +1287,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -1295,7 +1311,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.ec2_instance_type}"
         },
         "overrides": []
       },
@@ -1321,7 +1338,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -1359,6 +1376,18 @@
               {
                 "id": "displayName",
                 "value": "Spot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "capacity_block"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Capacity Block"
               }
             ]
           }
@@ -1399,7 +1428,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 42
       },
       "collapsed": false,
       "panels": []
@@ -1412,7 +1441,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1461,7 +1490,7 @@
         "h": 4,
         "w": 5,
         "x": 4,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1510,7 +1539,7 @@
         "h": 4,
         "w": 5,
         "x": 9,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1559,7 +1588,7 @@
         "h": 4,
         "w": 10,
         "x": 14,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1634,7 +1663,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 46
+        "y": 47
       },
       "targets": [
         {
@@ -1677,7 +1706,8 @@
             "align": "auto",
             "cellOptions": {
               "type": "auto"
-            }
+            },
+            "wrapHeaderText": true
           },
           "unit": "currencyUSD",
           "decimals": 3
@@ -1710,7 +1740,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 46
+        "y": 47
       },
       "targets": [
         {
@@ -1777,7 +1807,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 55
       },
       "collapsed": false,
       "panels": []
@@ -1790,7 +1820,7 @@
         "h": 8,
         "w": 4,
         "x": 0,
-        "y": 55
+        "y": 56
       },
       "targets": [
         {
@@ -1839,7 +1869,7 @@
         "h": 8,
         "w": 10,
         "x": 4,
-        "y": 55
+        "y": 56
       },
       "targets": [
         {
@@ -1863,7 +1893,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.username}"
         },
         "overrides": []
       },
@@ -1889,7 +1920,7 @@
         "h": 8,
         "w": 10,
         "x": 14,
-        "y": 55
+        "y": 56
       },
       "targets": [
         {
@@ -1913,7 +1944,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "displayName": "${__field.labels.account}"
         },
         "overrides": []
       },
@@ -1939,7 +1971,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 63
+        "y": 64
       },
       "targets": [
         {
@@ -2005,7 +2037,8 @@
             "align": "auto",
             "cellOptions": {
               "type": "auto"
-            }
+            },
+            "wrapHeaderText": true
           },
           "unit": "currencyUSD",
           "decimals": 2
@@ -2051,7 +2084,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 63
+        "y": 64
       },
       "targets": [
         {
@@ -2117,7 +2150,8 @@
             "align": "auto",
             "cellOptions": {
               "type": "auto"
-            }
+            },
+            "wrapHeaderText": true
           },
           "unit": "currencyUSD",
           "decimals": 2
@@ -2163,7 +2197,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 72
+        "y": 73
       },
       "targets": [
         {
@@ -2205,7 +2239,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 80
+        "y": 81
       },
       "collapsed": true,
       "panels": [
@@ -2217,7 +2251,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 81
+            "y": 82
           },
           "targets": [
             {
@@ -2285,7 +2319,8 @@
                 "align": "auto",
                 "cellOptions": {
                   "type": "auto"
-                }
+                },
+                "wrapHeaderText": true
               },
               "unit": "currencyUSD",
               "decimals": 2
@@ -2333,7 +2368,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 81
+        "y": 82
       },
       "collapsed": false,
       "panels": []
@@ -2346,7 +2381,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 82
+        "y": 83
       },
       "targets": [
         {
@@ -2483,7 +2518,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 82
+        "y": 83
       },
       "targets": [
         {
@@ -2527,6 +2562,18 @@
                 "value": "Spot"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "capacity_block"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Capacity Block"
+              }
+            ]
           }
         ]
       },
@@ -2550,7 +2597,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 90
+        "y": 91
       },
       "targets": [
         {
