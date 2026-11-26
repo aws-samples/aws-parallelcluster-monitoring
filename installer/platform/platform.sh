@@ -65,6 +65,9 @@ imds_has_pcs_tag() {
     # PCS-managed compute nodes get the aws:pcs:* tags from PCS itself.
     # Login nodes launched directly against the cluster don't, so they
     # use a user-set mirror tag (pcs-cluster-id) — see installer/platform/pcs.sh.
-    echo "$tags" | grep -qE '^aws:pcs:|^pcs-cluster-id$' && return 0
+    # A here-string, not "echo | grep -q": under pipefail grep -q can exit
+    # before echo finishes, echo dies of SIGPIPE and the check fails although
+    # the tag is there (seen on 1 of 4 PCS boots in v2.11).
+    grep -qE '^aws:pcs:|^pcs-cluster-id$' <<<"${tags}" && return 0
     return 1
 }

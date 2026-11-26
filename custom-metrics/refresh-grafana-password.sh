@@ -93,7 +93,7 @@ last_hash=""
 [[ -f "${LAST_APPLIED}" ]] && last_hash=$(cat "${LAST_APPLIED}")
 
 if [[ "${current_hash}" != "${last_hash}" ]]; then
-    if docker ps --format '{{.Names}}' | grep -qx grafana; then
+    if grep -qx grafana <<<"$(docker ps --format '{{.Names}}')"; then
         echo "Applying password change via grafana-cli"
         if printf '%s' "${password}" | \
             docker exec -i grafana grafana cli admin reset-admin-password --password-from-stdin >/dev/null 2>&1; then

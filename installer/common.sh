@@ -106,7 +106,7 @@ detect_arch() {
 # instance-type string. Works for current and future GPU families.
 # ---------------------------------------------------------------------------
 has_nvidia_gpu() {
-    lspci 2>/dev/null | grep -qi 'nvidia' && return 0
+    grep -qi 'nvidia' <<<"$(lspci 2>/dev/null)" && return 0
     [[ -e /dev/nvidia0 ]] && return 0
     return 1
 }
