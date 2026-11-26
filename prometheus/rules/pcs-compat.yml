@@ -7,11 +7,13 @@
 # slurm-exporter) expect. This lets one set of dashboards work on both
 # platforms.
 #
-# PCS native names come from Slurm 25.11's openmetrics plugin:
+# PCS native names come from Slurm's openmetrics plugin (the names used
+# here are the same in Slurm 25.11 and 26.05):
 #   /metrics/nodes        → slurm_nodes_*, slurm_node_*
 #   /metrics/jobs         → slurm_jobs_* (mostly already compatible)
 #   /metrics/partitions   → slurm_partitions, slurm_partition_*
-#   /metrics/scheduler    → slurm_sched_*, slurm_bf_*
+#   /metrics/scheduler    → slurm_sched_*, slurm_bf_*, slurm_server_thread_cnt,
+#                           slurm_slurmdbd_queue_size
 #   /metrics/jobs-users-accts → slurm_user_jobs_*, slurm_account_jobs_*
 #
 # Reference: https://slurm.schedmd.com/metrics.html
@@ -48,33 +50,47 @@ groups:
         labels: {state: alloc}
 
   # ─────────────────────────────────────────────────────────────────────
-  # Per-partition metrics — used by Slurm Detail dashboard.
-  # PCS exposes slurm_partition_jobs / slurm_partition_nodes /
-  # slurm_partition_cpus (gauge with `partition` label).
-  # rivosinc uses slurm_partition_node_count{partition,state} and
-  # slurm_partition_alloc_cpus{partition,state}.
+  # Per-partition metrics — used by Slurm Detail "Partitions" and
+  # Cluster Summary "Top partitions".
+  # PCS exposes per-state node counts and CPU counts, each with a
+  # `partition` label:
+  #   slurm_partition_nodes_{alloc,mixed,idle,down,drain}
+  #   slurm_partition_nodes_cpus_{alloc,idle}
+  # rivosinc uses slurm_partition_node_count{partition,state},
+  # slurm_partition_alloc_cpus{partition,state} and
+  # slurm_partition_idle_cpus{partition}.
   # ─────────────────────────────────────────────────────────────────────
   - name: pcs_slurm_partitions
     interval: 30s
     rules:
-      # Translate rivosinc's labelled-by-state metric. PCS only exposes
-      # totals per partition (no per-state breakdown for nodes), so we
-      # fall back to total-as-alloc which keeps the dashboard tables
-      # rendering. Idle/down breakdowns will be empty on PCS until the
-      # upstream exposes them.
+      # Per-state node counts in rivosinc's shape. Slurm Detail "Partitions"
+      # computes allocated nodes as all states minus idle, down and drain.
       - record: slurm_partition_node_count
-        expr: slurm_partition_nodes
-        labels: {state: total}
+        expr: slurm_partition_nodes_alloc
+        labels: {state: alloc}
+      - record: slurm_partition_node_count
+        expr: slurm_partition_nodes_mixed
+        labels: {state: mix}
+      - record: slurm_partition_node_count
+        expr: slurm_partition_nodes_idle
+        labels: {state: idle}
+      - record: slurm_partition_node_count
+        expr: slurm_partition_nodes_down
+        labels: {state: down}
+      - record: slurm_partition_node_count
+        expr: slurm_partition_nodes_drain
+        labels: {state: drain}
       - record: slurm_partition_alloc_cpus
-        expr: slurm_partition_cpus_alloc
+        expr: slurm_partition_nodes_cpus_alloc
         labels: {state: alloc}
       - record: slurm_partition_idle_cpus
-        expr: slurm_partition_cpus_idle
+        expr: slurm_partition_nodes_cpus_idle
 
   # ─────────────────────────────────────────────────────────────────────
   # Scheduler metrics — used by Slurm Detail dashboard.
-  # PCS exposes slurm_sched_* / slurm_bf_* — rivosinc uses
-  # slurm_backfill_* / slurm_daemon_thread_count.
+  # PCS exposes slurm_bf_*, slurm_server_thread_cnt and
+  # slurm_slurmdbd_queue_size — rivosinc uses slurm_backfill_*,
+  # slurm_daemon_thread_count and slurm_dbd_agent_queue_size.
   # ─────────────────────────────────────────────────────────────────────
   - name: pcs_slurm_scheduler
     interval: 30s
@@ -82,43 +98,53 @@ groups:
       - record: slurm_backfill_cycle_count
         expr: slurm_bf_cycle_cnt
       - record: slurm_backfill_last_depth
-        expr: slurm_bf_last_depth_cycle
-      # PCS doesn't expose daemon thread count or DBD agent queue
-      # directly through openmetrics yet. The corresponding panels on
-      # the Slurm Detail dashboard will show 'No data' on PCS.
+        expr: slurm_bf_last_depth
+      - record: slurm_daemon_thread_count
+        expr: slurm_server_thread_cnt
+      - record: slurm_dbd_agent_queue_size
+        expr: slurm_slurmdbd_queue_size
 
   # ─────────────────────────────────────────────────────────────────────
   # Per-user / per-account — only present if the unbounded
   # /metrics/jobs-users-accts endpoint is being scraped.
   #
   # PCS exposes:
-  #   slurm_user_jobs_pending{username=...}
-  #   slurm_user_jobs_running{username=...}
-  #   slurm_account_jobs_pending{account=...}
-  #   slurm_account_jobs_running{account=...}
+  #   slurm_user_jobs_{pending,running,cpus_alloc}{username=...}
+  #   slurm_account_jobs_{pending,running,cpus_alloc}{account=...}
   #
   # rivosinc shape:
   #   slurm_user_state_total{username, state}
+  #   slurm_user_cpu_alloc{username, state}
   #   slurm_account_job_state_total{account, state}
+  #   slurm_account_job_state_cpu_alloc{account, state}
   #
   # We synthesize the labelled gauges from the per-state native ones so
-  # the existing dashboard expressions work unchanged.
+  # the same dashboard expressions work on both platforms. Memory is not
+  # mapped, because the unit of the native *_jobs_memory_alloc series is
+  # unclear, so the dashboards' memory columns stay empty on PCS.
   # ─────────────────────────────────────────────────────────────────────
   - name: pcs_slurm_user_account
     interval: 60s
     rules:
+      # rivosinc reports job states as Slurm prints them (RUNNING, PENDING).
       - record: slurm_user_state_total
         expr: slurm_user_jobs_pending
-        labels: {state: pending}
+        labels: {state: PENDING}
       - record: slurm_user_state_total
         expr: slurm_user_jobs_running
-        labels: {state: running}
+        labels: {state: RUNNING}
+      - record: slurm_user_cpu_alloc
+        expr: slurm_user_jobs_cpus_alloc
+        labels: {state: RUNNING}
       - record: slurm_account_job_state_total
         expr: slurm_account_jobs_pending
-        labels: {state: pending}
+        labels: {state: PENDING}
       - record: slurm_account_job_state_total
         expr: slurm_account_jobs_running
-        labels: {state: running}
+        labels: {state: RUNNING}
+      - record: slurm_account_job_state_cpu_alloc
+        expr: slurm_account_jobs_cpus_alloc
+        labels: {state: RUNNING}
 
   # ─────────────────────────────────────────────────────────────────────
   # slurm_job_node — rivosinc-style mapping of job_id → node_name.
