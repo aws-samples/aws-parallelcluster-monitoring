@@ -10,6 +10,12 @@
 # aws_dimensions list — no hardcoded filesystem IDs needed.
 #
 region: __AWS_REGION__
+# Expose the samples without CloudWatch's timestamps, so Prometheus stamps
+# them at scrape time. With them (the default), a sample is stamped about
+# delay_seconds (600 s by default) plus its period in the past, beyond
+# Prometheus's 5-minute lookback, so instant queries such as the Storage
+# stat panels find nothing. The values still lag CloudWatch by that much.
+set_timestamp: false
 
 metrics:
   # ─── FSx for Lustre ──────────────────────────────────────────────────
