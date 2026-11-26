@@ -70,9 +70,9 @@ accumulated totals.
 | Totals | **Est. cost per hour**, **Cost since start**, **Tracking since**, **Cost this month**, **Projected this month**. |
 | Breakdown now ($/h) | **By component** (Head node, Login nodes, Compute instances, EBS volumes, PCS controller, PCS node management, PCS accounting), **By queue** (on PCS: by compute node group), **By instance type**, **Spot vs On-Demand**. |
 | Breakdown this month ($) | The same four panels for the month-to-date totals. |
-| Idle and unallocated | **Idle nodes**, **Idle node cost per hour**, **Unallocated on busy nodes per hour**, **Idle and unallocated this month**, **Idle cost by queue and type**, and the two over time. |
+| Idle and unallocated | **Idle nodes**, **Idle node cost per hour**, **Unallocated on busy nodes per hour**, **Idle and unallocated this month**, **Idle cost by queue and type**, and **Over time** (idle and unallocated cost per hour). |
 | Users and accounts | **Allocated to jobs per hour**, **Top users now**, **Top accounts now**, the **Users** and **Accounts** tables (now, selected range, this month, since start), and **Per user over time**. |
-| Users and accounts, detail | A collapsed row with one table per (user, account) pair. |
+| Users and accounts, detail | A collapsed row with the **Users and accounts** table: one row per (user, account) pair, with the same four columns. |
 | Over time | **Cost per hour by component** (stacked), **Cost per hour by purchase option**, **Cost this month, running total**. |
 
 Rates and the projection show only while the collector's file is fresh,
