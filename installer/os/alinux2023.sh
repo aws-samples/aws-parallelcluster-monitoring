@@ -9,13 +9,12 @@ log "Installing docker on Amazon Linux 2023"
 
 # AL2023 ships curl-minimal by default; requesting the full `curl` package
 # triggers a conflict. Use --allowerasing so dnf replaces curl-minimal.
-# Also: `bc` is in amazon-linux-extras territory on AL2023 — install what
-# is actually needed from the base repos, with graceful fallback.
+# `bc` is not in the base repos, so it gets its own command below and may
+# be skipped.
 dnf -y install --allowerasing docker jq tar gzip
-# bc is not in the default AL2023 repos; install from the community repo
-# if available, otherwise skip (cost scripts will tolerate its absence by
-# falling through to 0 values).
-dnf -y install bc || log "WARN: bc not available, cost scripts may be degraded"
+# bc is not in the default AL2023 repos; install it from the community repo
+# if available, otherwise skip. No monitoring script needs it.
+dnf -y install bc || log "WARN: bc not available; no monitoring script needs it"
 
 # AL2023 does not ship docker-compose-plugin in its default repos yet.
 # Install the plugin binary (idempotent: skips the download if the pinned

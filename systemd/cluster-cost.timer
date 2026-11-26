@@ -1,0 +1,10 @@
+[Unit]
+Description=Cluster cost estimator every 60s
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

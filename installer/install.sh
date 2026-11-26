@@ -61,6 +61,10 @@ fi
 
 verify_docker
 
+# The cost collector needs python3 3.7 or later: fail before the stack is
+# configured when the node can't provide it.
+case "${PLATFORM_NODE_TYPE}" in head|login) require_python3 ;; esac
+
 # ---------------------------------------------------------------------------
 # 2. Node-type-specific configuration.
 # ---------------------------------------------------------------------------
@@ -84,14 +88,10 @@ case "${PLATFORM_NODE_TYPE}" in
 
         cp -rp "${MONITORING_HOME}/custom-metrics/"* /usr/local/bin/
 
-        # Cost estimator cron (every minute), run as root (EC2 describe and
-        # pricing API). Built in a pipe: a fixed /tmp file could be
-        # pre-created by another local user, and root would install its lines.
-        {
-            echo 'MAILTO=""'
-            crontab -l 2>/dev/null | grep -v -E 'MAILTO|cost-metrics' || true
-            echo '* * * * * /usr/local/bin/cost-metrics.sh >/dev/null 2>&1'
-        } | crontab -
+        # The cost collector runs from a systemd timer (install_cost_collector,
+        # below). Remove the cron entry and script of older releases. This must
+        # follow the cp above, which copies back an old script left in the tree.
+        remove_legacy_cost_collector
 
         # Token replacement in dashboards/config. (Phase 3 will replace all
         # of this with Grafana template variables.)
@@ -375,6 +375,13 @@ COGENV
         if [[ "${PLATFORM}" == "parallelcluster" ]]; then
             install_slurm_exporter
         fi
+
+        # Cluster cost collector (systemd timer, every 60 s). Prometheus is
+        # restarted last so that it loads rules/cost.yml and the Pushgateway
+        # drop rule; a failure there leaves every collector installed.
+        delete_legacy_cost_push_group
+        install_cost_collector
+        restart_prometheus_load_rules
         ;;
 
     compute)

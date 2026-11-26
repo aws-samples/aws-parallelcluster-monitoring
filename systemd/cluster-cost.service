@@ -1,0 +1,23 @@
+[Unit]
+Description=Estimate cluster cost for the Cluster Costs dashboard
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/aws-parallelcluster-monitoring/cluster-cost.env
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=AWS_PAGER=
+Environment=AWS_RETRY_MODE=standard
+Environment=AWS_MAX_ATTEMPTS=2
+# Credentials from the instance profile only: root's ~/.aws files can't
+# replace it.
+Environment=AWS_CONFIG_FILE=/nonexistent
+Environment=AWS_SHARED_CREDENTIALS_FILE=/nonexistent
+ExecStart=/usr/local/bin/cluster-cost-collector
+TimeoutStartSec=150
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full

@@ -200,9 +200,10 @@ docker_runtime_ready() {
 }
 
 # ---------------------------------------------------------------------------
-# Head/login nodes need jq (Cognito config, refresh-ec2-credentials.sh) and
-# bc (cost-metrics.sh). The per-OS bootstrap installs them, so when the fast
-# path skips that bootstrap, install whichever is missing. No package-manager
+# Head/login nodes need jq (Cognito config, refresh-ec2-credentials.sh). The
+# per-OS bootstrap installs it, together with bc, which no script uses any
+# more but which stays in the package lists. When the fast path skips that
+# bootstrap, install whichever of the two is missing. No package-manager
 # call when both are present, so a pre-baked AMI still makes no repo calls.
 # Each tool is installed on its own, because dnf and apt-get fail the whole
 # command when one package is unavailable.
@@ -228,7 +229,6 @@ ensure_jq_and_bc() {
         esac || warn "could not install ${tool}"
     done
     command -v jq >/dev/null 2>&1 || die "jq is required on head/login nodes and could not be installed"
-    command -v bc >/dev/null 2>&1 || warn "bc not available, cost metrics will read 0"
 }
 
 # ---------------------------------------------------------------------------
@@ -316,6 +316,141 @@ wait_for_prometheus() {
     ss -Hltnp '( sport = :9090 )' >&2 || true
     docker logs --tail 20 prometheus >&2 || true
     die "Prometheus is not serving on 127.0.0.1:9090 (container ${status}, $((restarts_after - restarts_before)) restarts in 60 s); another process may hold port 9090"
+}
+
+# ---------------------------------------------------------------------------
+# Old releases ran cost-metrics.sh from root's crontab (v2.12 builds that
+# crontab in a pipe, but keeps the entry there). Remove that entry, the old
+# script and its cache. Other crontab lines stay as they are, the MAILTO=""
+# line included. No temp files. The crontab is read into a variable first, so
+# that no `grep -q` can end a pipeline early under `set -o pipefail`.
+# ---------------------------------------------------------------------------
+remove_legacy_cost_collector() {
+    local current remaining others
+    if command -v crontab >/dev/null 2>&1; then
+        # Root's crontab can hold operator secrets, and post-install.sh traces
+        # this script: keep the crontab out of the trace.
+        { xtrace_suspend; } 2>/dev/null
+        current="$(crontab -l 2>/dev/null || true)"
+        if [[ "${current}" == *cost-metrics.sh* ]]; then
+            remaining="$(printf '%s\n' "${current}" | grep -v 'cost-metrics\.sh' || true)"
+            others="$(printf '%s\n' "${remaining}" | grep -cvE '^[[:space:]]*(MAILTO=""[[:space:]]*)?$' || true)"
+            if [[ "${others:-0}" -gt 0 ]]; then
+                printf '%s\n' "${remaining}" | crontab -
+            else
+                crontab -r
+            fi
+            log "Removed the legacy cost-metrics cron entry"
+        fi
+        unset current remaining
+        { xtrace_restore; } 2>/dev/null
+    fi
+    rm -f /usr/local/bin/cost-metrics.sh "${MONITORING_HOME}/custom-metrics/cost-metrics.sh"
+    rm -rf /var/lib/prometheus/cost-cache
+}
+
+# ---------------------------------------------------------------------------
+# Delete the Pushgateway group that old releases pushed (job="cost").
+# DELETE returns 202 even when the group is absent. Non-fatal: Prometheus
+# drops pushed cluster_cost_* series at scrape anyway.
+# ---------------------------------------------------------------------------
+delete_legacy_cost_push_group() {
+    local _
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        curl -fsS --max-time 5 -o /dev/null -X DELETE http://127.0.0.1:9091/metrics/job/cost && return 0
+        sleep 2
+    done
+    warn "Could not delete the legacy Pushgateway group job=cost; Prometheus no longer ingests its series, and it disappears at the next Pushgateway restart"
+}
+
+# ---------------------------------------------------------------------------
+# Called right after verify_docker on head and login nodes, so a node without
+# a usable python3 fails before the monitoring stack is configured.
+# ---------------------------------------------------------------------------
+require_python3() {
+    local check='import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)'
+    /usr/bin/python3 -c "${check}" 2>/dev/null && return 0
+    log "Installing python3 for the cost collector"
+    case "${OS_ID}:${OS_VERSION_ID}" in
+        amzn:2)   yum -y install python3 ;;
+        ubuntu:*) { apt-get update || true; } && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 ;;
+        *)        dnf -y install python3 ;;
+    esac || true
+    /usr/bin/python3 -c "${check}" 2>/dev/null \
+        || die "python3 3.7 or later is required on head/login nodes for the cost collector"
+}
+
+# ---------------------------------------------------------------------------
+# Prometheus reads prometheus.yml and its rule files only at start. Compose
+# doesn't recreate the container when only bind-mounted files change, and the
+# single-file bind mount of prometheus.yml still points at the inode that tar
+# and sed -i replaced. Restart it so an in-place upgrade loads rules/cost.yml
+# and the Pushgateway drop rule. Called last on head/login nodes, so a failure
+# here leaves every collector installed. Fail only when Prometheus doesn't
+# stay up (it exits at once on an invalid configuration, and the restart
+# policy restarts it); a slow write-ahead-log replay only warns. Responses go
+# straight into here-strings: a variable would copy them into the install
+# trace, and `curl | grep -q` can fail under pipefail.
+# ---------------------------------------------------------------------------
+restart_prometheus_load_rules() {
+    local state deadline
+    # Give Prometheus time to close its TSDB. Docker sends SIGKILL after 10 s
+    # by default, and a killed Prometheus replays more at the next start.
+    docker restart -t 120 prometheus >/dev/null || die "Could not restart the prometheus container"
+    deadline=$((SECONDS + 300))
+    # Match the body: another service on port 9090 may answer too.
+    until grep -qF 'Prometheus Server is Ready' \
+        <<<"$(curl -fsS --max-time 5 http://127.0.0.1:9090/-/ready 2>/dev/null)"; do
+        # docker restart resets RestartCount, and the restart policy raises it
+        # each time Prometheus exits.
+        state="$(docker inspect -f '{{.State.Status}}/{{.RestartCount}}' prometheus 2>/dev/null || echo missing)"
+        if [[ "${state}" != "running/0" ]]; then
+            # The same diagnostics as v2.13's wait_for_prometheus.
+            warn "listeners on port 9090:"
+            ss -Hltnp '( sport = :9090 )' >&2 || true
+            docker logs --tail 20 prometheus >&2 || true
+            die "Prometheus did not stay up after the restart (${state}); see 'docker logs prometheus'"
+        fi
+        if (( SECONDS >= deadline )); then
+            warn "Prometheus is running but not ready 300 s after the restart, probably still replaying its write-ahead log. It loads the cost rules when it is ready; see 'docker logs prometheus'"
+            return 0
+        fi
+        sleep 2
+    done
+    deadline=$((SECONDS + 30))
+    while (( SECONDS < deadline )); do
+        if grep -qF '"name":"cluster_cost"' \
+            <<<"$(curl -fsS --max-time 5 http://127.0.0.1:9090/api/v1/rules 2>/dev/null)"; then
+            log "Prometheus loaded the cluster_cost recording rules"
+            return 0
+        fi
+        sleep 2
+    done
+    warn "Prometheus is up but has not loaded the cluster_cost rules; see 'docker logs prometheus'"
+}
+
+# ---------------------------------------------------------------------------
+# Install the cost collector, its environment file and its systemd timer,
+# and start a first run.
+# ---------------------------------------------------------------------------
+install_cost_collector() {
+    local envdir=/etc/aws-parallelcluster-monitoring
+    install -d -m 0755 "${envdir}" /var/lib/aws-parallelcluster-monitoring
+    install -d -m 0750 /var/lib/aws-parallelcluster-monitoring/cost
+    # The collector refuses a textfile directory that isn't root-owned or that
+    # group or others can write. node_exporter runs as nobody, so it needs 0755.
+    install -d -m 0755 -o root -g root /var/lib/prometheus/node-exporter
+    printf 'PLATFORM=%s\nCLUSTER_ID=%s\nREGION=%s\n' \
+        "${PLATFORM}" "${PLATFORM_CLUSTER_NAME}" "${PLATFORM_REGION}" > "${envdir}/cluster-cost.env.new"
+    chmod 0644 "${envdir}/cluster-cost.env.new"
+    mv -f "${envdir}/cluster-cost.env.new" "${envdir}/cluster-cost.env"
+    install -m 0755 -o root -g root "${MONITORING_HOME}/cost/cluster_cost.py" /usr/local/bin/cluster-cost-collector
+    install -m 0644 "${MONITORING_HOME}/systemd/cluster-cost.service" /etc/systemd/system/
+    install -m 0644 "${MONITORING_HOME}/systemd/cluster-cost.timer" /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable --now cluster-cost.timer
+    systemctl start --no-block cluster-cost.service
+    log "Cluster cost collector timer active"
 }
 
 # ---------------------------------------------------------------------------
