@@ -3,11 +3,11 @@
 ## v2.12 — 2026-11-26
 
 Security fixes, the latest stable component versions, fixes for the AWS PCS
-compatibility rules, three dashboard gaps and the Cluster Summary node
-counts, and corrected IAM documents. It fixes the problems listed under
-Known issues in v2.11; only the memory columns of the Slurm user and
-account panels can stay empty (see Fixed). Known issues lists what is still
-open.
+compatibility rules, the Slurm dashboards' node, CPU and job panels, the
+Storage stats and the Cluster Logs queries, and corrected IAM documents.
+It fixes the problems listed under Known issues in v2.11; only the memory
+columns of the Slurm user and account panels can stay empty (see Fixed).
+Known issues lists what is still open.
 
 Behavior changes:
 - The monitoring services on the head/login node listen on 127.0.0.1 only,
@@ -134,9 +134,16 @@ Behavior changes:
   you use that range, move the network to an unused one with
   `default-address-pools` in `/etc/docker/daemon.json`, as the README
   Security section shows.
-- **Grafana 13.3.2.** The dashboards and datasources provision unchanged.
-  The image no longer contains `bash`, and `grafana-cli` is not on its
-  `PATH`; use `sh` and `grafana cli` in your own `docker exec` commands.
+- **Grafana 13.3.2.** The dashboards and datasources provision as before.
+  Grafana 13.3 runs the CloudWatch datasource as a separate plugin process,
+  which gets Grafana's environment only when the plugin is listed in
+  `GF_PLUGINS_FORWARD_HOST_ENV_VARS`. `compose/head.yml` sets it to
+  `cloudwatch`, so that the plugin reads the credentials file named by
+  `AWS_SHARED_CREDENTIALS_FILE`; without it, the CloudWatch datasource and
+  the Cluster Logs dashboard fail on ParallelCluster head nodes with
+  `Imds.Secured`. That environment holds settings and file paths, not
+  secrets. The image no longer contains `bash`, and `grafana-cli` is not on
+  its `PATH`; use `sh` and `grafana cli` in your own `docker exec` commands.
 - **The Slurm exporter collects Slurm's diagnostics** (ParallelCluster).
   `slurm_exporter.service` passes `-slurm.collect-diags`, so the exporter
   also reports the backfill, RPC, controller thread and DBD queue series
@@ -164,10 +171,16 @@ Behavior changes:
 - **AWS PCS: the job-to-node mapping was empty.** `slurm-job-nodes.sh` now
   finds `squeue` on PCS: after the usual paths, it asks a root login shell,
   which has the `PATH` that PCS sets, and then uses
-  `/opt/aws/pcs/scheduler/slurm-<version>/bin` if there is exactly one. The
-  **Job ID** and **Job Name** columns of the Compute Node List fill in on
-  PCS, and a node without Slurm exits quietly. Closes the v2.11 known issue
-  "AWS PCS: the job-to-node mapping is empty".
+  `/opt/aws/pcs/scheduler/slurm-<version>/bin` if there is exactly one. A
+  node without Slurm exits quietly. Each `slurm_job_node` series also gets
+  the job's node address, `node_addr`, which is the instance's private IP,
+  and the Compute Node List joins jobs to instances on that address: on PCS
+  the Slurm node name, such as `cpu-1`, is not the host name. The join keeps
+  only the job's labels, so the **Job ID**, **User** and **Job Name**
+  columns fill in on the node's row on both platforms. On ParallelCluster
+  they used to show on rows of their own, because the job series carried
+  the head node's labels. Closes the v2.11 known issue "AWS PCS: the
+  job-to-node mapping is empty".
 - **AWS PCS: panels that depend on the compatibility rules were empty.**
   `prometheus/rules/pcs-compat.yml` read three names that Slurm doesn't
   emit (`slurm_partition_cpus_alloc`, `slurm_partition_cpus_idle` and
@@ -194,11 +207,61 @@ Behavior changes:
     empty when the exporter reports no per-user or per-account memory, as
     on the v2.11 validation clusters.
   - ParallelCluster: Slurm Detail **Backfill Cycles per Minute**: the
-    exporter now runs with `-slurm.collect-diags` (see Changed).
+    exporter now runs with `-slurm.collect-diags` (see Changed). The panel
+    and **Backfill Cycles (since boot)** read the cycle count,
+    `slurm_backfill_cycle_counter`, not the exporter's
+    `slurm_backfill_cycle_count`, which is the summed duration of the
+    cycles in microseconds (sdiag `bf_cycle_sum`). On PCS, the
+    compatibility rules record Slurm's cycle count under the same name,
+    `slurm_backfill_cycle_counter`, instead of
+    `slurm_backfill_cycle_count`.
 - **Cluster Summary: Nodes Allocated and Nodes Down/Drain always showed
   0.** Each added two series whose `state` labels differ, and such series
   never match. They now count the nodes in the `alloc` and `mix` states,
-  and in the `down` and `drain` states.
+  and in the `down`, `drain` and `drng` (draining) states. The node-state
+  queries also match the flag that `sinfo` appends to a state, such as `*`
+  (not responding), `~` (powered down) or `#` (powering up), so a drained
+  node that stops responding (`drain*`) counts under Down/Drain, and a
+  powered-down dynamic node (`idle~`) under Idle, as `sinfo` counts them.
+  The same goes for **Nodes Idle**, **Node States** and **Idle node-hours
+  (last 24h)**. **Top partitions (CPUs allocated)** no longer filters on
+  the node state, so it counts every allocated CPU.
+- **ParallelCluster: node names longer than 30 characters merged into one
+  node.** The Slurm exporter's default `sinfo` format cuts node names at
+  30 characters and partition names at 15, and the exporter keys nodes by
+  that name. On the example cluster in
+  `parallelcluster-setup/pcluster.yaml`, the nodes
+  `queue0-dy-queue0-compute-resource-0-1` to `-4` became one node, so the
+  node, CPU and partition panels were wrong. `slurm_exporter.service` now
+  passes the same format with both fields 100 characters wide
+  (`-slurm.sinfo-cli`). Earlier releases have this too.
+- **ParallelCluster: CPUs Allocated and CPUs Idle left out mixed nodes.**
+  The exporter files each node's CPUs under the node's state, so panels
+  that read the `alloc` and `idle` states missed every partly allocated
+  node. **CPUs Allocated**, **CPUs Idle**, **CPU Allocation** and **Idle
+  CPU-hours (last 24h)** now sum the allocated and idle CPUs per partition
+  (`slurm_partition_alloc_cpus`, `slurm_partition_idle_cpus`), which add
+  up to `sinfo -o %C`. On PCS, the compatibility rules record the same two
+  series. Earlier releases have this too.
+- **AWS PCS: Total Nodes, Nodes Idle and CPUs Idle counted the login node,
+  and a drained node as idle.** PCS registers the login node as a Slurm
+  node without a partition, and Slurm's cluster-wide node counts include
+  it; they also count a drained node both in its base state, usually idle,
+  and as drained. The compatibility rules now sum Slurm's per-partition
+  series and count a drained node as drain only, as `sinfo` does, also in
+  the Slurm Detail **Partitions** table. Earlier releases have this too.
+- **ParallelCluster: every Cluster Logs panel failed** with `invalid input
+  region __AWS_REGION__`. The installer substitutes the log group name and
+  ARN in the dashboard's queries, and now the region too. Earlier releases
+  have this too.
+- **The Storage stat panels were empty.** cloudwatch-exporter stamped each
+  sample with CloudWatch's time for it, about 11 minutes in the past
+  because the exporter asks for data 10 minutes old by default, so
+  Prometheus's instant queries, which look back 5 minutes, found nothing.
+  `cloudwatch-exporter/config.yml` now sets `set_timestamp: false`, so
+  Prometheus stamps the samples when it scrapes them. The values still lag
+  CloudWatch by about 10 minutes, and the Storage graphs plot them at
+  scrape time. Earlier releases have this too.
 - **Single-value panels showed a second 0 next to their value.** A query
   of the form `X or vector(0)` returns X and a separate 0 whenever X has
   data. These panels now sum X first, so they show one value: on Cluster
@@ -248,8 +311,9 @@ Behavior changes:
   credentials file and the services that listen on the network, and the
   Components table matches the pins.
 - `docs/imds-secured-design.md` gives the credentials-file permissions and
-  the containers that read it, and no longer says that the credentials are
-  limited to the monitoring policy.
+  the containers that read it, says how Grafana's CloudWatch plugin gets
+  the file's path, and no longer says that the credentials are limited to
+  the monitoring policy.
 - `docs/public-access.md`: through the ALB, `/prometheus/` and
   `/pushgateway/` return 403; use SSM port forwarding for them.
 - `docs/custom-ami.md`: the default dcgm-exporter image covers B300, and is
@@ -282,8 +346,16 @@ Behavior changes:
   must be dcgm-exporter 4.9.0 or later.
 
 ### Known issues
-Found while preparing v2.12. Earlier releases have it too.
-- **ParallelCluster: the job counts read 0.** Cluster Summary **Jobs
+Found while preparing v2.12.
+- **AWS PCS: CPUs Idle also counts the free CPUs of drained and down
+  nodes**, which `sinfo` reports as other, because Slurm's per-partition
+  series count them as idle. Earlier releases count them too. A draining
+  node, one with the drain flag and jobs still running, counts under Nodes
+  Allocated, as in Slurm's own counts, while `sinfo` shows it as draining.
+  A node in several partitions counts once in each in the node and CPU
+  panels.
+- **ParallelCluster: the job counts read 0.** Earlier releases have this
+  too. Cluster Summary **Jobs
   Running**, **Jobs Pending**, **Jobs Completed**, **Jobs Failed** and
   **Jobs Over Time**, and Slurm Detail **Total Pending Now**, **Total
   Running Now**, **Failed (since boot)** and **Suspended** read the
