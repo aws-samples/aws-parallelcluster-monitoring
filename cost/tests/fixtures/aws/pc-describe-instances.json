@@ -1,0 +1,200 @@
+[
+ {
+  "InstanceId": "i-0a00000000000a001",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.10",
+  "PrivateDns": "ip-10-0-0-10.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "parallelcluster:cluster-name",
+    "Value": "mycluster"
+   },
+   {
+    "Key": "parallelcluster:node-type",
+    "Value": "HeadNode"
+   },
+   {
+    "Key": "Name",
+    "Value": "HeadNode"
+   },
+   {
+    "Key": "parallelcluster:version",
+    "Value": "3.16.3"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0a00000000000a002",
+  "InstanceType": "c6i.large",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.1.11",
+  "PrivateDns": "ip-10-0-1-11.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "parallelcluster:cluster-name",
+    "Value": "mycluster"
+   },
+   {
+    "Key": "parallelcluster:node-type",
+    "Value": "Compute"
+   },
+   {
+    "Key": "Name",
+    "Value": "Compute"
+   },
+   {
+    "Key": "parallelcluster:version",
+    "Value": "3.16.3"
+   },
+   {
+    "Key": "parallelcluster:queue-name",
+    "Value": "od"
+   },
+   {
+    "Key": "parallelcluster:compute-resource-name",
+    "Value": "od-cr"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0a00000000000a003",
+  "InstanceType": "c6i.large",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": "spot",
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.1.12",
+  "PrivateDns": "ip-10-0-1-12.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "parallelcluster:cluster-name",
+    "Value": "mycluster"
+   },
+   {
+    "Key": "parallelcluster:node-type",
+    "Value": "Compute"
+   },
+   {
+    "Key": "Name",
+    "Value": "Compute"
+   },
+   {
+    "Key": "parallelcluster:version",
+    "Value": "3.16.3"
+   },
+   {
+    "Key": "parallelcluster:queue-name",
+    "Value": "spot"
+   },
+   {
+    "Key": "parallelcluster:compute-resource-name",
+    "Value": "spot-cr"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0a00000000000a004",
+  "InstanceType": "g4dn.xlarge",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.1.13",
+  "PrivateDns": "ip-10-0-1-13.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "parallelcluster:cluster-name",
+    "Value": "mycluster"
+   },
+   {
+    "Key": "parallelcluster:node-type",
+    "Value": "Compute"
+   },
+   {
+    "Key": "Name",
+    "Value": "Compute"
+   },
+   {
+    "Key": "parallelcluster:version",
+    "Value": "3.16.3"
+   },
+   {
+    "Key": "parallelcluster:queue-name",
+    "Value": "gpu"
+   },
+   {
+    "Key": "parallelcluster:compute-resource-name",
+    "Value": "gpu-cr"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0a00000000000a005",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.20",
+  "PrivateDns": "ip-10-0-0-20.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "parallelcluster:cluster-name",
+    "Value": "mycluster"
+   },
+   {
+    "Key": "parallelcluster:node-type",
+    "Value": "LoginNode"
+   },
+   {
+    "Key": "Name",
+    "Value": "LoginNode"
+   },
+   {
+    "Key": "parallelcluster:version",
+    "Value": "3.16.3"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0a00000000000a006",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.30",
+  "PrivateDns": "ip-10-0-0-30.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "parallelcluster:cluster-name",
+    "Value": "mycluster"
+   },
+   {
+    "Key": "parallelcluster:node-type",
+    "Value": "Bastion"
+   },
+   {
+    "Key": "Name",
+    "Value": "Bastion"
+   },
+   {
+    "Key": "parallelcluster:version",
+    "Value": "3.16.3"
+   }
+  ]
+ }
+]

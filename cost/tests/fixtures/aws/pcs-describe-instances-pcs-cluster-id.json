@@ -1,0 +1,52 @@
+[
+ {
+  "InstanceId": "i-0b00000000000a001",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.40",
+  "PrivateDns": "ip-10-0-0-40.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "pcs-cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng0login01"
+   },
+   {
+    "Key": "monitoring-role",
+    "Value": "login"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a008",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.42",
+  "PrivateDns": "ip-10-0-0-42.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "pcs-cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "monitoring-role",
+    "Value": "login"
+   }
+  ]
+ }
+]

@@ -1,0 +1,32 @@
+{
+ "SpotPriceHistory": [
+  {
+   "AvailabilityZone": "ap-southeast-6a",
+   "InstanceType": "c6i.large",
+   "ProductDescription": "Linux/UNIX",
+   "SpotPrice": "0.041200",
+   "Timestamp": "2026-11-25T20:00:00+00:00"
+  },
+  {
+   "AvailabilityZone": "ap-southeast-6a",
+   "InstanceType": "c6i.large",
+   "ProductDescription": "Linux/UNIX",
+   "SpotPrice": "0.039900",
+   "Timestamp": "2026-11-25T18:30:00.000Z"
+  },
+  {
+   "AvailabilityZone": "ap-southeast-6b",
+   "InstanceType": "c6i.large",
+   "ProductDescription": "Linux/UNIX",
+   "SpotPrice": "0.037700",
+   "Timestamp": "2026-11-25T17:15:00+00:00"
+  },
+  {
+   "AvailabilityZone": "ap-southeast-6b",
+   "InstanceType": "c6i.large",
+   "ProductDescription": "Linux/UNIX",
+   "SpotPrice": "0.038800",
+   "Timestamp": "2026-11-25T21:05:00+00:00"
+  }
+ ]
+}

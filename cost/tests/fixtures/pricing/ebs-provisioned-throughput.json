@@ -1,0 +1,6 @@
+{
+ "FormatVersion": "aws_v1",
+ "PriceList": [
+  "{\"product\": {\"attributes\": {\"ebsAzConfiguration\": \"single-az\", \"group\": \"EBS Throughput\", \"groupDescription\": \"Charge per Provisioned mbps\", \"location\": \"Asia Pacific (New Zealand)\", \"locationType\": \"AWS Region\", \"operation\": \"\", \"provisioned\": \"Yes\", \"regionCode\": \"ap-southeast-6\", \"servicecode\": \"AmazonEC2\", \"servicename\": \"Amazon Elastic Compute Cloud\", \"usagetype\": \"APS8-EBS:VolumeP-Throughput.gp3\", \"volumeApiName\": \"gp3\"}, \"productFamily\": \"Provisioned Throughput\", \"sku\": \"FUCB2N5KGSW48QRC\"}, \"publicationDate\": \"2026-11-24T23:14:17Z\", \"serviceCode\": \"AmazonEC2\", \"terms\": {\"OnDemand\": {\"FUCB2N5KGSW48QRC.JRTCKXETXF\": {\"effectiveDate\": \"2026-11-01T00:00:00Z\", \"offerTermCode\": \"JRTCKXETXF\", \"priceDimensions\": {\"FUCB2N5KGSW48QRC.JRTCKXETXF.6YS6EN2CT7\": {\"appliesTo\": [], \"beginRange\": \"0\", \"description\": \"$0.0504 per provisioned MiBps-month of gp3 - Asia Pacific (New Zealand)\", \"endRange\": \"Inf\", \"pricePerUnit\": {\"USD\": \"51.6096000000\"}, \"rateCode\": \"FUCB2N5KGSW48QRC.JRTCKXETXF.6YS6EN2CT7\", \"unit\": \"GiBps-mo\"}}, \"sku\": \"FUCB2N5KGSW48QRC\", \"termAttributes\": {}}}}, \"version\": \"20261124231417\"}"
+ ]
+}

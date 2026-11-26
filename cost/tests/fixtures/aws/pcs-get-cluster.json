@@ -1,0 +1,44 @@
+{
+ "cluster": {
+  "name": "mypcs",
+  "id": "pcs_abc123def4",
+  "arn": "arn:aws:pcs:ap-southeast-6:123456789012:cluster/pcs_abc123def4",
+  "status": "ACTIVE",
+  "createdAt": "2026-11-20T08:00:00+00:00",
+  "modifiedAt": "2026-11-20T08:30:00+00:00",
+  "scheduler": {
+   "type": "SLURM",
+   "version": "25.11"
+  },
+  "size": "SMALL",
+  "slurmConfiguration": {
+   "scaleDownIdleTimeInSeconds": 600,
+   "slurmCustomSettings": [],
+   "accounting": {
+    "mode": "STANDARD",
+    "defaultPurgeTimeInDays": -1
+   }
+  },
+  "networking": {
+   "subnetIds": [
+    "subnet-0000000000000a001"
+   ],
+   "securityGroupIds": [
+    "sg-0000000000000a001"
+   ],
+   "networkType": "IPV4"
+  },
+  "endpoints": [
+   {
+    "type": "SLURMCTLD",
+    "privateIpAddress": "10.0.0.5",
+    "port": "6817"
+   },
+   {
+    "type": "SLURMDBD",
+    "privateIpAddress": "10.0.0.6",
+    "port": "6819"
+   }
+  ]
+ }
+}

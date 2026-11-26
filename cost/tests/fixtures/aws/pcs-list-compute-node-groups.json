@@ -1,0 +1,49 @@
+{
+ "computeNodeGroups": [
+  {
+   "name": "login",
+   "id": "pcs_ng0login01",
+   "arn": "arn:aws:pcs:ap-southeast-6:123456789012:cluster/pcs_abc123def4/computenodegroup/pcs_ng0login01",
+   "clusterId": "pcs_abc123def4",
+   "createdAt": "2026-11-20T08:40:00+00:00",
+   "modifiedAt": "2026-11-20T08:40:00+00:00",
+   "status": "ACTIVE"
+  },
+  {
+   "name": "od",
+   "id": "pcs_ng00000od1",
+   "arn": "arn:aws:pcs:ap-southeast-6:123456789012:cluster/pcs_abc123def4/computenodegroup/pcs_ng00000od1",
+   "clusterId": "pcs_abc123def4",
+   "createdAt": "2026-11-20T08:40:00+00:00",
+   "modifiedAt": "2026-11-20T08:40:00+00:00",
+   "status": "ACTIVE"
+  },
+  {
+   "name": "spot",
+   "id": "pcs_ng000spot1",
+   "arn": "arn:aws:pcs:ap-southeast-6:123456789012:cluster/pcs_abc123def4/computenodegroup/pcs_ng000spot1",
+   "clusterId": "pcs_abc123def4",
+   "createdAt": "2026-11-20T08:40:00+00:00",
+   "modifiedAt": "2026-11-20T08:40:00+00:00",
+   "status": "ACTIVE"
+  },
+  {
+   "name": "gpu",
+   "id": "pcs_ng0000gpu1",
+   "arn": "arn:aws:pcs:ap-southeast-6:123456789012:cluster/pcs_abc123def4/computenodegroup/pcs_ng0000gpu1",
+   "clusterId": "pcs_abc123def4",
+   "createdAt": "2026-11-20T08:40:00+00:00",
+   "modifiedAt": "2026-11-20T08:40:00+00:00",
+   "status": "ACTIVE"
+  },
+  {
+   "name": "login-extra",
+   "id": "pcs_ng0login02",
+   "arn": "arn:aws:pcs:ap-southeast-6:123456789012:cluster/pcs_abc123def4/computenodegroup/pcs_ng0login02",
+   "clusterId": "pcs_abc123def4",
+   "createdAt": "2026-11-20T08:40:00+00:00",
+   "modifiedAt": "2026-11-20T08:40:00+00:00",
+   "status": "ACTIVE"
+  }
+ ]
+}

@@ -1,0 +1,178 @@
+[
+ {
+  "InstanceId": "i-0b00000000000a001",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.40",
+  "PrivateDns": "ip-10-0-0-40.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "pcs-cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng0login01"
+   },
+   {
+    "Key": "monitoring-role",
+    "Value": "login"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a002",
+  "InstanceType": "c6i.large",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.2.11",
+  "PrivateDns": "ip-10-0-2-11.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng00000od1"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a003",
+  "InstanceType": "c6i.large",
+  "Az": "ap-southeast-6b",
+  "Tenancy": "default",
+  "Lifecycle": "spot",
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.2.12",
+  "PrivateDns": "ip-10-0-2-12.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng000spot1"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a004",
+  "InstanceType": "g4dn.xlarge",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.2.13",
+  "PrivateDns": "ip-10-0-2-13.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng0000gpu1"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a005",
+  "InstanceType": "t3.medium",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.0.41",
+  "PrivateDns": "ip-10-0-0-41.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng0login02"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a006",
+  "InstanceType": "p5.48xlarge",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": "capacity-block",
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.2.14",
+  "PrivateDns": "ip-10-0-2-14.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng00000cb1"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-0b00000000000a007",
+  "InstanceType": "c6i.large",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "host",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.2.15",
+  "PrivateDns": "ip-10-0-2-15.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng00000od1"
+   }
+  ]
+ },
+ {
+  "InstanceId": "i-NOTVALID",
+  "InstanceType": "c6i.large",
+  "Az": "ap-southeast-6a",
+  "Tenancy": "default",
+  "Lifecycle": null,
+  "UsageOperation": "RunInstances",
+  "PlatformDetails": "Linux/UNIX",
+  "PrivateIp": "10.0.2.16",
+  "PrivateDns": "ip-10-0-2-16.ap-southeast-6.compute.internal",
+  "Tags": [
+   {
+    "Key": "aws:pcs:cluster-id",
+    "Value": "pcs_abc123def4"
+   },
+   {
+    "Key": "aws:pcs:compute-node-group-id",
+    "Value": "pcs_ng00000od1"
+   }
+  ]
+ }
+]

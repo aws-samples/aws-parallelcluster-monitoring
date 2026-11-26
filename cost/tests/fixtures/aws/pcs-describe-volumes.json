@@ -1,0 +1,188 @@
+{
+ "Volumes": [
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a001",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b001",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b001",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a002",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b002",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b002",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a003",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b003",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6b",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b003",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a004",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b004",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b004",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a005",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b005",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b005",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a006",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b006",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b006",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a007",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b007",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b007",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  },
+  {
+   "Attachments": [
+    {
+     "AttachTime": "2026-11-25T08:00:00+00:00",
+     "Device": "/dev/xvda",
+     "InstanceId": "i-0b00000000000a008",
+     "State": "attached",
+     "VolumeId": "vol-0b00000000000b008",
+     "DeleteOnTermination": true
+    }
+   ],
+   "AvailabilityZone": "ap-southeast-6a",
+   "CreateTime": "2026-11-25T08:00:00.000000+00:00",
+   "Encrypted": true,
+   "Size": 30,
+   "SnapshotId": "snap-0000000000000a001",
+   "State": "in-use",
+   "VolumeId": "vol-0b00000000000b008",
+   "VolumeType": "gp3",
+   "MultiAttachEnabled": false,
+   "Iops": 3000,
+   "Throughput": 125
+  }
+ ]
+}
