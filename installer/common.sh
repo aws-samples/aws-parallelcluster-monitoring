@@ -14,6 +14,10 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 readonly SLURM_EXPORTER_VERSION="1.8.0"
 readonly SLURM_EXPORTER_REPO="rivosinc/prometheus-slurm-exporter"
+# SHA-256 of the release tarballs, as published in the release's
+# prometheus-slurm-exporter_1.8.0_checksums.txt. Update them with the version.
+readonly SLURM_EXPORTER_SHA256_AMD64="903b8e3c9684a6c43e433b36a3582c1c93d461a1a9516a666d2ef0a8886c2046"
+readonly SLURM_EXPORTER_SHA256_ARM64="38adb5e51df1c4fa43709e4f03cc9eb67264bd923eff63ef357b13a96d1a09ef"
 
 # Docker Compose v2 plugin. Amazon Linux 2 / 2023 install this binary directly
 # (their repos don't ship docker-compose-plugin); RHEL/Ubuntu get it from the
@@ -113,14 +117,23 @@ has_nvidia_gpu() {
 # Replaces the old "go build from vpenso fork" flow.
 # ---------------------------------------------------------------------------
 install_slurm_exporter() {
-    local arch tmpdir url
+    local arch tmpdir asset url expected
     arch="$(detect_arch)"
+    case "${arch}" in
+        amd64) expected="${SLURM_EXPORTER_SHA256_AMD64}" ;;
+        arm64) expected="${SLURM_EXPORTER_SHA256_ARM64}" ;;
+    esac
+    asset="prometheus-slurm-exporter_linux_${arch}.tar.gz"
+    url="https://github.com/${SLURM_EXPORTER_REPO}/releases/download/v${SLURM_EXPORTER_VERSION}/${asset}"
     tmpdir="$(mktemp -d)"
-    url="https://github.com/${SLURM_EXPORTER_REPO}/releases/download/v${SLURM_EXPORTER_VERSION}/prometheus-slurm-exporter_linux_${arch}.tar.gz"
-
     log "Downloading prometheus-slurm-exporter ${SLURM_EXPORTER_VERSION} (${arch})"
-    curl -fsSL "${url}" -o "${tmpdir}/exporter.tar.gz"
-    tar -xzf "${tmpdir}/exporter.tar.gz" -C "${tmpdir}"
+    curl -fsSL "${url}" -o "${tmpdir}/${asset}"
+    if ! (cd "${tmpdir}" && printf '%s  %s\n' "${expected}" "${asset}" | sha256sum -c --status -); then
+        rm -rf "${tmpdir}"
+        die "${asset}: SHA-256 mismatch with the published checksum, refusing to install"
+    fi
+    log "Verified SHA-256 of ${asset}"
+    tar -xzf "${tmpdir}/${asset}" -C "${tmpdir}"
     install -m 0755 "${tmpdir}/prometheus-slurm-exporter" /usr/bin/prometheus-slurm-exporter
     rm -rf "${tmpdir}"
 
