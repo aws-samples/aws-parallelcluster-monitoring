@@ -377,7 +377,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_jobs_failed or vector(0)",
+          "expr": "sum(slurm_jobs_failed) or vector(0)",
           "instant": true
         }
       ],
@@ -423,7 +423,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "slurm_jobs_suspended or vector(0)",
+          "expr": "sum(slurm_jobs_suspended) or vector(0)",
           "instant": true
         }
       ],
