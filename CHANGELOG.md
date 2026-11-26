@@ -263,7 +263,8 @@ Behavior changes:
   it; they also count a drained node both in its base state, usually idle,
   and as drained. The compatibility rules now sum Slurm's per-partition
   series and count a drained node as drain only, as `sinfo` does, also in
-  the Slurm Detail **Partitions** table. Earlier releases have this too.
+  the Slurm Detail **Partitions** table; Known issues lists the one case
+  they get wrong. Earlier releases have this too.
 - **ParallelCluster: every Cluster Logs panel failed** with `invalid input
   region __AWS_REGION__`. The installer substitutes the log group name and
   ARN in the dashboard's queries, and now the region too. Earlier releases
@@ -369,6 +370,12 @@ Found while preparing v2.12.
   in Slurm's own counts, while `sinfo` shows it as draining.
   A node in several partitions counts once in each in the node and CPU
   panels.
+- **AWS PCS: a drained node that is also down can count as idle.**
+  Slurm's per-partition series don't say whether a drained node is idle
+  or down, and the compatibility rules take drained nodes out of the idle
+  count first. So in a partition that also has idle nodes, each drained
+  down node makes Nodes Idle read one low and Nodes Down/Drain one high,
+  in Cluster Summary and in the Slurm Detail Partitions table.
 - **AWS PCS: Idle node-hours and Idle CPU-hours (last 24h) count
   powered-down nodes**, which have no instance. Slurm counts a
   powered-down node as idle in its per-partition series, and the

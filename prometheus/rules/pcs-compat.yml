@@ -29,8 +29,13 @@ groups:
   # in its base state, idle or down, as well as in
   # slurm_partition_nodes_drained. Here it counts as drain only, as sinfo
   # shows it, taken out of idle first and out of down for the rest, so the
-  # states add up to the number of nodes. A draining node (drain flag, jobs
-  # still running) counts as alloc or mix, as in Slurm's counts.
+  # states add up to the number of nodes. Slurm's series don't say which
+  # base state a drained node has, so a drained down node in a partition
+  # with idle nodes is taken out of idle: two idle nodes and a drained down
+  # node give idle 1, down 1, drain 1, where sinfo shows idle 2, drain 1.
+  # Taking drained nodes out of down first would get a drained idle node
+  # wrong instead. A draining node (drain flag, jobs still running) counts
+  # as alloc or mix, as in Slurm's counts.
   # ─────────────────────────────────────────────────────────────────────
   - name: pcs_slurm_nodes
     interval: 30s
