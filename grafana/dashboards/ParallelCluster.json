@@ -787,7 +787,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(5, sum by(username) (slurm_user_cpu_alloc{state=~\"alloc|mix\"}))",
+          "expr": "topk(5, sum by(username) (slurm_user_cpu_alloc{state=\"RUNNING\"}))",
           "legendFormat": "{{username}}",
           "instant": true
         }

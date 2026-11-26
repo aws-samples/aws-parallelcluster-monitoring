@@ -478,25 +478,25 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(username) (slurm_user_cpu_alloc{state=~\"alloc|mix\"})",
+          "expr": "sum by(username) (slurm_user_cpu_alloc{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "sum by(username) (slurm_user_mem_alloc{state=~\"alloc|mix\"})",
+          "expr": "sum by(username) (slurm_user_mem_alloc{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "sum by(username) (slurm_user_state_total{state=\"running\"})",
+          "expr": "sum by(username) (slurm_user_state_total{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "sum by(username) (slurm_user_state_total{state=\"pending\"})",
+          "expr": "sum by(username) (slurm_user_state_total{state=\"PENDING\"})",
           "format": "table",
           "instant": true
         }
@@ -576,25 +576,25 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(account) (slurm_account_job_state_cpu_alloc{state=~\"alloc|mix\"})",
+          "expr": "sum by(account) (slurm_account_job_state_cpu_alloc{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "B",
-          "expr": "sum by(account) (slurm_account_job_state_mem_alloc{state=~\"alloc|mix\"})",
+          "expr": "sum by(account) (slurm_account_job_state_mem_alloc{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "C",
-          "expr": "sum by(account) (slurm_account_job_state_total{state=\"running\"})",
+          "expr": "sum by(account) (slurm_account_job_state_total{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
         {
           "refId": "D",
-          "expr": "sum by(account) (slurm_account_job_state_total{state=\"pending\"})",
+          "expr": "sum by(account) (slurm_account_job_state_total{state=\"PENDING\"})",
           "format": "table",
           "instant": true
         }
@@ -692,7 +692,7 @@
         },
         {
           "refId": "B",
-          "expr": "sum by(account) (slurm_account_job_state_cpu_alloc{state=~\"alloc|mix\"})",
+          "expr": "sum by(account) (slurm_account_job_state_cpu_alloc{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
@@ -704,7 +704,7 @@
         },
         {
           "refId": "D",
-          "expr": "sum by(account) (slurm_account_job_state_mem_alloc{state=~\"alloc|mix\"})",
+          "expr": "sum by(account) (slurm_account_job_state_mem_alloc{state=\"RUNNING\"})",
           "format": "table",
           "instant": true
         },
@@ -716,7 +716,7 @@
         },
         {
           "refId": "F",
-          "expr": "sum by(account) (slurm_account_job_state_total{state=~\"running|pending\"})",
+          "expr": "sum by(account) (slurm_account_job_state_total{state=~\"RUNNING|PENDING\"})",
           "format": "table",
           "instant": true
         }

@@ -5,7 +5,10 @@ Wants=network-online.target
 
 [Service]
 Environment=PATH=/opt/slurm/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/prometheus-slurm-exporter -web.listen-address=127.0.0.1:9092
+# -slurm.collect-diags adds the backfill, RPC, controller thread and DBD
+# queue series (slurm_backfill_*, slurm_rpc_*, slurm_daemon_thread_count,
+# slurm_dbd_agent_queue_size) that the Slurm Detail dashboard uses.
+ExecStart=/usr/bin/prometheus-slurm-exporter -web.listen-address=127.0.0.1:9092 -slurm.collect-diags
 Restart=on-failure
 RestartSec=15
 Type=simple

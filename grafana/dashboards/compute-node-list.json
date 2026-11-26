@@ -355,7 +355,7 @@
         },
         {
           "refId": "D",
-          "expr": "(node_load1{instance_name=\"Compute\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "(node_load1{instance_name=\"Compute\"} / on(instance_id) count by(instance_id) (node_cpu_seconds_total{instance_name=\"Compute\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"Compute\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""

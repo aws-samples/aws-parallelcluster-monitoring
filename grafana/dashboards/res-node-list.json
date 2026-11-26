@@ -270,7 +270,7 @@
         },
         {
           "refId": "D",
-          "expr": "(node_load1{instance_name=\"RES\"} / count by(instance_id) (node_cpu_seconds_total{instance_name=\"RES\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
+          "expr": "(node_load1{instance_name=\"RES\"} / on(instance_id) count by(instance_id) (node_cpu_seconds_total{instance_name=\"RES\",mode=\"idle\"})) * on(instance_id) group_left(nodename, instance_type) node_uname_info{instance_name=\"RES\"}",
           "format": "table",
           "instant": true,
           "legendFormat": ""
