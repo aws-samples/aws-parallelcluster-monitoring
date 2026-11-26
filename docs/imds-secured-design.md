@@ -53,6 +53,11 @@ read-only and reads it via the standard AWS SDK credentials-file path.
 └────────────────────────────────────────────────────────────┘
 ```
 
+In Grafana, the CloudWatch datasource reads the file. Grafana 13.3 runs
+that datasource as a separate plugin process, which gets Grafana's
+environment, and with it `AWS_SHARED_CREDENTIALS_FILE`, only because
+`compose/head.yml` sets `GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch`.
+
 ## Alternatives we considered and rejected
 
 ### Disabling `Imds.Secured`

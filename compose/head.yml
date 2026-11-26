@@ -62,6 +62,12 @@ services:
       # host-refreshed credentials file Prometheus/cloudwatch-exporter use;
       # required because Imds.Secured=true blocks IMDS from containers.
       - 'AWS_SHARED_CREDENTIALS_FILE=/run/prometheus-ec2-creds/credentials'
+      # Grafana 13.3 runs the CloudWatch datasource as a separate plugin
+      # process, which gets Grafana's environment, and with it the variable
+      # above, only when its plugin id is listed here. That environment
+      # holds settings and file paths, not secrets, and the plugin runs as
+      # Grafana's user, so it can't read anything Grafana itself can't.
+      - 'GF_PLUGINS_FORWARD_HOST_ENV_VARS=cloudwatch'
     env_file:
       # Cognito OAuth2 config, materialized by installer from SSM.
       # Empty file when Cognito is not configured (no-op).
