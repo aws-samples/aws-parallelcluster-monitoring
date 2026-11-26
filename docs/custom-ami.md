@@ -28,13 +28,13 @@ On a custom AMI, `installer/install.sh` detects that the container runtime is al
 
 | Compute node type | Standard method (installer runs full bootstrap every boot) | Custom AMI (runtime + images pre-baked) |
 |---|---|---|
-| CPU node | docker install + ~32 MB Compose plugin download + `node-exporter` image pull | OS bootstrap skipped, image served from cache; only the installer downloads from GitHub remain |
-| GPU node | above **plus** NVIDIA Container Toolkit install + Docker restart + `dcgm-exporter` image pull (about 142 MB to download, about 410 MB on disk) | toolkit install is a no-op and both images are served from cache; the node still contacts the NVIDIA package repository and restarts Docker for the NVIDIA runtime |
+| CPU node | docker install + ~34 MB Compose plugin download + `node-exporter` image pull | OS bootstrap skipped, image served from cache; only the installer downloads from GitHub remain |
+| GPU node | above **plus** NVIDIA Container Toolkit install + Docker restart + `dcgm-exporter` image pull (about 49 MB to download, about 150 MB on disk with Docker 25) | toolkit install is a no-op and both images are served from cache; the node still contacts the NVIDIA package repository and restarts Docker for the NVIDIA runtime |
 
 > **Validated live** (ParallelCluster 3.15.1, Amazon Linux 2023). Custom-AMI compute nodes were compared against a control queue on the stock AMI, both running the same installer pinned to `main`:
 >
 > - **CPU (`c5.large`)**: time from EC2 launch to `node-exporter` running was **~109 s on the custom AMI vs ~126 s on the stock AMI (~17 s faster)**. On the custom node the installer logged *"Container runtime already present (pre-baked AMI) — skipping OS bootstrap"*: **zero** Compose-plugin downloads and **zero** image pulls at boot, versus one of each on the stock node. Both served 665 `node_` metrics.
-> - **GPU (`g4dn.xlarge`, Tesla T4)**: both the `node-exporter` image and the `dcgm-exporter` image (about 142 MB to download, about 410 MB on disk) were served from the pre-baked cache with **zero pulls at boot**, the NVIDIA Container Toolkit install was a no-op, and the OS bootstrap was skipped. This is where pre-baking helps most, since the stock path would otherwise download the large `dcgm-exporter` image on every scale-up.
+> - **GPU (`g4dn.xlarge`, Tesla T4)**: both the `node-exporter` image and the `dcgm-exporter` image (about 49 MB to download, about 150 MB on disk with Docker 25) were served from the pre-baked cache with **zero pulls at boot**, the NVIDIA Container Toolkit install was a no-op, and the OS bootstrap was skipped. This is where pre-baking helps most, since the stock path would otherwise download the large `dcgm-exporter` image on every scale-up.
 >
 > The launch-to-ready times above are dominated by the OS boot and the ParallelCluster bootstrap (identical on both AMIs); the delta is the monitoring stack's contribution. Measure in your own environment before drawing conclusions.
 
@@ -133,7 +133,7 @@ Build:
 >     AdditionalIamPolicies:
 >       - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 > ```
-> **Newer GPUs (e.g. B300):** the default `dcgm-exporter` image covers up to B200. To pre-bake a DCGM ≥ 4.4.0 build, set `DCGM_EXPORTER_IMAGE` (by digest, to bypass the Docker 29.x OCI-index pull issue) in the component's environment — the script honors it, same as the boot-time installer.
+> **Newer GPUs (e.g. B300):** the default `dcgm-exporter` image (4.9.0, with DCGM 4.7.0) covers B300. To pre-bake a different build, set `DCGM_EXPORTER_IMAGE` (by digest, to bypass the Docker 29.x OCI-index pull issue) in the component's environment — the script honors it, same as the boot-time installer. The override must be dcgm-exporter 4.9.0 or later, because `dcgm/counters.csv` uses the DCGM 4.7 field names.
 
 ## Step 4 — Build the image
 

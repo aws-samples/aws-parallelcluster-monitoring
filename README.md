@@ -178,12 +178,13 @@ tmp="$(mktemp)" &&
 - `MetadataOptions.InstanceMetadataTags=enabled`
 - Same user data as above
 
-> **Newer GPUs (e.g. B300):** the dcgm-exporter image defaults to a build
-> that pulls cleanly on Docker 29.x but only covers up to B200. For GPUs
-> needing DCGM ≥ 4.4.0 (such as B300 / p6-b300), export
-> `DCGM_EXPORTER_IMAGE` before the installer runs — set it in the compute
-> node's user data. Supply the image **by digest** to bypass the Docker
-> 29.x OCI-index pull failure, e.g.
+> **Newer GPUs (e.g. B300):** the default dcgm-exporter image (4.9.0, with
+> DCGM 4.7.0) covers B300 / p6-b300, so no setting is needed. To run a
+> different build, export `DCGM_EXPORTER_IMAGE` before the installer runs —
+> set it in the compute node's user data. The override must be
+> dcgm-exporter 4.9.0 or later, because `dcgm/counters.csv` uses the DCGM 4.7
+> field names. Supply the image **by digest** to bypass the Docker 29.x
+> OCI-index pull failure, e.g.
 > `export DCGM_EXPORTER_IMAGE=nvcr.io/nvidia/k8s/dcgm-exporter@sha256:<digest>`.
 > Leave it unset to use the default.
 
@@ -390,17 +391,17 @@ ParallelCluster HeadNode / PCS Login Node
 
 | Component | Version |
 |-----------|---------|
-| Grafana | 13.0.2 |
-| Prometheus | v3.12.0 |
-| Pushgateway | v1.11.3 |
-| Node Exporter | v1.11.1 |
-| NGINX | 1.27-alpine |
-| NVIDIA DCGM Exporter | 4.2.0-4.1.0-ubuntu22.04 |
-| prometheus-slurm-exporter | 1.8.0 (ParallelCluster only) |
-| Docker Compose | 5.1.4 |
-| CloudWatch Exporter | v0.16.0 |
+| Grafana | 13.3.2 |
+| Prometheus | v3.16.0 |
+| Pushgateway | v1.11.4 |
+| Node Exporter | v1.13.1 |
+| NGINX | `1.30-alpine` (stable branch, 1.30.8 at release) |
+| NVIDIA DCGM Exporter | 4.9.0 (`4.7.0-4.9.0`, pinned by digest, DCGM 4.7.0) |
+| prometheus-slurm-exporter | 1.8.0 (ParallelCluster only, SHA-256 verified) |
+| Docker Compose | 5.8.0 (Amazon Linux 2/2023 binary; Ubuntu and RHEL use the docker-ce repo's plugin) |
+| CloudWatch Exporter | v0.19.0 |
 
-All images pinned — `latest` is never used.
+Images are pinned in `compose/*.yml` and never use `latest`: NGINX tracks the 1.30 stable-branch tag (1.30.x patch releases), and dcgm-exporter is pinned by digest.
 
 ## Security
 
