@@ -42,7 +42,7 @@ os_script="$(pick_os_script "${SCRIPT_DIR}/os")"
 
 # Fast path: if the container runtime is already baked into the AMI (custom
 # AMI) or was installed by a previous run, skip the whole per-OS bootstrap
-# (docker install + ~32MB compose plugin download). This is the bulk of a
+# (docker install + ~34MB compose plugin download). This is the bulk of a
 # compute node's monitoring boot overhead on a pre-baked AMI. `docker start`
 # is a no-op if it's already running; it fails harmlessly (|| true) when
 # docker isn't installed yet, and we fall through to the OS bootstrap.
@@ -407,10 +407,10 @@ COGENV
             # __MONITORING_HOME__ substitution (node-local /opt path).
             sed -i "s|__MONITORING_HOME__|${MONITORING_HOME}|g" \
                 "${MONITORING_HOME}/compose/compute.gpu.yml"
-            # Allow the dcgm-exporter image to be overridden (e.g. a B300-capable
-            # DCGM >= 4.4.0 build, supplied by digest to bypass the Docker 29.x
-            # OCI-index pull failure). compute.gpu.yml defaults to the safe 4.2.0
-            # pin when this is unset, so existing behaviour is unchanged. See #50.
+            # Allow the dcgm-exporter image to be overridden. dcgm/counters.csv
+            # uses the DCGM 4.7 field names, so an override must be
+            # dcgm-exporter 4.9.0 or later. When this is unset or empty,
+            # compute.gpu.yml uses its default, 4.9.0, which covers B300. See #50.
             export DCGM_EXPORTER_IMAGE="${DCGM_EXPORTER_IMAGE:-}"
             docker compose \
                 -f "${MONITORING_HOME}/compose/compute.gpu.yml" \

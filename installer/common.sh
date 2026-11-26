@@ -23,7 +23,7 @@ readonly SLURM_EXPORTER_SHA256_ARM64="38adb5e51df1c4fa43709e4f03cc9eb67264bd923e
 # (their repos don't ship docker-compose-plugin); RHEL/Ubuntu get it from the
 # docker-ce repo. Kept here as the single source of truth so the OS scripts and
 # the idempotency check below agree on one version.
-readonly COMPOSE_PLUGIN_VERSION="v5.1.4"
+readonly COMPOSE_PLUGIN_VERSION="v5.8.0"
 readonly COMPOSE_PLUGIN_PATH="/usr/libexec/docker/cli-plugins/docker-compose"
 
 # System group that may read the instance-role credentials in
@@ -166,7 +166,7 @@ install_efa_collector() {
 # Install the Docker Compose v2 plugin binary at the pinned version,
 # idempotently. Used by the OS scripts whose repos don't ship the plugin as a
 # package (Amazon Linux 2 / 2023). If the pinned version is already installed
-# (e.g. baked into a custom AMI, or a previous run), the ~32MB download is
+# (e.g. baked into a custom AMI, or a previous run), the ~34MB download is
 # skipped — this is what stops the plugin being re-fetched on every boot.
 # ---------------------------------------------------------------------------
 install_compose_plugin_binary() {

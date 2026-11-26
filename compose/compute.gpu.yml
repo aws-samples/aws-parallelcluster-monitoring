@@ -14,7 +14,7 @@ services:
     volumes:
       - '/:/host:ro,rslave'
       - '/var/lib/prometheus/node-exporter:/textfile:ro'
-    image: quay.io/prometheus/node-exporter:v1.11.1
+    image: quay.io/prometheus/node-exporter:v1.13.1
     command:
       - '--path.rootfs=/host'
       - '--collector.infiniband'
@@ -40,16 +40,13 @@ services:
     # The deploy block is kept for engines that honor device reservations.
     # See #55.
     runtime: nvidia
-    # Image is overridable via DCGM_EXPORTER_IMAGE; the default below is the
-    # newest tag whose manifest is a Docker manifest-list v2. From 4.2.3 onward
-    # NVCR publishes an OCI image index with attestation/SBOM manifests, which
-    # Docker 29.x cannot pull ("error from registry: Incorrect Repository
-    # Format"), leaving GPU nodes with no dcgm-exporter. 4.2.0-4.1.0 pulls cleanly
-    # on Docker 29.x and emits the same DCGM_FI_DEV_* fields. See #47.
-    # The default covers up to B200; B300 (and future GPUs) need DCGM >= 4.4.0 --
-    # set DCGM_EXPORTER_IMAGE to a newer build, by DIGEST to bypass the Docker
-    # 29.x OCI-index pull failure (a digest pull skips index negotiation). See #50.
-    image: ${DCGM_EXPORTER_IMAGE:-nvcr.io/nvidia/k8s/dcgm-exporter:4.2.0-4.1.0-ubuntu22.04}
+    # Image is overridable via DCGM_EXPORTER_IMAGE. The default is
+    # dcgm-exporter 4.9.0, which ships DCGM 4.7.0 and covers B300 (#50).
+    # NVCR publishes it as a Docker manifest list with no attestation
+    # manifests, so Docker 29.x can pull it (#47). It is pinned by digest, so
+    # a re-pushed tag can't change it. dcgm/counters.csv uses the DCGM 4.7
+    # field names, so an override must be dcgm-exporter 4.9.0 or later.
+    image: ${DCGM_EXPORTER_IMAGE:-nvcr.io/nvidia/k8s/dcgm-exporter:4.7.0-4.9.0@sha256:2490e1dfb5baaee6765ef2841813af7d978bb459a566c22c326a8fc27c64eea9}
     # Custom counters file enables XID errors, throttle reasons,
     # ECC counters, retired pages, full NVLink error set, and the
     # DCP profiling metrics (SM_ACTIVE / SM_OCCUPANCY / TENSOR / FP64 /
