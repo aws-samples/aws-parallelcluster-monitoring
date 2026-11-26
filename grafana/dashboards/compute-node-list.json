@@ -383,7 +383,7 @@
         },
         {
           "refId": "H",
-          "expr": "slurm_job_node * on(nodename) group_left(instance_id) node_uname_info{instance_name=\"Compute\"}",
+          "expr": "max by(instance_id, nodename, jobid, jobname, user) (slurm_job_node * on(node_addr) group_left(instance_id, nodename) label_replace(node_uname_info{instance_name=\"Compute\"}, \"node_addr\", \"$1\", \"instance\", \"(.+):[0-9]+\"))",
           "format": "table",
           "instant": true
         }

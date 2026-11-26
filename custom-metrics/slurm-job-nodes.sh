@@ -7,7 +7,7 @@
 # Writes to node_exporter's textfile directory so it's scraped automatically.
 #
 # Output metric:
-#   slurm_job_node{jobid="123",nodename="queue0-st-cr0-1",user="ec2-user",jobname="wrap",state="RUNNING"} 1
+#   slurm_job_node{jobid="123",nodename="queue0-st-cr0-1",node_addr="10.0.0.12",user="ec2-user",jobname="wrap",state="RUNNING"} 1
 #
 set -euo pipefail
 
@@ -39,12 +39,26 @@ find_slurm_bin() {
 }
 SQUEUE="$(find_slurm_bin squeue)"
 SCONTROL="$(find_slurm_bin scontrol)"
+SINFO="$(find_slurm_bin sinfo)"
 
 mkdir -p "${TEXTFILE_DIR}"
 
 # If squeue isn't available (compute node, or login before slurm client
 # packages land), exit silently. Timer will pick it up on the next tick.
 [[ -n "${SQUEUE}" && -x "${SQUEUE}" ]] || exit 0
+
+# Address of each Slurm node (node_addr). It is the instance's private IP on
+# ParallelCluster and AWS PCS, which node_exporter's instance label
+# (<ip>:9100) also has, so the Compute Node List joins jobs to instances on
+# it: on PCS the Slurm node name (cpu-1) is not the host name.
+declare -A NODE_ADDR=()
+if [[ -n "${SINFO}" ]]; then
+    while read -r name addr; do
+        if [[ -n "${name}" && -n "${addr}" ]]; then
+            NODE_ADDR["${name}"]="${addr}"
+        fi
+    done <<<"$("${SINFO}" -h -N -o '%N %o' 2>/dev/null || true)"
+fi
 
 # Get all running/pending jobs with their node assignments.
 # Format: JOBID NODELIST STATE USER JOBNAME
@@ -67,7 +81,7 @@ TMP="${OUTPUT}.tmp"
             # Sanitize label values (remove quotes, limit length)
             jobname_safe="${jobname//\"/}"
             jobname_safe="${jobname_safe:0:50}"
-            echo "slurm_job_node{jobid=\"${jobid}\",nodename=\"${node}\",user=\"${user}\",jobname=\"${jobname_safe}\",state=\"${state}\"} 1"
+            echo "slurm_job_node{jobid=\"${jobid}\",nodename=\"${node}\",node_addr=\"${NODE_ADDR[${node}]:-}\",user=\"${user}\",jobname=\"${jobname_safe}\",state=\"${state}\"} 1"
         done
     done
 } > "${TMP}"
