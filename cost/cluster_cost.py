@@ -7,16 +7,18 @@
 
 Runs as root from cluster-cost.timer every 60 seconds on the monitoring node
 (the ParallelCluster head node or a PCS login node). Each run finds the
-cluster's running instances, lists their EBS volumes, refreshes the cached
-prices that are due, prices every instance, volume and PCS fee, and writes
-the rates and the health of the run to node_exporter's textfile directory:
+cluster's running instances, lists their EBS volumes, reads Slurm's nodes
+and jobs, refreshes the cached prices that are due, prices every instance,
+volume and PCS fee, splits the compute node cost among Slurm users and
+accounts, adds the run to the accumulated totals, and writes the rates, the
+totals and the health of the run to node_exporter's textfile directory:
 
     /var/lib/prometheus/node-exporter/cluster_cost.prom
 
 Configuration comes from the environment (the unit's EnvironmentFile,
 /etc/aws-parallelcluster-monitoring/cluster-cost.env): PLATFORM, CLUSTER_ID
-and REGION. The price cache and the run report live in the state directory,
-/var/lib/aws-parallelcluster-monitoring/cost.
+and REGION. The accumulators (state.json), the price cache and the run
+report live in the state directory, /var/lib/aws-parallelcluster-monitoring/cost.
 
     cluster-cost-collector            one run
     cluster-cost-collector --dry-run  one run that prints the exposition and
@@ -52,6 +54,10 @@ TEXTFILE_DIR_DEFAULT = "/var/lib/prometheus/node-exporter"
 TEXTFILE_NAME = "cluster_cost.prom"
 TEXTFILE_TMP = ".cluster_cost.prom.tmp"   # doesn't end in .prom: node_exporter ignores it
 PRICES_FILE = "prices.json"
+STATE_FILE = "state.json"
+STATE_BACKUP = "state.json.bak"
+STATE_CORRUPT = "state.json.corrupt"
+STATE_TMP = "state.json.tmp"
 REPORT_FILE = "last-run.json"
 LOCK_FILE = ".lock"
 TEXTFILE_MODE = 0o644                     # node_exporter reads it as nobody
@@ -154,6 +160,29 @@ PCS_CLUSTER_MAX_AGE = DAY
 VOLUME_RECORD_MAX_AGE = HOUR
 VOLUME_CHUNK = 100
 
+# --- Slurm (design "Allocation (users, accounts, idle)") -------------------------
+PC_SLURM_BIN = "/opt/slurm/bin"
+PCS_SLURM_LINK = "/etc/aws/pcs/scheduler/slurm"
+PCS_SCHEDULER_DIR = "/opt/aws/pcs/scheduler"
+SLURM_COMMANDS = ("squeue", "scontrol")
+SCONTROL_ARGS = ("show", "nodes", "--json")
+SQUEUE_ARGS = ("--json", "--states=RUNNING,CONFIGURING,COMPLETING")
+# Jobs in these states hold resources. For the mapping check (step 8), a node
+# is busy when it holds a RUNNING job that is neither CONFIGURING nor
+# COMPLETING, and isn't in one of the node states of booting or lost nodes.
+HOLDING_JOB_STATES = frozenset(["RUNNING", "CONFIGURING", "COMPLETING"])
+NOT_BUSY_JOB_STATES = frozenset(["CONFIGURING", "COMPLETING"])
+NOT_BUSY_NODE_STATES = frozenset(["POWERING_UP", "POWERING_DOWN", "POWERED_DOWN", "DOWN", "NOT_RESPONDING"])
+UNALLOCATED_REASONS = ("idle_node", "partial_node")
+USER_KEY_CAP = 5000         # accumulated (username, account) keys per period
+OTHER_USER = "(other)"
+
+# --- Accumulation (design "Accumulation and state") ------------------------------
+PERIODS = ("since_start", "month")
+ACC_FAMILIES = ("lines", "alloc")
+ACC_BUCKETS = ("lines", "users", "unallocated", "unpriced")
+GAP_CAP = HOUR              # a longer gap adds one hour at the last rates; the rest is unaccounted
+
 # --- Validation ----------------------------------------------------------------
 CLUSTER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 REGION_RE = re.compile(r"^[a-z]{2,4}(-[a-z0-9]+)+-[0-9]+$")
@@ -167,6 +196,10 @@ NODE_GROUP_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 SCHEDULER_VERSION_RE = re.compile(r"^[0-9]{2}\.[0-9]{2}$")
 ADVANCED_TIER_RE = re.compile(r"^(p|trn)[0-9]")
 AWS_ERROR_RE = re.compile(r"An error occurred \(([A-Za-z0-9._-]+)\)")
+SLURM_TREE_RE = re.compile(r"^slurm-[0-9]{2}\.[0-9]{2}$")
+COUNT_RE = re.compile(r"^[0-9]+$")
+MONTH_RE = re.compile(r"^[0-9]{4}-[0-9]{2}$")
+LABEL_NAME_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 CREDENTIALS_X = frozenset([
     "NoCredentials", "ExpiredToken", "ExpiredTokenException", "RequestExpired", "InvalidClientTokenId",
@@ -577,7 +610,7 @@ class Health:
 
 def applicable_stages(config, dry_run):
     """The stages that every complete run has, in run order."""
-    names = ["discovery", "ebs", "on_demand_prices", "spot_prices"]
+    names = ["discovery", "ebs", "slurm", "on_demand_prices", "spot_prices"]
     if config.platform == "pcs":
         names.append("pcs")
     if not dry_run:
@@ -603,15 +636,21 @@ def _write_all(fd, data):
         view = view[n:]
 
 
-def write_file_atomic(directory, name, tmp_name, data, mode):
-    """Write data to directory/name by temporary file, fsync and rename."""
-    tmp = os.path.join(directory, tmp_name)
-    final = os.path.join(directory, name)
+def _unlink_quietly(path):
     try:
-        os.unlink(tmp)
+        os.unlink(path)
+    except OSError:
+        pass
+
+
+def write_new_file(path, data, mode):
+    """Create path afresh (a leftover is removed first, and a symlink is never
+    followed), write data, set mode and fsync."""
+    try:
+        os.unlink(path)
     except FileNotFoundError:
         pass
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode)
     try:
         try:
             _write_all(fd, data)
@@ -619,12 +658,19 @@ def write_file_atomic(directory, name, tmp_name, data, mode):
             os.fsync(fd)
         finally:
             os.close(fd)
-        os.replace(tmp, final)
     except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+        _unlink_quietly(path)
+        raise
+
+
+def write_file_atomic(directory, name, tmp_name, data, mode):
+    """Write data to directory/name by temporary file, fsync and rename."""
+    tmp = os.path.join(directory, tmp_name)
+    write_new_file(tmp, data, mode)
+    try:
+        os.replace(tmp, os.path.join(directory, name))
+    except BaseException:
+        _unlink_quietly(tmp)
         raise
     fsync_dir(directory)
 
@@ -889,6 +935,9 @@ class Run:
         self.calls = []                           # for last-run.json
         self.deferred = []
         self._logged_backoff = set()
+        self.state = State(cluster_identity(config))   # the accumulators (state.json)
+        self.state_load = StateLoad()
+        self.slurm = None                         # what the slurm stage read, for last-run.json
 
     # --- AWS ------------------------------------------------------------------
     def aws(self, args, needed=None, required=False):
@@ -1182,6 +1231,431 @@ def list_volumes(run, stage, instances):
         LOG.warning("volumes of %d running instance(s) couldn't be listed: left out (volume_list_unavailable)",
                     len(unavailable))
     return Volumes(records, unavailable, invalid)
+
+
+# =============================================================================
+# Slurm (stage slurm)
+# =============================================================================
+def unwrap_number(value):
+    """A Slurm number: plain, or the number of a {"set", "infinite", "number"}
+    object, which is None when unset or infinite."""
+    if isinstance(value, dict) and "number" in value:
+        if value.get("infinite") is True or value.get("set") is False:
+            return None
+        return value.get("number")
+    return value
+
+
+def slurm_int(value, minimum):
+    """An integer >= minimum (unwrapped), or None."""
+    value = unwrap_number(value)
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        return None
+    return value
+
+
+def state_flags(value):
+    """A Slurm state, a string or a list of flags, as a set of flags."""
+    if isinstance(value, str):
+        return frozenset([value])
+    if isinstance(value, list):
+        return frozenset(v for v in value if isinstance(v, str))
+    return frozenset()
+
+
+def memory_is_consumable(select_type):
+    # v0.0.42-44 (CR_TYPE): ["CORE", "MEMORY"]; v0.0.45 (SELECT_TYPE_PARAM): ["CR_CORE_MEMORY"]
+    flags = [select_type] if isinstance(select_type, str) else select_type if isinstance(select_type, list) else []
+    return any(isinstance(f, str) and (f == "MEMORY" or f.endswith("_MEMORY")) for f in flags)
+
+
+def split_gres(text):
+    """A GRES string split on the commas outside parentheses."""
+    parts, current, depth = [], [], 0
+    for ch in text:
+        if ch == "(":
+            depth += 1
+        elif ch == ")" and depth:
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    return [p.strip() for p in parts if p.strip()]
+
+
+def gpu_count(text):
+    """The GPUs in a node's gres or a job's gres_detail entry: gpu:T4:1(S:0)
+    is 1, gpu:a100:8(S:0-1) is 8, gpu:a100:2(IDX:0,2),gpu:1g.10gb:2(IDX:5-6) is 4."""
+    if not isinstance(text, str):
+        return 0
+    total = 0
+    for item in split_gres(text):
+        fields = [f.strip() for f in item.split("(", 1)[0].split(":")]
+        if fields[0] != "gpu":
+            continue
+        if len(fields) > 1 and COUNT_RE.match(fields[-1]):
+            total += int(fields[-1])
+        elif len(fields) <= 2:
+            total += 1                  # "gpu" or "gpu:<type>": one GPU
+    return total
+
+
+def tres_gpus(text):
+    """N of gres/gpu=N in a job's tres_alloc_str, or 0."""
+    if isinstance(text, str):
+        for item in text.split(","):
+            name, _, value = item.partition("=")
+            if name.strip() == "gres/gpu" and COUNT_RE.match(value.strip()):
+                return int(value.strip())
+    return 0
+
+
+def _nested(obj, *path):
+    for name in path:
+        if not isinstance(obj, dict):
+            return None
+        obj = obj.get(name)
+    return obj
+
+
+def _text(value):
+    return value if isinstance(value, str) and value else None
+
+
+def _slurm_message(entry):
+    text = entry.get("description") if isinstance(entry, dict) else entry
+    return " ".join(str(text).split())[:200]
+
+
+class SlurmNode:
+    """A Slurm node: the CPUs (C), memory in MiB (M) and GPUs (G) that jobs can
+    use, its mapping keys and its state flags."""
+
+    def __init__(self, name, cpus, memory, gpus, address=None, hostname=None, instance_id=None,
+                 states=frozenset()):
+        self.name = name
+        self.cpus = cpus
+        self.memory = memory
+        self.gpus = gpus
+        self.address = address
+        self.hostname = hostname
+        self.instance_id = instance_id
+        self.states = states
+
+    def __repr__(self):
+        return "SlurmNode(%s, C=%d, M=%d, G=%d)" % (self.name, self.cpus, self.memory, self.gpus)
+
+
+class SlurmShare:
+    """One job's allocation on one node (one entry of job_resources.nodes.allocation)."""
+
+    def __init__(self, job_id, username, account, node, cpus, memory, gpus, whole=False, memory_counts=False):
+        self.job_id = job_id
+        self.username = username
+        self.account = account
+        self.node = node
+        self.cpus = cpus
+        self.memory = memory
+        self.gpus = gpus
+        self.whole = whole
+        self.memory_counts = memory_counts
+
+
+class SlurmData:
+    """What the slurm stage read: the client, the nodes, the job allocations
+    and the mapping of nodes to instances."""
+
+    def __init__(self, bin_dir=None, found_by=None):
+        self.bin_dir = bin_dir
+        self.found_by = found_by
+        self.data_parser = {}
+        self.nodes = {}             # name -> SlurmNode
+        self.shares = []            # SlurmShare
+        self.jobs = 0
+        self.holding = set()        # nodes with a job in RUNNING, CONFIGURING or COMPLETING
+        self.busy = set()           # nodes with a RUNNING job that is neither CONFIGURING nor COMPLETING
+        self.mapping = {}           # node name -> (Instance, "instance_id" | "address" | "hostname")
+        self.busy_unmapped = []
+
+
+def _rooted(run, path):
+    """An absolute path under the injected file-system root (tests use a scratch root)."""
+    return (run.deps.root or "/").rstrip("/") + path
+
+
+def _has_slurm_client(directory):
+    for name in SLURM_COMMANDS:
+        path = os.path.join(directory, name)
+        if not (os.path.isfile(path) and os.access(path, os.X_OK)):
+            return False
+    return True
+
+
+def _pcs_slurm_candidates(run):
+    """PCS, in order: the node's configured version (the symlink), the
+    cluster's scheduler.version from the cached get-cluster result, and the
+    only Slurm tree. Values that fail their checks are skipped (DEBUG)."""
+    out = []
+    link = _rooted(run, PCS_SLURM_LINK)
+    if os.path.islink(link):
+        try:
+            name = os.path.basename(os.readlink(link).rstrip("/"))
+        except OSError:
+            name = ""
+        if SLURM_TREE_RE.match(name):
+            out.append(("symlink " + PCS_SLURM_LINK, _rooted(run, "%s/%s/bin" % (PCS_SCHEDULER_DIR, name))))
+        else:
+            LOG.debug("%s points to %r: skipped", PCS_SLURM_LINK, name[:64])
+    value = run.cache.value("pcs|cluster")
+    version = value.get("scheduler_version") if isinstance(value, dict) else None
+    if isinstance(version, str) and SCHEDULER_VERSION_RE.match(version):
+        out.append(("pcs scheduler.version", _rooted(run, "%s/slurm-%s/bin" % (PCS_SCHEDULER_DIR, version))))
+    elif version is not None:
+        LOG.debug("cached PCS scheduler version %r: skipped", str(version)[:32])
+    base = _rooted(run, PCS_SCHEDULER_DIR)
+    try:
+        trees = sorted(n for n in os.listdir(base) if SLURM_TREE_RE.match(n) and os.path.isdir(os.path.join(base, n)))
+    except OSError:
+        trees = []
+    if len(trees) == 1:
+        out.append(("only tree under " + PCS_SCHEDULER_DIR, os.path.join(base, trees[0], "bin")))
+    elif trees:
+        LOG.debug("%d Slurm trees under %s (%s): none picked", len(trees), PCS_SCHEDULER_DIR, ", ".join(trees))
+    return out
+
+
+def find_slurm_bin(run):
+    """(directory, how it was found) of the Slurm client, or (None, None): the
+    first candidate of design "Slurm binaries" that holds executable squeue
+    and scontrol. No shell is run, and of several PCS trees none is guessed."""
+    override = run.config.slurm_bin_dir
+    if override is not None:
+        if os.path.isabs(override) and _has_slurm_client(override):
+            return override, "CLUSTER_COST_SLURM_BIN_DIR"
+        LOG.debug("CLUSTER_COST_SLURM_BIN_DIR %s holds no executable squeue and scontrol", override[:200])
+        return None, None
+    if run.config.platform == "parallelcluster":
+        candidates = [(PC_SLURM_BIN, _rooted(run, PC_SLURM_BIN))]
+    else:
+        candidates = _pcs_slurm_candidates(run)
+    environ = run.deps.environ if run.deps.environ is not None else os.environ
+    candidates += [("PATH", d) for d in (environ.get("PATH") or "").split(os.pathsep) if os.path.isabs(d)]
+    for how, directory in candidates:
+        if _has_slurm_client(directory):
+            return directory, how
+        LOG.debug("no executable squeue and scontrol in %s (%s)", directory, how)
+    return None, None
+
+
+def slurm_command(run, stage, directory, name, args, list_key):
+    """Run one Slurm command with the timeout of a required call. The parsed
+    JSON object, or None after failing the stage with its code."""
+    timeout = run.deadline.required_timeout()
+    if timeout is None:
+        LOG.warning("%s skipped: run deadline", name)
+        run.calls.append({"call": name, "code": "Timeout", "skipped": True})
+        stage.fail("Timeout", "%s skipped: run deadline" % name)
+        return None
+    result = run.deps.runner([os.path.join(directory, name)] + list(args), timeout, run.env)
+    stderr = " ".join((result.stderr or "").split())[:200]
+    data, code, message = None, None, ""
+    if result.not_found:
+        code, message = "SlurmNotFound", "%s couldn't be executed: %s" % (name, stderr)
+    elif result.timed_out:
+        code, message = "Timeout", "%s killed after %.0f s" % (name, timeout)
+    elif result.rc != 0:
+        code, message = "SlurmCommandFailed", "%s exited with %d: %s" % (name, result.rc, stderr)
+    else:
+        data = _parse_json(result.stdout)
+        if not isinstance(data, dict):
+            code, message = "SlurmJsonInvalid", "%s printed no JSON object" % name
+        else:
+            warnings = data.get("warnings")
+            for w in warnings if isinstance(warnings, list) else []:
+                LOG.debug("%s warning: %s", name, _slurm_message(w))
+            errors = data.get("errors")
+            if errors is not None and not isinstance(errors, list):
+                code, message = "SlurmJsonInvalid", "%s printed an errors field that isn't a list" % name
+            elif errors:
+                code, message = "SlurmCommandFailed", "%s reported an error: %s" % (name, _slurm_message(errors[0]))
+            elif not isinstance(data.get(list_key), list):
+                code, message = "SlurmJsonInvalid", "%s printed no %s list" % (name, list_key)
+    run.calls.append({"call": name, "code": code, "seconds": round(result.duration, 3)})
+    if code is not None:
+        LOG.warning("%s failed: %s: %s", name, code, message)
+        stage.fail(code, message)
+        return None
+    return data
+
+
+def _data_parser(doc):
+    value = _nested(doc, "meta", "plugin", "data_parser")
+    return value[:64] if isinstance(value, str) else None
+
+
+def parse_slurm_node(rec):
+    """Allocation step 1 for one record of scontrol show nodes --json: a
+    SlurmNode, or None for a record that fails validation (DEBUG)."""
+    if not isinstance(rec, dict) or not isinstance(rec.get("name"), str) or not rec["name"]:
+        LOG.debug("Slurm node record without a name: skipped")
+        return None
+    name = rec["name"]
+    cpus = slurm_int(rec.get("cpus"), 1)
+    effective = rec.get("effective_cpus")
+    effective = cpus if unwrap_number(effective) is None else slurm_int(effective, 1)
+    real = slurm_int(rec.get("real_memory"), 0)
+    special = rec.get("specialized_memory")
+    special = 0 if unwrap_number(special) is None else slurm_int(special, 0)
+    if cpus is None or effective is None or real is None or special is None:
+        LOG.debug("Slurm node %s: invalid CPU or memory figures: skipped", name[:64])
+        return None
+    return SlurmNode(name, effective, real - special, gpu_count(rec.get("gres")), _text(rec.get("address")),
+                     _text(rec.get("hostname")), _text(rec.get("instance_id")), state_flags(rec.get("state")))
+
+
+def parse_slurm_nodes(records):
+    nodes = {}
+    for rec in records:
+        node = parse_slurm_node(rec)
+        if node is not None and node.name not in nodes:
+            nodes[node.name] = node
+    return nodes
+
+
+def parse_slurm_jobs(slurm, records):
+    """Allocation step 3: the allocation entries of the jobs that hold
+    resources, and the nodes that the tie-break and the mapping check need."""
+    for job in records:
+        if not isinstance(job, dict):
+            continue
+        states = state_flags(job.get("job_state"))
+        if not states & HOLDING_JOB_STATES:
+            continue
+        resources = job.get("job_resources")
+        node_res = resources.get("nodes") if isinstance(resources, dict) else None
+        entries = node_res.get("allocation") if isinstance(node_res, dict) else None
+        job_id = slurm_int(job.get("job_id"), 0)
+        if not isinstance(entries, list):
+            LOG.debug("job %s has no node allocation: skipped", job_id)
+            continue
+        names = [e["name"] for e in entries if isinstance(e, dict) and isinstance(e.get("name"), str)]
+        slurm.holding.update(names)
+        if "RUNNING" in states and not states & NOT_BUSY_JOB_STATES:
+            slurm.busy.update(names)
+        user = job.get("user_name")
+        account = job.get("account")
+        account = "" if account is None else account
+        if not isinstance(user, str) or not isinstance(account, str):
+            LOG.debug("job %s: user_name or account isn't a string: skipped", job_id)
+            continue
+        if not user:
+            uid = slurm_int(job.get("user_id"), 0)
+            if uid is None:
+                LOG.debug("job %s: no user name and no valid user ID: skipped", job_id)
+                continue
+            user = "uid:%d" % uid            # the UID doesn't resolve here; different users don't merge
+        username, account = truncate(user), truncate(account or "none")
+        whole = node_res.get("whole") is True
+        memory_counts = memory_is_consumable(resources.get("select_type"))
+        details = job.get("gres_detail")
+        per_entry = None
+        slurm.jobs += 1
+        for position, e in enumerate(entries):
+            if not isinstance(e, dict) or not isinstance(e.get("name"), str) or e["name"] not in slurm.nodes:
+                LOG.debug("job %s: allocation entry on an unknown node: skipped", job_id)
+                continue
+            cpus = slurm_int(_nested(e, "cpus", "count"), 0)
+            memory = slurm_int(_nested(e, "memory", "allocated"), 0)
+            if cpus is None or memory is None:
+                LOG.debug("job %s: invalid allocation on %s: skipped", job_id, e["name"][:64])
+                continue
+            index = slurm_int(e.get("index"), 0)
+            index = position if index is None else index
+            if isinstance(details, list) and index < len(details):
+                gpus = gpu_count(details[index])
+            else:
+                if per_entry is None:       # no gres_detail: gres/gpu=N of tres_alloc_str per node
+                    per_entry = tres_gpus(job.get("tres_alloc_str")) / float(len(entries))
+                gpus = per_entry
+            slurm.shares.append(SlurmShare(job_id, username, account, e["name"], cpus, memory, gpus, whole,
+                                           memory_counts))
+
+
+def map_slurm_nodes(nodes, instances, holding):
+    """D6 and Allocation step 2: each Slurm node's instance by instance_id,
+    then address (the private IP), then hostname (the private DNS name or
+    its first label). When several nodes map to one instance, the one
+    matched by instance_id is kept; among equal matches, the one with jobs;
+    then the lowest name. The others are unmapped."""
+    by_id, by_ip, by_host = {}, {}, {}
+    for inst in instances:
+        by_id[inst.instance_id] = inst
+        if inst.private_ip:
+            by_ip.setdefault(inst.private_ip, inst)
+        if inst.private_dns:
+            by_host.setdefault(inst.private_dns, inst)
+            by_host.setdefault(inst.private_dns.split(".", 1)[0], inst)
+    claims = {}
+    for name in sorted(nodes):
+        node = nodes[name]
+        if node.instance_id and node.instance_id in by_id:
+            inst, how = by_id[node.instance_id], "instance_id"
+        elif node.address and node.address in by_ip:
+            inst, how = by_ip[node.address], "address"
+        elif node.hostname and node.hostname in by_host:
+            inst, how = by_host[node.hostname], "hostname"
+        else:
+            continue
+        claims.setdefault(inst.instance_id, []).append((name, inst, how))
+    mapping = {}
+    for iid in sorted(claims):
+        pool = claims[iid]
+        if len(pool) > 1:
+            pool = [c for c in pool if c[2] == "instance_id"] or pool
+            with_jobs = [c for c in pool if c[0] in holding]
+            if len(with_jobs) > 1:
+                LOG.warning("Slurm nodes %s map to instance %s and all hold jobs: %s kept, the others unmapped",
+                            ", ".join(c[0] for c in with_jobs), iid, with_jobs[0][0])
+            pool = with_jobs or pool
+        name, inst, how = pool[0]           # the lowest name: claims are in name order
+        mapping[name] = (inst, how)
+    return mapping
+
+
+def read_slurm(run, stage, instances):
+    """Step 5: resolve the Slurm client, read nodes and jobs, map the nodes
+    to the running instances and run the mapping check (Allocation step 8)."""
+    directory, how = find_slurm_bin(run)
+    slurm = SlurmData(directory, how)
+    run.slurm = slurm
+    if directory is None:
+        message = "no directory with executable squeue and scontrol"
+        LOG.warning("slurm failed: SlurmNotFound: %s", message)
+        stage.fail("SlurmNotFound", message)
+        return None
+    nodes_doc = slurm_command(run, stage, directory, "scontrol", SCONTROL_ARGS, "nodes")
+    if nodes_doc is None:
+        return None
+    jobs_doc = slurm_command(run, stage, directory, "squeue", SQUEUE_ARGS, "jobs")
+    if jobs_doc is None:
+        return None
+    slurm.data_parser = {"scontrol": _data_parser(nodes_doc), "squeue": _data_parser(jobs_doc)}
+    slurm.nodes = parse_slurm_nodes(nodes_doc["nodes"])
+    parse_slurm_jobs(slurm, jobs_doc["jobs"])
+    slurm.mapping = map_slurm_nodes(slurm.nodes, instances, slurm.holding)
+    slurm.busy_unmapped = sorted(n for n in slurm.busy if n in slurm.nodes and n not in slurm.mapping
+                                 and not slurm.nodes[n].states & NOT_BUSY_NODE_STATES)
+    if slurm.busy_unmapped:
+        names = ", ".join(slurm.busy_unmapped[:10])
+        if len(slurm.busy_unmapped) > 10:
+            names += " and %d more" % (len(slurm.busy_unmapped) - 10)
+        message = "busy Slurm nodes map to no running cluster instance: " + names
+        LOG.warning("slurm failed: NodeMappingIncomplete: %s", message)
+        stage.fail("NodeMappingIncomplete", message)
+    return slurm
 
 
 # =============================================================================
@@ -1876,6 +2350,458 @@ def _pcs_fee_lines(run, cost, instances):
 
 
 # =============================================================================
+# Allocation (users, accounts, idle)
+# =============================================================================
+def share_of(entry, node):
+    """D4: the largest of the job's CPU, GPU and (when Slurm schedules it)
+    memory share of the node, 1 for whole nodes, clamped to [0, 1]."""
+    if entry.whole:
+        return 1.0
+    share = entry.cpus / float(node.cpus)
+    if node.gpus > 0:
+        share = max(share, entry.gpus / float(node.gpus))
+    if entry.memory_counts and node.memory > 0:
+        share = max(share, entry.memory / float(node.memory))
+    return min(1.0, max(0.0, share))
+
+
+def group_labels(inst):
+    return {"queue": inst.queue, "ec2_instance_type": inst.instance_type, "purchase_option": inst.purchase_option}
+
+
+class Allocation:
+    """Step 7: the node cost of the priced compute instances, split among
+    (username, account) and the idle and unallocated rest."""
+
+    def __init__(self):
+        self.users = {}         # label key (account, username) -> USD per hour
+        self.unallocated = {}   # label key (reason, queue, ec2_instance_type, purchase_option) -> USD per hour
+        self.idle_nodes = {}    # label key (queue, ec2_instance_type, purchase_option) -> count
+        self.nodes = []         # per-node shares, for last-run.json
+
+    @staticmethod
+    def add(table, labels, value):
+        k = label_key(labels)
+        table[k] = table.get(k, 0) + value
+
+
+def allocate(run, stage, slurm, discovery, cost):
+    """Allocation steps 4-7. Every priced compute instance contributes its
+    node cost K exactly once: to its jobs' (username, account) keys and the
+    partial-node rest, or to idle_node."""
+    alloc = Allocation()
+    by_node = {}
+    for entry in slurm.shares:
+        by_node.setdefault(entry.node, []).append(entry)
+    mapped = set()
+    for name in sorted(slurm.mapping):
+        inst, how = slurm.mapping[name]
+        if inst.role != "compute":
+            continue                    # head and login nodes are shared cost
+        mapped.add(inst.instance_id)
+        k = cost.node_cost.get(inst.instance_id)
+        node = slurm.nodes[name]
+        shares = [(e, share_of(e, node)) for e in by_node.get(name, [])]
+        total = sum(s for _, s in shares)
+        scale = total if total > 1 else 1.0
+        alloc.nodes.append({"node": name, "instance_id": inst.instance_id, "matched_by": how, "usd_per_hour": k,
+                            "share_sum": round(total, 9),
+                            "shares": [{"job_id": e.job_id, "username": e.username, "account": e.account,
+                                        "share": round(s / scale, 9)} for e, s in shares]})
+        if k is None:
+            continue                    # unpriced instance: left out of allocation
+        group = group_labels(inst)
+        for e, s in shares:
+            alloc.add(alloc.users, {"username": e.username, "account": e.account}, k * s / scale)
+        if total == 0:
+            alloc.add(alloc.unallocated, dict(group, reason="idle_node"), k)
+            alloc.add(alloc.idle_nodes, group, 1)
+        else:
+            alloc.add(alloc.unallocated, dict(group, reason="partial_node"), k * (1.0 - min(total, 1.0)))
+    for inst in discovery.instances:
+        k = cost.node_cost.get(inst.instance_id)
+        if inst.role != "compute" or k is None:
+            continue
+        group = group_labels(inst)
+        if inst.instance_id not in mapped:      # step 6: costs money, runs no job
+            alloc.add(alloc.unallocated, dict(group, reason="idle_node"), k)
+            alloc.add(alloc.idle_nodes, group, 1)
+            alloc.nodes.append({"node": None, "instance_id": inst.instance_id, "matched_by": None,
+                                "usd_per_hour": k, "share_sum": 0.0, "shares": []})
+        for reason in UNALLOCATED_REASONS:      # step 7: known zeros
+            alloc.add(alloc.unallocated, dict(group, reason=reason), 0.0)
+        alloc.add(alloc.idle_nodes, group, 0)
+    return alloc
+
+
+# =============================================================================
+# Accumulation and state (state.json)
+# =============================================================================
+def cluster_identity(config):
+    return "%s/%s/%s" % (config.platform, config.cluster_id, config.region)
+
+
+def state_key(key):
+    """The state.json key of a label key: the JSON of its sorted pairs."""
+    return json.dumps([list(pair) for pair in key], separators=(",", ":"))
+
+
+def key_labels(skey):
+    return tuple(tuple(pair) for pair in json.loads(skey))
+
+
+OTHER_USER_KEY = state_key(label_key({"username": OTHER_USER, "account": OTHER_USER}))
+
+
+def _valid_state_key(skey):
+    try:
+        pairs = json.loads(skey)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(pairs, list):
+        return False
+    names = []
+    for pair in pairs:
+        if not (isinstance(pair, list) and len(pair) == 2 and all(isinstance(x, str) for x in pair)):
+            return False
+        if not LABEL_NAME_RE.match(pair[0]) or len(pair[1]) > LABEL_MAX:
+            return False
+        names.append(pair[0])
+    return names == sorted(set(names))
+
+
+def utc_month(t):
+    d = datetime.datetime.fromtimestamp(t, datetime.timezone.utc)
+    return "%04d-%02d" % (d.year, d.month)
+
+
+def month_start(t):
+    d = datetime.datetime.fromtimestamp(t, datetime.timezone.utc)
+    return datetime.datetime(d.year, d.month, 1, tzinfo=datetime.timezone.utc).timestamp()
+
+
+def next_month_start(t):
+    d = datetime.datetime.fromtimestamp(t, datetime.timezone.utc)
+    year, month = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
+    return datetime.datetime(year, month, 1, tzinfo=datetime.timezone.utc).timestamp()
+
+
+def month_pieces(a, b):
+    """[a, b] split at every UTC month boundary inside it."""
+    pieces, t = [], a
+    while t < b:
+        end = min(b, next_month_start(t))
+        pieces.append((t, end))
+        t = end
+    return pieces
+
+
+class StateInvalid(ValueError):
+    pass
+
+
+def _need(condition, what):
+    if not condition:
+        raise StateInvalid(what)
+
+
+class State:
+    """The accumulators of state.json (schema 1)."""
+
+    SCHEMA = 1
+
+    def __init__(self, cluster):
+        self.cluster = cluster
+        self.started_at = None
+        self.last_success_at = None
+        self.month = None
+        self.month_started_at = None
+        self.families = {"lines": {"last_at": None, "last_rates": {}, "last_unpriced": {}},
+                         "alloc": {"last_at": None, "last_rates": {}}}
+        self.accumulated = {p: {b: {} for b in ACC_BUCKETS} for p in PERIODS}
+        self.unaccounted = {p: {f: 0.0 for f in ACC_FAMILIES} for p in PERIODS}
+
+    def to_json(self):
+        return {"schema": self.SCHEMA, "cluster": self.cluster, "started_at": self.started_at,
+                "last_success_at": self.last_success_at, "month": self.month,
+                "month_started_at": self.month_started_at, "families": self.families,
+                "accumulated": self.accumulated, "unaccounted_seconds": self.unaccounted}
+
+    @classmethod
+    def from_json(cls, data):
+        """A State, or StateInvalid naming the first problem."""
+        _need(isinstance(data, dict), "not an object")
+        _need(data.get("schema") == cls.SCHEMA and not isinstance(data.get("schema"), bool), "schema")
+        _need(isinstance(data.get("cluster"), str), "cluster")
+        st = cls(data["cluster"])
+        for name in ("started_at", "last_success_at", "month_started_at"):
+            _need(data.get(name) is None or _finite(data.get(name)), name)
+            setattr(st, name, data.get(name))
+        month = data.get("month")
+        _need(month is None or (isinstance(month, str) and MONTH_RE.match(month)), "month")
+        _need((month is None) == (st.month_started_at is None), "month_started_at")
+        _need(st.started_at is None or month is not None, "month")
+        st.month = month
+        families = data.get("families")
+        _need(isinstance(families, dict), "families")
+        for f in ACC_FAMILIES:
+            fam = families.get(f)
+            _need(isinstance(fam, dict), "families." + f)
+            _need(fam.get("last_at") is None or _finite(fam.get("last_at")), "families.%s.last_at" % f)
+            st.families[f]["last_at"] = fam.get("last_at")
+            for rates in st.families[f]:
+                if rates != "last_at":
+                    st.families[f][rates] = _state_rates(fam.get(rates), "families.%s.%s" % (f, rates))
+        accumulated = data.get("accumulated")
+        _need(isinstance(accumulated, dict), "accumulated")
+        unaccounted = data.get("unaccounted_seconds")
+        _need(isinstance(unaccounted, dict), "unaccounted_seconds")
+        for p in PERIODS:
+            _need(isinstance(accumulated.get(p), dict), "accumulated." + p)
+            for b in ACC_BUCKETS:
+                st.accumulated[p][b] = _state_rates(accumulated[p].get(b), "accumulated.%s.%s" % (p, b))
+            _need(isinstance(unaccounted.get(p), dict), "unaccounted_seconds." + p)
+            for f in ACC_FAMILIES:
+                _need(_finite(unaccounted[p].get(f), 0), "unaccounted_seconds.%s.%s" % (p, f))
+                st.unaccounted[p][f] = float(unaccounted[p][f])
+        return st
+
+
+def _state_rates(obj, what):
+    _need(isinstance(obj, dict), what)
+    for k, v in obj.items():
+        _need(_valid_state_key(k) and _finite(v, 0), what)
+    return dict(obj)
+
+
+class StateLoad:
+    """How this run loaded state.json."""
+
+    def __init__(self):
+        self.source = None          # STATE_FILE or STATE_BACKUP, None for a fresh state
+        self.valid_main = False     # a valid state.json was loaded: the save rotates it into the backup
+        self.unreadable = False     # files existed but none was usable: StateUnreadable for this run
+
+
+def _read_state(path):
+    """(State, None), (None, "missing") or (None, problem)."""
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except FileNotFoundError:
+        return None, "missing"
+    except OSError as e:
+        return None, e.strerror or str(e)
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        return None, "doesn't parse"
+    try:
+        return State.from_json(data), None
+    except StateInvalid as e:
+        return None, "invalid %s" % e
+
+
+def load_state(config):
+    """Step 2: state.json, else state.json.bak (ERROR), else a fresh state.
+    A fresh state replacing files that exist is StateUnreadable. A state of
+    another cluster starts fresh (WARNING)."""
+    identity = cluster_identity(config)
+    load = StateLoad()
+    state, problem = _read_state(os.path.join(config.state_dir, STATE_FILE))
+    if state is not None:
+        load.source, load.valid_main = STATE_FILE, True
+    else:
+        if problem != "missing":
+            LOG.error("%s unreadable (%s): trying %s", STATE_FILE, problem, STATE_BACKUP)
+        state, backup_problem = _read_state(os.path.join(config.state_dir, STATE_BACKUP))
+        if state is not None:
+            load.source = STATE_BACKUP
+            LOG.error("accumulators loaded from %s (%s %s)", STATE_BACKUP, STATE_FILE,
+                      "missing" if problem == "missing" else "unreadable")
+        elif problem == "missing" and backup_problem == "missing":
+            LOG.info("no %s yet: first run", STATE_FILE)
+        else:
+            load.unreadable = True
+            LOG.error("%s (%s) and %s (%s) are unusable: accumulation restarts (StateUnreadable)",
+                      STATE_FILE, problem, STATE_BACKUP, backup_problem)
+    if state is not None and state.cluster != identity:
+        LOG.warning("%s holds the accumulators of %s, not %s: starting a fresh state", load.source,
+                    state.cluster[:200], identity)
+        state = None
+    return (state if state is not None else State(identity)), load
+
+
+def write_state_file(directory, obj, rotate):
+    """design "Saving and loading": write state.json.tmp with fsync, rename
+    state.json to state.json.bak, rename the temporary file to state.json and
+    fsync the directory. When this run didn't load a valid state.json
+    (rotate False), the unreadable state.json is renamed to
+    state.json.corrupt first, and the backup is left as it is."""
+    data = (json.dumps(obj, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
+    path = os.path.join(directory, STATE_FILE)
+    if not rotate and os.path.lexists(path):
+        os.replace(path, os.path.join(directory, STATE_CORRUPT))
+    tmp = os.path.join(directory, STATE_TMP)
+    write_new_file(tmp, data, PRIVATE_FILE_MODE)
+    try:
+        if rotate and os.path.lexists(path):
+            os.replace(path, os.path.join(directory, STATE_BACKUP))
+        os.replace(tmp, path)
+    except BaseException:
+        _unlink_quietly(tmp)
+        raise
+    fsync_dir(directory)
+
+
+class _Adder:
+    """Adds increments to the accumulators of both periods: a piece goes to
+    since_start, and to month only when it lies in state.month. New
+    (username, account) keys beyond USER_KEY_CAP per period go to (other)."""
+
+    def __init__(self, state):
+        self.state = state
+        self.capped = {}
+
+    def route(self, period, bucket, key):
+        acc = self.state.accumulated[period][bucket]
+        if bucket != "users" or key in acc:
+            return key
+        if len(acc) - (1 if OTHER_USER_KEY in acc else 0) < USER_KEY_CAP:
+            return key
+        self.capped.setdefault(period, set()).add(key)
+        return OTHER_USER_KEY
+
+    def add(self, bucket, key, increment, in_month):
+        for period in PERIODS:
+            if period == "month" and not in_month:
+                continue
+            k = self.route(period, bucket, key)
+            acc = self.state.accumulated[period][bucket]
+            acc[k] = acc.get(k, 0.0) + increment
+
+    def keep(self, bucket, key):
+        """A current key is exported, with 0 if nothing was added yet."""
+        for period in PERIODS:
+            self.state.accumulated[period][bucket].setdefault(self.route(period, bucket, key), 0.0)
+
+    def unaccounted(self, family, start, end):
+        for t0, t1 in month_pieces(start, end):
+            self.state.unaccounted["since_start"][family] += t1 - t0
+            if utc_month(t0) == self.state.month:
+                self.state.unaccounted["month"][family] += t1 - t0
+
+    def warn_cap(self):
+        for period in sorted(self.capped):
+            LOG.warning("%d new (username, account) keys over the cap of %d for %s: added to (other)",
+                        len(self.capped[period]), USER_KEY_CAP, period)
+
+
+def integrate_family(state, family, buckets, now):
+    """D8 for one family. buckets: (bucket, previous rates, current rates,
+    seconds per unit: 3600 for USD per hour, 1 for resource counts)."""
+    fam = state.families[family]
+    a = fam["last_at"]
+    adder = _Adder(state)
+    if a is None:
+        # The family's first good run integrates nothing. For alloc, the
+        # time since tracking started is unaccounted.
+        if family == "alloc" and state.started_at is not None:
+            adder.unaccounted(family, state.started_at, now)
+    elif now <= a:
+        LOG.warning("%s accumulators: the clock moved backwards (%s, last run %s): nothing added",
+                    family, utc_iso(now), utc_iso(a))
+    elif now - a <= GAP_CAP:
+        dt = now - a
+        for t0, t1 in month_pieces(a, now):
+            in_month = utc_month(t0) == state.month
+            f0, f1 = (t0 - a) / dt, (t1 - a) / dt
+            for bucket, previous, current, unit in buckets:
+                for key in sorted(set(previous) | set(current)):
+                    p, r = previous.get(key, 0.0), current.get(key, 0.0)
+                    v0, v1 = p + (r - p) * f0, p + (r - p) * f1     # rate interpolated at a boundary
+                    adder.add(bucket, key, (v0 + v1) / 2.0 * (t1 - t0) / unit, in_month)
+    else:
+        end = a + GAP_CAP
+        for t0, t1 in month_pieces(a, end):
+            in_month = utc_month(t0) == state.month
+            for bucket, previous, current, unit in buckets:
+                for key in sorted(previous):
+                    adder.add(bucket, key, previous[key] * (t1 - t0) / unit, in_month)
+        adder.unaccounted(family, end, now)
+        LOG.info("%s accumulators: a gap of %.0f s: one hour added at the last rates, %.0f s unaccounted",
+                 family, now - a, now - end)
+    for bucket, previous, current, unit in buckets:
+        for key in sorted(current):
+            adder.keep(bucket, key)
+    adder.warn_cap()
+    fam["last_at"] = now
+
+
+def _is_user_key(skey):
+    return any(name == "username" for name, _ in key_labels(skey))
+
+
+def accumulate(run, cost, alloc):
+    """Step 8. The month rollover runs in every run. The lines family (cost
+    lines and unpriced counts) integrates when discovery succeeded, the
+    alloc family (users and unallocated) when the slurm stage did too."""
+    st, now = run.state, run.now
+    if cost is not None and st.started_at is None:
+        st.started_at, st.month, st.month_started_at = now, utc_month(now), now
+        LOG.info("tracking starts at %s", utc_iso(now))
+    if st.month is not None and utc_month(now) > st.month:
+        LOG.info("month rollover: %s to %s", st.month, utc_month(now))
+        st.month, st.month_started_at = utc_month(now), month_start(now)
+        st.accumulated["month"] = {b: {} for b in ACC_BUCKETS}
+        st.unaccounted["month"] = {f: 0.0 for f in ACC_FAMILIES}
+    if cost is None:
+        return
+    lines = {state_key(k): v for k, v in cost.lines.items()}
+    unpriced = {state_key(label_key({"kind": kind, "reason": reason})): float(n)
+                for (kind, reason), n in cost.unpriced.items() if n}
+    fam = st.families["lines"]
+    integrate_family(st, "lines", [("lines", fam["last_rates"], lines, HOUR),
+                                   ("unpriced", fam["last_unpriced"], unpriced, 1.0)], now)
+    fam["last_rates"], fam["last_unpriced"] = lines, unpriced
+    if alloc is None:
+        return
+    users = {state_key(k): v for k, v in alloc.users.items()}
+    unallocated = {state_key(k): v for k, v in alloc.unallocated.items()}
+    fam = st.families["alloc"]
+    previous_users = {k: v for k, v in fam["last_rates"].items() if _is_user_key(k)}
+    previous_unallocated = {k: v for k, v in fam["last_rates"].items() if k not in previous_users}
+    integrate_family(st, "alloc", [("users", previous_users, users, HOUR),
+                                   ("unallocated", previous_unallocated, unallocated, HOUR)], now)
+    merged = dict(users)
+    merged.update(unallocated)
+    fam["last_rates"] = merged
+
+
+ACC_EXPORTS = (("lines", "cluster_cost_accumulated_usd"), ("users", "cluster_cost_user_accumulated_usd"),
+               ("unallocated", "cluster_cost_unallocated_accumulated_usd"),
+               ("unpriced", "cluster_cost_unpriced_resource_seconds"))
+
+
+def export_accumulated(state, fam):
+    """The accumulated series, the period starts and the unaccounted seconds
+    (always), whatever this run integrated."""
+    for period in PERIODS:
+        for bucket, family in ACC_EXPORTS:
+            for skey, value in state.accumulated[period][bucket].items():
+                labels = dict(key_labels(skey))
+                labels["period"] = period
+                fam[family][label_key(labels)] = value
+        for f in ACC_FAMILIES:
+            fam["cluster_cost_unaccounted_seconds"][label_key({"period": period, "family": f})] = \
+                state.unaccounted[period][f]
+    if state.started_at is not None:
+        starts = fam["cluster_cost_period_start_timestamp_seconds"]
+        starts[label_key({"period": "since_start"})] = state.started_at
+        starts[label_key({"period": "month"})] = max(state.month_started_at, state.started_at)
+
+
+# =============================================================================
 # Exposition and write
 # =============================================================================
 def escape_label(value):
@@ -1906,8 +2832,10 @@ def render_exposition(families):
     return "".join(out)
 
 
-def build_families(run, cost, applicable):
-    """The series of this run, per family. Returns (families, collector_up)."""
+def build_families(run, cost, applicable, alloc=None, previous_success=None):
+    """The series of this run, per family. Returns (families, collector_up).
+    alloc is the allocation of a successful slurm stage, or None: a failed
+    slurm stage exports no user, idle-node or unallocated series."""
     fam = {name: {} for name in FAMILY_NAMES}
     unpriced = {}
     if cost is not None:
@@ -1919,12 +2847,20 @@ def build_families(run, cost, applicable):
                 fam["cluster_cost_unpriced_resources"][label_key({"kind": kind, "reason": reason})] = count
         for source, fetched_at in run.ages.items():
             fam["cluster_cost_price_age_seconds"][label_key({"source": source})] = max(0.0, run.now - fetched_at)
+        if alloc is not None:
+            fam["cluster_cost_user_usd_per_hour"] = dict(alloc.users)
+            fam["cluster_cost_unallocated_usd_per_hour"] = dict(alloc.unallocated)
+            fam["cluster_cost_idle_nodes"] = dict(alloc.idle_nodes)
+    export_accumulated(run.state, fam)
     up = run.health.collector_up(applicable, unpriced)
     fam["cluster_cost_collector_up"][()] = up
     for st in run.health.ran():
         fam["cluster_cost_collector_stage_ok"][label_key({"stage": st.name})] = 1 if st.ok else 0
         if not st.ok:
             fam["cluster_cost_collector_stage_error"][label_key({"stage": st.name, "code": st.code})] = 1
+    last_success = run.now if up else previous_success
+    if last_success is not None:
+        fam["cluster_cost_collector_last_success_timestamp_seconds"][()] = last_success
     fam["cluster_cost_collector_run_duration_seconds"][()] = run.deadline.elapsed()
     fam["cluster_cost_collector_info"][label_key({
         "platform": run.config.platform, "cluster": run.config.cluster_id, "region": run.config.region})] = 1
@@ -1941,7 +2877,28 @@ def write_run_report(directory, report):
     write_json_atomic(directory, REPORT_FILE, report)
 
 
-def build_report(run, cost, up, exit_code):
+def slurm_report(run, alloc):
+    """The part-2 fields of last-run.json: the Slurm client directory, the
+    data_parser versions, the node mapping, the busy unmapped nodes and the
+    per-node shares (kept also when the mapping check failed)."""
+    slurm = run.slurm
+    if slurm is None:
+        return None
+    return {
+        "bin_dir": slurm.bin_dir,
+        "found_by": slurm.found_by,
+        "data_parser": slurm.data_parser,
+        "nodes": len(slurm.nodes),
+        "jobs": slurm.jobs,
+        "mapping": [{"node": name, "instance_id": inst.instance_id, "role": inst.role, "matched_by": how}
+                    for name, (inst, how) in sorted(slurm.mapping.items())],
+        "unmapped_nodes": sorted(set(slurm.nodes) - set(slurm.mapping)),
+        "busy_unmapped_nodes": slurm.busy_unmapped,
+        "shares": alloc.nodes if alloc is not None else [],
+    }
+
+
+def build_report(run, cost, up, exit_code, alloc=None):
     return {
         "schema": 1,
         "started_at": utc_iso(run.now),
@@ -1963,19 +2920,33 @@ def build_report(run, cost, up, exit_code):
         "instances": cost.instances if cost is not None else [],
         "volumes": cost.volumes if cost is not None else [],
         "fees": cost.fees if cost is not None else [],
+        "slurm": slurm_report(run, alloc),
     }
 
 
 # =============================================================================
 # Run sequence
 # =============================================================================
+def _state_write_failed(stage, name, error):
+    # A failed save is the condition to fix, so it replaces a StateUnreadable
+    # from the load: the next runs would otherwise keep showing that.
+    if stage.direct is None or stage.direct[0] != "StateWriteFailed":
+        stage.direct = ("StateWriteFailed", "%s: %s" % (name, getattr(error, "strerror", None) or error))
+    LOG.error("couldn't save %s: %s", name, error)
+
+
 def save_state(run, stage):
-    """Step 9: save prices.json."""
+    """Step 9: save state.json, then prices.json."""
+    if run.state_load.unreadable:
+        stage.fail("StateUnreadable", "%s and %s were unusable: accumulation restarted" % (STATE_FILE, STATE_BACKUP))
+    try:
+        write_state_file(run.config.state_dir, run.state.to_json(), rotate=run.state_load.valid_main)
+    except (OSError, ValueError) as e:
+        _state_write_failed(stage, STATE_FILE, e)
     try:
         write_json_atomic(run.config.state_dir, PRICES_FILE, run.cache.to_json())
     except OSError as e:
-        stage.fail("StateWriteFailed", "%s: %s" % (PRICES_FILE, e.strerror or e))
-        LOG.error("couldn't save %s: %s", PRICES_FILE, e)
+        _state_write_failed(stage, PRICES_FILE, e)
 
 
 def _unique_volumes(volumes):
@@ -1990,23 +2961,36 @@ def _unique_volumes(volumes):
 
 def _execute(config, deps, dry_run):
     run = Run(config, deps, dry_run)
+    run.state, run.state_load = load_state(config)
     run.cache = PriceCache.load(os.path.join(config.state_dir, PRICES_FILE))
+    applicable = applicable_stages(config, dry_run)
     discovery = run_stage(run, "discovery", discover)
-    cost = None
+    cost = alloc = None
     if discovery is not None:
         volumes = run_stage(run, "ebs", list_volumes, discovery.instances)
         if volumes is None:
             volumes = Volumes({}, [i.instance_id for i in discovery.instances], 0)
+        slurm = run_stage(run, "slurm", read_slurm, discovery.instances)
         run_stage(run, "on_demand_prices", refresh_on_demand, discovery.instances)
         run_stage(run, "spot_prices", refresh_spot, discovery.instances)
         run_stage(run, "ebs", refresh_ebs_prices, _unique_volumes(volumes))
         if config.platform == "pcs":
             run_stage(run, "pcs", refresh_pcs, discovery.instances)
         cost = build_cost_lines(run, discovery, volumes)
+        if slurm is not None:
+            alloc = run_stage(run, "slurm", allocate, slurm, discovery, cost)
+    slurm_stage = run.health.stages.get("slurm")
+    good_alloc = alloc if alloc is not None and slurm_stage is not None and slurm_stage.ok else None
+    accumulate(run, cost, good_alloc)
+    previous_success = run.state.last_success_at
+    unpriced = cost.unpriced if cost is not None else {}
+    if not run.state_load.unreadable and \
+            run.health.collector_up([s for s in applicable if s != "state"], unpriced):
+        run.state.last_success_at = run.now         # saved with the state; exported only if the save works
     if not dry_run:
         run_stage(run, "state", save_state)
 
-    families, up = build_families(run, cost, applicable_stages(config, dry_run))
+    families, up = build_families(run, cost, applicable, good_alloc, previous_success)
     text = render_exposition(families)
     exit_code = 0
     if dry_run:
@@ -2023,7 +3007,7 @@ def _execute(config, deps, dry_run):
         if state is not None and state.code == "StateWriteFailed":
             exit_code = 1
         try:
-            write_run_report(config.state_dir, build_report(run, cost, up, exit_code))
+            write_run_report(config.state_dir, build_report(run, cost, up, exit_code, alloc))
         except (OSError, ValueError) as e:
             LOG.warning("couldn't write %s: %s", REPORT_FILE, e)
 
@@ -2031,8 +3015,10 @@ def _execute(config, deps, dry_run):
     if cost is None:
         LOG.info("run done: no estimate, %.1f s, failed stages: %s", run.deadline.elapsed(), failed)
     else:
-        LOG.info("run done: %.9f USD/h, %d instances, %d volumes, %.1f s, failed stages: %s",
-                 cost.total, len(discovery.instances), len(cost.volumes), run.deadline.elapsed(), failed)
+        LOG.info("run done: %.9f USD/h, %d instances, %d volumes, %d users, %.1f s, failed stages: %s",
+                 cost.total, len(discovery.instances), len(cost.volumes),
+                 len({dict(k)["username"] for k in good_alloc.users}) if good_alloc is not None else 0,
+                 run.deadline.elapsed(), failed)
     return exit_code
 
 

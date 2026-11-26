@@ -1,0 +1,477 @@
+{
+ "jobs": [
+  {
+   "account": "",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "od-st-od-cr-1",
+   "cluster": "mycluster",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 101,
+   "job_resources": {
+    "select_type": [
+     "CPU"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "od-st-od-cr-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "od-st-od-cr-1",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 3891
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "user_name=\"user2\" account=\"proj-z\"",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "od-st-od-cr-1",
+   "partition": "od",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=3891M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=3891M,node=1,billing=1",
+   "user_id": 1001,
+   "user_name": "user1"
+  },
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "spot-dy-spot-cr-1",
+   "cluster": "mycluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 2
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 102,
+   "job_resources": {
+    "select_type": [
+     "CPU"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "RESERVED"
+     ],
+     "list": "spot-dy-spot-cr-1",
+     "whole": true,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "spot-dy-spot-cr-1",
+       "cpus": {
+        "count": 2,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 3891
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 2,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "spot-dy-spot-cr-1",
+   "partition": "spot",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=2,mem=3891M,node=1,billing=2",
+   "tres_req_str": "cpu=2,mem=3891M,node=1,billing=2",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "gpu-dy-gpu-cr-1",
+   "cluster": "mycluster",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [
+    "gpu:t4:1(IDX:0)"
+   ],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 103,
+   "job_resources": {
+    "select_type": [
+     "CPU"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "gpu-dy-gpu-cr-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "gpu-dy-gpu-cr-1",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 15564
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "gpu-dy-gpu-cr-1",
+   "partition": "gpu",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=15564M,node=1,billing=1,gres/gpu=1,gres/gpu:t4=1",
+   "tres_req_str": "cpu=1,mem=15564M,node=1,billing=1,gres/gpu=1,gres/gpu:t4=1",
+   "user_id": 1001,
+   "user_name": "user1"
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "gpu-dy-gpu-cr-2",
+   "cluster": "mycluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 4
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [
+    "gpu:t4:1(IDX:0)"
+   ],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 105,
+   "job_resources": {
+    "select_type": [
+     "CPU"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "gpu-dy-gpu-cr-2",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "gpu-dy-gpu-cr-2",
+       "cpus": {
+        "count": 4,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 15564
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 1,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 4,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING",
+    "CONFIGURING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "gpu-dy-gpu-cr-2",
+   "partition": "gpu",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=4,mem=15564M,node=1,billing=4,gres/gpu=1,gres/gpu:t4=1",
+   "tres_req_str": "cpu=4,mem=15564M,node=1,billing=4,gres/gpu=1,gres/gpu:t4=1",
+   "user_id": 1002,
+   "user_name": "user2"
+  }
+ ],
+ "last_backfill": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607980
+ },
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.44",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "--json",
+   "--states=RUNNING,CONFIGURING,COMPLETING"
+  ],
+  "slurm": {
+   "version": {
+    "major": "25",
+    "micro": "4",
+    "minor": "11"
+   },
+   "release": "25.11.4",
+   "cluster": "mycluster"
+  }
+ },
+ "errors": [],
+ "warnings": []
+}

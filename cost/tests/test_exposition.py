@@ -242,7 +242,7 @@ class DryRunAndLockTest(unittest.TestCase):
         out = fakes.Exposition(self.h.stdout.getvalue())
         self.assertIn("cluster_cost_usd_per_hour", out.families)
         self.assertNotIn("state", out.stages_ok())
-        self.assertEqual(set(out.stages_ok()), {"discovery", "ebs", "on_demand_prices", "spot_prices", "pcs"})
+        self.assertEqual(set(out.stages_ok()), {"discovery", "ebs", "slurm", "on_demand_prices", "spot_prices", "pcs"})
 
     def test_dry_run_uses_the_cache_without_changing_it(self):
         self.h.run()

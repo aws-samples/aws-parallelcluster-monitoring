@@ -1,0 +1,393 @@
+{
+ "nodes": [
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1945
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [
+    "static",
+    "c6i.large",
+    "od-cr"
+   ],
+   "active_features": [
+    "static",
+    "c6i.large",
+    "od-cr"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "i-0a00000000000a002",
+   "instance_type": "c6i.large",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "od-st-od-cr-1",
+   "address": "10.0.1.11",
+   "hostname": "ip-10-0-1-11",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "od"
+   ],
+   "port": 6818,
+   "real_memory": 3891,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3891M,billing=2",
+   "version": "25.11.4"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1945
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [
+    "dynamic",
+    "c6i.large",
+    "od-cr"
+   ],
+   "active_features": [
+    "dynamic",
+    "c6i.large",
+    "od-cr"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "od-dy-od-cr-1",
+   "address": "od-dy-od-cr-1",
+   "hostname": "od-dy-od-cr-1",
+   "state": [
+    "IDLE",
+    "CLOUD",
+    "POWERED_DOWN"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "od"
+   ],
+   "port": 6818,
+   "real_memory": 3891,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3891M,billing=2",
+   "version": "25.11.4"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1945
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [
+    "dynamic",
+    "c6i.large",
+    "spot-cr"
+   ],
+   "active_features": [
+    "dynamic",
+    "c6i.large",
+    "spot-cr"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "i-0a00000000000a003",
+   "instance_type": "c6i.large",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "spot-dy-spot-cr-1",
+   "address": "10.0.1.12",
+   "hostname": "ip-10-0-1-12",
+   "state": [
+    "ALLOCATED",
+    "CLOUD"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "spot"
+   ],
+   "port": 6818,
+   "real_memory": 3891,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3891M,billing=2",
+   "version": "25.11.4"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 7782
+   },
+   "cpus": 4,
+   "effective_cpus": 4,
+   "specialized_cpus": "",
+   "features": [
+    "dynamic",
+    "g4dn.xlarge",
+    "gpu-cr"
+   ],
+   "active_features": [
+    "dynamic",
+    "g4dn.xlarge",
+    "gpu-cr"
+   ],
+   "gpu_spec": "",
+   "gres": "gpu:t4:1(S:0)",
+   "gres_drained": "N/A",
+   "gres_used": "gpu:t4:1(IDX:0)",
+   "instance_id": "i-0a00000000000a004",
+   "instance_type": "g4dn.xlarge",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "gpu-dy-gpu-cr-1",
+   "address": "10.0.1.13",
+   "hostname": "ip-10-0-1-13",
+   "state": [
+    "MIXED",
+    "CLOUD"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "gpu"
+   ],
+   "port": 6818,
+   "real_memory": 15564,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=15564M,billing=4",
+   "version": "25.11.4"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 7782
+   },
+   "cpus": 4,
+   "effective_cpus": 4,
+   "specialized_cpus": "",
+   "features": [
+    "dynamic",
+    "g4dn.xlarge",
+    "gpu-cr"
+   ],
+   "active_features": [
+    "dynamic",
+    "g4dn.xlarge",
+    "gpu-cr"
+   ],
+   "gpu_spec": "",
+   "gres": "gpu:t4:1(S:0)",
+   "gres_drained": "N/A",
+   "gres_used": "gpu:t4:1(IDX:0)",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "gpu-dy-gpu-cr-2",
+   "address": "gpu-dy-gpu-cr-2",
+   "hostname": "gpu-dy-gpu-cr-2",
+   "state": [
+    "ALLOCATED",
+    "CLOUD",
+    "POWERING_UP"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "gpu"
+   ],
+   "port": 6818,
+   "real_memory": 15564,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=15564M,billing=4",
+   "version": "25.11.4"
+  }
+ ],
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.44",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "show",
+   "nodes"
+  ],
+  "slurm": {
+   "version": {
+    "major": "25",
+    "micro": "4",
+    "minor": "11"
+   },
+   "release": "25.11.4",
+   "cluster": "mycluster"
+  }
+ },
+ "errors": [],
+ "warnings": []
+}

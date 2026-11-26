@@ -1,0 +1,53 @@
+{
+ "jobs": [],
+ "last_backfill": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607980
+ },
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.45",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "--json",
+   "--states=RUNNING,CONFIGURING,COMPLETING"
+  ],
+  "slurm": {
+   "version": {
+    "major": "26",
+    "micro": "5",
+    "minor": "05"
+   },
+   "release": "26.05.5",
+   "cluster": "pcs_abc123def4"
+  }
+ },
+ "errors": [
+  {
+   "description": "Unable to contact slurm controller (connect failure)",
+   "error_number": 1001,
+   "error": "Unable to contact slurm controller (connect failure)",
+   "source": "slurm_load_jobs()"
+  }
+ ],
+ "warnings": [
+  {
+   "description": "Retrying the connection to slurmctld",
+   "source": "slurm_load_jobs()"
+  }
+ ]
+}

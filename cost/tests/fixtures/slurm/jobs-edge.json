@@ -1,0 +1,944 @@
+{
+ "jobs": [
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-wrapped",
+   "cluster": "edgecluster",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 3
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 401,
+   "job_resources": {
+    "select_type": "CR_CPU_MEMORY",
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "e-wrapped",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-wrapped",
+       "cpus": {
+        "count": {
+         "set": true,
+         "infinite": false,
+         "number": 3
+        },
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": {
+         "set": true,
+         "infinite": false,
+         "number": 15000
+        }
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 1,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 3,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": "RUNNING",
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "e-wrapped",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=3,mem=15000M,node=1,billing=3,gres/gpu=1,gres/gpu:a10g=1",
+   "tres_req_str": "cpu=3,mem=15000M,node=1,billing=3,gres/gpu=1,gres/gpu:a10g=1",
+   "user_id": {
+    "set": true,
+    "infinite": false,
+    "number": 1001
+   },
+   "user_name": "user1"
+  },
+  {
+   "account": "",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-unset",
+   "cluster": "edgecluster",
+   "command": "/home/nobody/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/nobody",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 402,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "e-unset",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-unset",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 16000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "e-unset",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=16000M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=16000M,node=1,billing=1",
+   "user_id": 1002,
+   "user_name": ""
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-unset",
+   "cluster": "edgecluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 403,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "e-unset",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-unset",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 1000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "PENDING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "e-unset",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=1000M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=1000M,node=1,billing=1",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-wrapped",
+   "cluster": "edgecluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 2
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 404,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 2,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "e-wrapped,e-unset",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-wrapped",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 1000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 2,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 1,
+       "name": "e-unset",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 1000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 1,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 2,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 2
+   },
+   "nodes": "e-wrapped,e-unset",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=2,mem=2000M,node=2,billing=2,gres/gpu=4",
+   "tres_req_str": "cpu=2,mem=2000M,node=2,billing=2,gres/gpu=4",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-nomem",
+   "cluster": "edgecluster",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 3
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 405,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 3,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "e-nomem,e-missing,e-nomem",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-nomem",
+       "cpus": {
+        "count": -1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 0
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 1,
+       "name": "e-missing",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 100
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 2,
+       "name": "e-nomem",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 400
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 3,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 3
+   },
+   "nodes": "e-nomem,e-missing,e-nomem",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=3,mem=500M,node=3,billing=3",
+   "tres_req_str": "cpu=3,mem=500M,node=3,billing=3",
+   "user_id": 1001,
+   "user_name": "user1"
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-nomem",
+   "cluster": "edgecluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 406,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "e-nomem",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-nomem",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 100
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "e-nomem",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=100M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=100M,node=1,billing=1",
+   "user_id": 1002,
+   "user_name": 42
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-nomem",
+   "cluster": "edgecluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 407,
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "e-nomem",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=100M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=100M,node=1,billing=1",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "e-unset",
+   "cluster": "edgecluster",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 4
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 408,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "RESERVED"
+     ],
+     "list": "e-unset",
+     "whole": true,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "e-unset",
+       "cpus": {
+        "count": 4,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 16000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 1,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 4,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING",
+    "COMPLETING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "e-unset",
+   "partition": "edge",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=4,mem=16000M,node=1,billing=4",
+   "tres_req_str": "cpu=4,mem=16000M,node=1,billing=4",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  "garbage"
+ ],
+ "last_backfill": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607980
+ },
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.45",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "--json",
+   "--states=RUNNING,CONFIGURING,COMPLETING"
+  ],
+  "slurm": {
+   "version": {
+    "major": "26",
+    "micro": "5",
+    "minor": "05"
+   },
+   "release": "26.05.5",
+   "cluster": "edgecluster"
+  }
+ },
+ "errors": [],
+ "warnings": [
+  {
+   "description": "Job 407 has no job_resources",
+   "source": "edge fixture"
+  }
+ ]
+}

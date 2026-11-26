@@ -1,0 +1,381 @@
+{
+ "nodes": [
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 1,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 3800
+   },
+   "cpus": 4,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [
+    "static",
+    "c6i.xlarge"
+   ],
+   "active_features": [
+    "static",
+    "c6i.xlarge"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 1024,
+   "name": "compute-st-c6i-1",
+   "address": "10.0.1.21",
+   "hostname": "ip-10-0-1-21",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "compute"
+   ],
+   "port": 6818,
+   "real_memory": 7600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=7600M,billing=4",
+   "version": "24.11.0"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 3800
+   },
+   "cpus": 4,
+   "effective_cpus": 4,
+   "specialized_cpus": "",
+   "features": [
+    "static",
+    "c6i.xlarge"
+   ],
+   "active_features": [
+    "static",
+    "c6i.xlarge"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "compute-st-c6i-2",
+   "address": "10.0.1.22",
+   "hostname": "ip-10-0-1-22",
+   "state": [
+    "ALLOCATED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "compute"
+   ],
+   "port": 6818,
+   "real_memory": 7600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=7600M,billing=4",
+   "version": "24.11.0"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 24,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 550000
+   },
+   "cpus": 96,
+   "effective_cpus": 96,
+   "specialized_cpus": "",
+   "features": [
+    "static",
+    "p4d.24xlarge"
+   ],
+   "active_features": [
+    "static",
+    "p4d.24xlarge"
+   ],
+   "gpu_spec": "",
+   "gres": "gpu:a100:4(S:0,2),gpu:1g.10gb:7(S:1)",
+   "gres_drained": "N/A",
+   "gres_used": "gpu:a100:4(IDX:0,2),gpu:1g.10gb:7(IDX:1)",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "gpu-st-p4d-1",
+   "address": "gpu-st-p4d-1",
+   "hostname": "ip-10-0-1-23",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "gpu"
+   ],
+   "port": 6818,
+   "real_memory": 1100000,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 2,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=96,mem=1100000M,billing=96",
+   "version": "24.11.0"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 3800
+   },
+   "cpus": 4,
+   "effective_cpus": 4,
+   "specialized_cpus": "",
+   "features": [
+    "dynamic",
+    "c6i.xlarge"
+   ],
+   "active_features": [
+    "dynamic",
+    "c6i.xlarge"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "compute-dy-c6i-1",
+   "address": "compute-dy-c6i-1",
+   "hostname": "compute-dy-c6i-1",
+   "state": [
+    "IDLE",
+    "CLOUD",
+    "POWERED_DOWN"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "compute"
+   ],
+   "port": 6818,
+   "real_memory": 7600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=7600M,billing=4",
+   "version": "24.11.0"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 3800
+   },
+   "cpus": 4,
+   "effective_cpus": 4,
+   "specialized_cpus": "",
+   "features": [
+    "dynamic",
+    "c6i.xlarge"
+   ],
+   "active_features": [
+    "dynamic",
+    "c6i.xlarge"
+   ],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "compute-dy-c6i-2",
+   "address": "10.0.1.24",
+   "hostname": "ip-10-0-1-24",
+   "state": [
+    "DOWN",
+    "CLOUD",
+    "NOT_RESPONDING"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "compute"
+   ],
+   "port": 6818,
+   "real_memory": 7600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=7600M,billing=4",
+   "version": "24.11.0"
+  }
+ ],
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.42",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "show",
+   "nodes"
+  ],
+  "slurm": {
+   "version": {
+    "major": "24",
+    "micro": "0",
+    "minor": "11"
+   },
+   "release": "24.11.0",
+   "cluster": "oldcluster"
+  }
+ },
+ "errors": [],
+ "warnings": []
+}

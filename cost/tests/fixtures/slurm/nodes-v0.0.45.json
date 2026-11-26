@@ -1,0 +1,473 @@
+{
+ "nodes": [
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1800
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "od-1",
+   "address": "10.0.2.11",
+   "hostname": "ip-10-0-2-11",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "od"
+   ],
+   "port": 6818,
+   "real_memory": 3600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3600M,billing=2",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1800
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "od-2",
+   "address": "10.0.2.15",
+   "hostname": "ip-10-0-2-15",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "od"
+   ],
+   "port": 6818,
+   "real_memory": 3600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3600M,billing=2",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1800
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "od-3",
+   "address": "10.0.2.16",
+   "hostname": "ip-10-0-2-16",
+   "state": [
+    "IDLE"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "od"
+   ],
+   "port": 6818,
+   "real_memory": 3600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3600M,billing=2",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1800
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "spot-1",
+   "address": "10.0.2.12",
+   "hostname": "ip-10-0-2-12",
+   "state": [
+    "ALLOCATED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "spot"
+   ],
+   "port": 6818,
+   "real_memory": 3600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3600M,billing=2",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1800
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "spot-2",
+   "address": "spot-2",
+   "hostname": "spot-2",
+   "state": [
+    "IDLE",
+    "CLOUD",
+    "POWERED_DOWN"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "spot"
+   ],
+   "port": 6818,
+   "real_memory": 3600,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=3600M,billing=2",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 7500
+   },
+   "cpus": 4,
+   "effective_cpus": 4,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "gpu:T4:1(S:0)",
+   "gres_drained": "N/A",
+   "gres_used": "gpu:T4:1(IDX:0)",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "gpu-1",
+   "address": "10.0.2.13",
+   "hostname": "ip-10-0-2-13",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "gpu"
+   ],
+   "port": 6818,
+   "real_memory": 15000,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=15000M,billing=4",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 48,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 1000000
+   },
+   "cpus": 192,
+   "effective_cpus": 192,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "gpu:h100:8(S:0-1)",
+   "gres_drained": "N/A",
+   "gres_used": "gpu:h100:8(IDX:0-1)",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 0,
+   "name": "cb-1",
+   "address": "10.0.2.14",
+   "hostname": "ip-10-0-2-14",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [
+    "cb"
+   ],
+   "port": 6818,
+   "real_memory": 2000000,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 2,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=192,mem=2000000M,billing=192",
+   "version": "26.05.5"
+  }
+ ],
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.45",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "show",
+   "nodes"
+  ],
+  "slurm": {
+   "version": {
+    "major": "26",
+    "micro": "5",
+    "minor": "05"
+   },
+   "release": "26.05.5",
+   "cluster": "pcs_abc123def4"
+  }
+ },
+ "errors": [],
+ "warnings": []
+}

@@ -112,8 +112,10 @@ class FakeClockTest(unittest.TestCase):
                          seconds=96)
         self.assertEqual(self.h.run(), 0)
         self.assertEqual(self.h.runner.find("describe-volumes"), [])
+        self.assertEqual(self.h.runner.find("--json"), [])                  # scontrol and squeue are required too
         m = self.h.metrics()
-        self.assertEqual(m.stage_errors(), {"ebs": "Timeout"})
+        self.assertEqual(m.stage_errors(), {"ebs": "Timeout", "slurm": "Timeout"})
+        self.assertIn("scontrol skipped: run deadline", self.h.log())
         self.assertEqual(m.unpriced(), {("volume", "volume_list_unavailable"): 5,
                                         ("instance", "price_lookup_pending"): 5})
         self.assertIn("ec2 describe-volumes skipped: run deadline", self.h.log())

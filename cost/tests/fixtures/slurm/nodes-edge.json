@@ -1,0 +1,275 @@
+{
+ "nodes": [
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 4,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 16000
+   },
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 8
+   },
+   "effective_cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 6
+   },
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "gpu:a10g:1(S:0),gpu:1g.5gb:2(S:0),shard:a10g:4(S:0)",
+   "gres_drained": "N/A",
+   "gres_used": "gpu:a10g:1(IDX:0),gpu:1g.5gb:2(IDX:0),shard:a10g:4(IDX:0)",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": {
+    "set": true,
+    "infinite": false,
+    "number": 2000
+   },
+   "name": "e-wrapped",
+   "address": "10.0.3.11",
+   "hostname": "ip-10-0-3-11",
+   "state": "MIXED",
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [],
+   "port": 6818,
+   "real_memory": {
+    "set": true,
+    "infinite": false,
+    "number": 32000
+   },
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=8,mem=32000M,billing=8",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 2,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 8000
+   },
+   "cpus": 4,
+   "effective_cpus": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "name": "e-unset",
+   "address": "10.0.3.12",
+   "hostname": "ip-10-0-3-12",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [],
+   "port": 6818,
+   "real_memory": 16000,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=4,mem=16000M,billing=4",
+   "version": "26.05.5"
+  },
+  {
+   "architecture": "x86_64",
+   "boards": 1,
+   "boot_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795600800
+   },
+   "cores": 1,
+   "specialized_cores": 0,
+   "cpu_binding": 0,
+   "cpu_load": 12,
+   "free_mem": {
+    "set": true,
+    "infinite": false,
+    "number": 256
+   },
+   "cpus": 2,
+   "effective_cpus": 2,
+   "specialized_cpus": "",
+   "features": [],
+   "active_features": [],
+   "gpu_spec": "",
+   "gres": "",
+   "gres_drained": "N/A",
+   "gres_used": "",
+   "instance_id": "",
+   "instance_type": "",
+   "last_busy": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607940
+   },
+   "mcs_label": "",
+   "specialized_memory": 1024,
+   "name": "e-nomem",
+   "address": "10.0.3.13",
+   "hostname": "ip-10-0-3-13",
+   "state": [
+    "MIXED"
+   ],
+   "operating_system": "Linux 6.1.158-180.294.amzn2023.x86_64 #1 SMP",
+   "owner": "",
+   "partitions": [],
+   "port": 6818,
+   "real_memory": 512,
+   "comment": "",
+   "reason": "",
+   "reason_changed_at": {
+    "set": false,
+    "infinite": false,
+    "number": 0
+   },
+   "sockets": 1,
+   "threads": 2,
+   "temporary_disk": 0,
+   "weight": 1,
+   "tres": "cpu=2,mem=512M,billing=2",
+   "version": "26.05.5"
+  },
+  {
+   "name": "",
+   "cpus": 2,
+   "real_memory": 1000
+  },
+  {
+   "name": "e-zero",
+   "cpus": 0,
+   "real_memory": 1000
+  },
+  {
+   "name": "e-negeff",
+   "cpus": 2,
+   "effective_cpus": -1,
+   "real_memory": 1000
+  },
+  {
+   "name": "e-mem",
+   "cpus": 2,
+   "real_memory": "lots"
+  },
+  {
+   "name": "e-infinite",
+   "cpus": {
+    "set": true,
+    "infinite": true,
+    "number": 0
+   },
+   "real_memory": 1000
+  },
+  {
+   "name": "e-bool",
+   "cpus": true,
+   "real_memory": 1000
+  },
+  "garbage"
+ ],
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.45",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "show",
+   "nodes"
+  ],
+  "slurm": {
+   "version": {
+    "major": "26",
+    "micro": "5",
+    "minor": "05"
+   },
+   "release": "26.05.5",
+   "cluster": "edgecluster"
+  }
+ },
+ "errors": [],
+ "warnings": [
+  {
+   "description": "Job 407 has no job_resources",
+   "source": "edge fixture"
+  }
+ ]
+}

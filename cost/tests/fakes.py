@@ -11,7 +11,7 @@ import tempfile
 
 import cluster_cost as cc
 
-from . import stub_aws
+from . import stub_aws, stub_slurm
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = stub_aws.FIXTURES
@@ -20,6 +20,9 @@ START = 1795608000.0
 PC_CLUSTER = "mycluster"
 PCS_CLUSTER = "pcs_abc123def4"
 REGION = "ap-southeast-6"
+# The Slurm fixtures of each platform's fleet: nodes, and the jobs of the end-to-end tests.
+SLURM_NODES = {"parallelcluster": "nodes-v0.0.44.json", "pcs": "nodes-v0.0.45.json"}
+SLURM_JOBS = {"parallelcluster": "jobs-v0.0.44.json", "pcs": "jobs-v0.0.45.json"}
 
 
 def fixture_text(*parts):
@@ -100,12 +103,14 @@ class FakeRunner:
     all be present, or a callable. The answer is a CommandResult, or a
     callable(Call) returning one. A rule can advance the fake clock, to
     simulate a slow call. Without a matching rule, the call is answered from
-    the fixture files (stub_aws.route). Every call's argv, timeout and env
-    are recorded.
+    the fixture files: scontrol and squeue by stub_slurm.route with the
+    (nodes, jobs) of self.slurm, everything else by stub_aws.route. Every
+    call's argv, timeout and env are recorded.
     """
 
-    def __init__(self, clock=None):
+    def __init__(self, clock=None, slurm=None):
         self.clock = clock
+        self.slurm = slurm
         self.rules = []
         self.calls = []
 
@@ -124,7 +129,11 @@ class FakeRunner:
                     self.clock.advance(rule.seconds)
                 answer = rule.answer(call) if callable(rule.answer) else rule.answer
                 return answer
-        rc, out, err = stub_aws.route(argv)
+        if os.path.basename(argv[0]) in ("scontrol", "squeue"):
+            nodes, jobs = self.slurm or (None, None)
+            rc, out, err = stub_slurm.route(argv, nodes, jobs)
+        else:
+            rc, out, err = stub_aws.route(argv)
         return cc.CommandResult(rc=rc, stdout=out, stderr=err)
 
     def count(self, *words):
@@ -147,6 +156,11 @@ def is_pricing_for(field_value):
 def has_arg(text):
     """A match for any call with an argument that contains text."""
     return lambda argv: any(text in a for a in argv)
+
+
+def is_command(name):
+    """A match for the calls of one executable (scontrol, squeue), by basename."""
+    return lambda argv: os.path.basename(argv[0]) == name
 
 
 # --- Files and executables ------------------------------------------------------------
@@ -188,6 +202,23 @@ def write_python_stub(directory, name="aws"):
 def write_shell_stub(directory, body, name="aws"):
     """A /bin/sh stub. `$@` holds the aws arguments."""
     return write_executable(os.path.join(directory, name), "#!/bin/sh\n" + body)
+
+
+def write_slurm_stubs(directory, nodes, jobs=None):
+    """Stub scontrol and squeue executables that answer with stub_slurm.route.
+    nodes and jobs are fixture names or documents (written next to the stubs)."""
+    args = []
+    for kind, doc in (("nodes", nodes), ("jobs", jobs)):
+        if doc is not None and not isinstance(doc, str):
+            path = os.path.join(directory, "%s.json" % kind)
+            with open(path, "w") as f:
+                json.dump(doc, f)
+            doc = path
+        args.append(doc)
+    for name in ("scontrol", "squeue"):
+        write_executable(os.path.join(directory, name), (
+            "#!%s -B\nimport sys\nsys.path.insert(0, %r)\nimport stub_slurm\nsys.exit(stub_slurm.main(%r, %r))\n"
+            % (sys.executable, HERE, args[0], args[1])))
 
 
 def read_stub_log(path):
@@ -284,17 +315,29 @@ class Harness:
         self.runner = runner if runner is not None else FakeRunner(self.clock)
         if getattr(self.runner, "clock", None) is None:
             self.runner.clock = self.clock
+        self.slurm_bin = self.scratch.path("slurm-bin")
+        os.mkdir(self.slurm_bin, 0o755)
         self.environ = {
             "PLATFORM": platform,
             "CLUSTER_ID": cluster or (PC_CLUSTER if platform == "parallelcluster" else PCS_CLUSTER),
             "REGION": region,
             "CLUSTER_COST_STATE_DIR": self.scratch.state,
             "CLUSTER_COST_TEXTFILE_DIR": self.scratch.textfile,
+            "CLUSTER_COST_SLURM_BIN_DIR": self.slurm_bin,
             "PATH": "/usr/local/bin:/usr/bin:/bin",
         }
+        # By default Slurm knows the fleet's nodes and runs no job, so that a
+        # test's own fleet never fails the mapping check.
+        self.use_slurm(SLURM_NODES[platform], None)
         self.owner_uid = os.getuid()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
+
+    def use_slurm(self, nodes, jobs=None):
+        """Answer scontrol and squeue with these fixtures or documents, through
+        the FakeRunner and through the stub executables of slurm-bin."""
+        self.runner.slurm = (nodes, jobs)
+        write_slurm_stubs(self.slurm_bin, nodes, jobs)
 
     def deps(self):
         return cc.Deps(runner=self.runner, clock=self.clock, owner_uid=self.owner_uid,
@@ -328,6 +371,10 @@ class Harness:
 
     def prices(self):
         with open(os.path.join(self.scratch.state, cc.PRICES_FILE)) as f:
+            return json.load(f)
+
+    def state(self, name=cc.STATE_FILE):
+        with open(os.path.join(self.scratch.state, name)) as f:
             return json.load(f)
 
     def write_prices(self, data):

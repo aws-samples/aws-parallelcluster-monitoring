@@ -38,11 +38,29 @@ class CollectorUpTest(unittest.TestCase):
             m = h.metrics()
             self.assertEqual(m.value("cluster_cost_collector_up"), 1)
             self.assertEqual(m.unpriced(), {})
-            self.assertEqual(m.stages_ok(), {"discovery": 1, "ebs": 1, "on_demand_prices": 1, "spot_prices": 1,
-                                             "state": 1})
+            self.assertEqual(m.stages_ok(), {"discovery": 1, "ebs": 1, "slurm": 1, "on_demand_prices": 1,
+                                             "spot_prices": 1, "state": 1})
             self.assertEqual(m.series("cluster_cost_collector_stage_error"), [])
             self.assertEqual(m.value("cluster_cost_collector_info", platform="parallelcluster",
                                      cluster="mycluster", region="ap-southeast-6"), 1)
+        finally:
+            h.close()
+
+    def test_slurm_stage_is_required(self):
+        config = cc.Config(platform="pcs", cluster_id="pcs_abc123def4", region="ap-southeast-6")
+        self.assertEqual(cc.applicable_stages(config, False),
+                         ["discovery", "ebs", "slurm", "on_demand_prices", "spot_prices", "pcs", "state"])
+        h = fakes.Harness("parallelcluster")
+        try:
+            complete_pc_fleet(h)
+            h.runner.on(fakes.is_command("squeue"), cc.CommandResult(rc=1, stderr="squeue: error\n"))
+            self.assertEqual(h.run(), 0)
+            m = h.metrics()
+            self.assertEqual(m.stage_errors(), {"slurm": "SlurmCommandFailed"})
+            self.assertEqual(m.unpriced(), {})
+            self.assertEqual(m.value("cluster_cost_collector_up"), 0)
+            self.assertIsNone(m.value("cluster_cost_collector_last_success_timestamp_seconds"))
+            self.assertIn("failed stages: slurm=SlurmCommandFailed", h.log())
         finally:
             h.close()
 
@@ -79,8 +97,8 @@ class StageSeriesTest(unittest.TestCase):
         self.assertEqual(sorted((l["stage"], l["code"]) for l, _ in errors), [
             ("ebs", "AccessDenied"), ("on_demand_prices", "AccessDenied"), ("spot_prices", "Throttled")])
         self.assertEqual({v for _, v in errors}, {1})
-        self.assertEqual(m.stages_ok(), {"discovery": 1, "ebs": 0, "on_demand_prices": 0, "spot_prices": 0,
-                                         "state": 1})
+        self.assertEqual(m.stages_ok(), {"discovery": 1, "ebs": 0, "slurm": 1, "on_demand_prices": 0,
+                                         "spot_prices": 0, "state": 1})
         stages = self.h.report()["stages"]
         self.assertEqual(stages["on_demand_prices"]["why"], "call failed")
         self.assertTrue(stages["ebs"]["why"].startswith("source pricing backed off until "))

@@ -1,0 +1,965 @@
+{
+ "jobs": [
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "od-1",
+   "cluster": "pcs_abc123def4",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 201,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "od-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "od-1",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 2700
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "od-1",
+   "partition": "od",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=2700M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=2700M,node=1,billing=1",
+   "user_id": 1001,
+   "user_name": "user1"
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "spot-1",
+   "cluster": "pcs_abc123def4",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 2
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 202,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "spot-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "spot-1",
+       "cpus": {
+        "count": 2,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 1800
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 2,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "spot-1",
+   "partition": "spot",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=2,mem=1800M,node=1,billing=2",
+   "tres_req_str": "cpu=2,mem=1800M,node=1,billing=2",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "gpu-1",
+   "cluster": "pcs_abc123def4",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 2
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [
+    "gpu:T4:1(IDX:0)"
+   ],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 203,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "gpu-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "gpu-1",
+       "cpus": {
+        "count": 2,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 4000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 2,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "gpu-1",
+   "partition": "gpu",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=2,mem=4000M,node=1,billing=2,gres/gpu=1,gres/gpu:t4=1",
+   "tres_req_str": "cpu=2,mem=4000M,node=1,billing=2,gres/gpu=1,gres/gpu:t4=1",
+   "user_id": 1001,
+   "user_name": "user1"
+  },
+  {
+   "account": "proj-b",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "cb-1",
+   "cluster": "pcs_abc123def4",
+   "command": "/home/user2/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 96
+   },
+   "current_working_directory": "/home/user2",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [
+    "gpu:h100:4(IDX:0,2,4,6)"
+   ],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 204,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "cb-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "cb-1",
+       "cpus": {
+        "count": 96,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 500000
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 1,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 2,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 3,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 4,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 5,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 6,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 7,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 8,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 9,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 10,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 11,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 12,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 13,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 14,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 15,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 16,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 17,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 18,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 19,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 20,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 21,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 22,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 23,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 24,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 25,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 26,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 27,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 28,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 29,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 30,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 31,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 32,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 33,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 34,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 35,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 36,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 37,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 38,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 39,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 40,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 41,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 42,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 43,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 44,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 45,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 46,
+           "status": [
+            "ALLOCATED"
+           ]
+          },
+          {
+           "index": 47,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 96,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "cb-1",
+   "partition": "cb",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=96,mem=500000M,node=1,billing=96,gres/gpu=4,gres/gpu:h100=4",
+   "tres_req_str": "cpu=96,mem=500000M,node=1,billing=96,gres/gpu=4,gres/gpu:h100=4",
+   "user_id": 1002,
+   "user_name": "user2"
+  },
+  {
+   "account": "",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "od-1",
+   "cluster": "pcs_abc123def4",
+   "command": "/home/nobody/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/nobody",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 205,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "od-1",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "od-1",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 450
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 1,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "RUNNING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "od-1",
+   "partition": "od",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=450M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=450M,node=1,billing=1",
+   "user_id": 1005,
+   "user_name": ""
+  },
+  {
+   "account": "proj-a",
+   "accrue_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "allocating_node": "ip-10-0-0-10",
+   "batch_flag": true,
+   "batch_host": "od-2",
+   "cluster": "pcs_abc123def4",
+   "command": "/home/user1/run.sh",
+   "comment": "",
+   "cpus": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "current_working_directory": "/home/user1",
+   "end_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795611300
+   },
+   "gres_detail": [],
+   "group_id": 1000,
+   "group_name": "users",
+   "job_id": 206,
+   "job_resources": {
+    "select_type": [
+     "CR_CPU_MEMORY"
+    ],
+    "nodes": {
+     "count": 1,
+     "select_type": [
+      "AVAILABLE"
+     ],
+     "list": "od-2",
+     "whole": false,
+     "allocation": [
+      {
+       "index": 0,
+       "name": "od-2",
+       "cpus": {
+        "count": 1,
+        "used": 0
+       },
+       "memory": {
+        "used": 0,
+        "allocated": 100
+       },
+       "sockets": [
+        {
+         "index": 0,
+         "cores": [
+          {
+           "index": 0,
+           "status": [
+            "ALLOCATED"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    "cpus": 1,
+    "threads_per_core": {
+     "set": false,
+     "infinite": false,
+     "number": 1
+    }
+   },
+   "job_state": [
+    "COMPLETED",
+    "COMPLETING"
+   ],
+   "name": "job",
+   "node_count": {
+    "set": true,
+    "infinite": false,
+    "number": 1
+   },
+   "nodes": "od-2",
+   "partition": "od",
+   "start_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607700
+   },
+   "state_reason": "None",
+   "submit_time": {
+    "set": true,
+    "infinite": false,
+    "number": 1795607100
+   },
+   "time_limit": {
+    "set": true,
+    "infinite": false,
+    "number": 60
+   },
+   "tres_alloc_str": "cpu=1,mem=100M,node=1,billing=1",
+   "tres_req_str": "cpu=1,mem=100M,node=1,billing=1",
+   "user_id": 1001,
+   "user_name": "user1"
+  }
+ ],
+ "last_backfill": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607980
+ },
+ "last_update": {
+  "set": true,
+  "infinite": false,
+  "number": 1795607995
+ },
+ "meta": {
+  "plugin": {
+   "type": "",
+   "name": "",
+   "data_parser": "data_parser/v0.0.45",
+   "accounting_storage": "accounting_storage/slurmdbd"
+  },
+  "client": {
+   "source": "/dev/pts/0",
+   "user": "root",
+   "group": "root"
+  },
+  "command": [
+   "--json",
+   "--states=RUNNING,CONFIGURING,COMPLETING"
+  ],
+  "slurm": {
+   "version": {
+    "major": "26",
+    "micro": "5",
+    "minor": "05"
+   },
+   "release": "26.05.5",
+   "cluster": "pcs_abc123def4"
+  }
+ },
+ "errors": [],
+ "warnings": []
+}
