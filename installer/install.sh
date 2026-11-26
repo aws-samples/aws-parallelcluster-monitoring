@@ -346,10 +346,12 @@ COGENV
         # no compose env file is needed.
         cd "${MONITORING_HOME}"
         release_web_ports_from_apache2
+        release_prometheus_port_from_cockpit
         docker compose \
             -f "${MONITORING_HOME}/compose/head.yml" \
             -p monitoring-head up -d
         wait_for_nginx
+        wait_for_prometheus
 
         # Slurm job-to-node textfile collector (Phase 3c).
         # Runs every 30s, writes /var/lib/prometheus/node-exporter/slurm_jobs.prom
@@ -399,8 +401,11 @@ COGENV
                     curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
                         | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.asc] https://#g' \
                         > /etc/apt/sources.list.d/nvidia-container-toolkit.list
-                    apt-get update
-                    DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-container-toolkit
+                    # Wait for the apt and dpkg locks instead of failing:
+                    # unattended-upgrades can hold them in the first minutes
+                    # after boot (apt-daily-upgrade.timer is Persistent).
+                    apt-get -o DPkg::Lock::Timeout=600 update
+                    DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y nvidia-container-toolkit
                     ;;
             esac
             nvidia-ctk runtime configure --runtime=docker

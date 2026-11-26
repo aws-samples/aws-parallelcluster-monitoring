@@ -247,6 +247,24 @@ release_web_ports_from_apache2() {
 }
 
 # ---------------------------------------------------------------------------
+# Rocky Linux EC2 images enable cockpit.socket, which listens on port 9090.
+# Prometheus uses the host network and needs 127.0.0.1:9090, so stop and
+# disable cockpit.socket when it listens on that port. systemd holds the
+# socket, so ss shows "systemd" rather than cockpit: read the unit instead.
+# Disabling it also keeps it from taking the port again at the next boot.
+# Cockpit on another port is left alone.
+# ---------------------------------------------------------------------------
+release_prometheus_port_from_cockpit() {
+    local listen
+    listen="$(systemctl show -p Listen --value cockpit.socket 2>/dev/null)" || listen=""
+    grep -Eq '(^|:)9090 ' <<<"${listen}" || return 0
+    if systemctl is-active --quiet cockpit.socket || systemctl is-enabled --quiet cockpit.socket; then
+        log "cockpit.socket listens on port 9090, which Prometheus needs: stopping and disabling cockpit.socket"
+        systemctl disable --now cockpit.socket
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # docker compose up succeeds even when nginx then fails to bind and
 # restarts in a loop, so check that it serves the landing page.
 # ---------------------------------------------------------------------------
@@ -266,6 +284,38 @@ wait_for_nginx() {
     ss -Hltnp '( sport = :80 or sport = :443 )' >&2 || true
     docker logs --tail 20 nginx >&2 || true
     die "nginx is not serving https://127.0.0.1/ after 60 s; another process may hold port 80 or 443"
+}
+
+# ---------------------------------------------------------------------------
+# docker compose up also succeeds when Prometheus can't bind 127.0.0.1:9090
+# and restarts in a loop, so check that it becomes ready. Fail when the
+# container isn't running or restarted during the wait: it is crash-looping,
+# for example because another process holds port 9090. Only warn when it
+# runs but isn't ready yet, because on a re-run Prometheus can spend minutes
+# replaying a large write-ahead log, and that must not fail an upgrade.
+# ---------------------------------------------------------------------------
+wait_for_prometheus() {
+    local _ restarts_before restarts_after status
+    restarts_before="$(docker inspect -f '{{.RestartCount}}' prometheus 2>/dev/null)" || restarts_before=0
+    for _ in $(seq 1 30); do
+        # Match the body: another service on port 9090 may answer too.
+        if grep -q 'Prometheus Server is Ready' \
+            <<<"$(curl -fs --max-time 5 http://127.0.0.1:9090/-/ready 2>/dev/null)"; then
+            log "Prometheus is ready on 127.0.0.1:9090"
+            return 0
+        fi
+        sleep 2
+    done
+    status="$(docker inspect -f '{{.State.Status}}' prometheus 2>/dev/null)" || status="missing"
+    restarts_after="$(docker inspect -f '{{.RestartCount}}' prometheus 2>/dev/null)" || restarts_after="${restarts_before}"
+    if [[ "${status}" == running && "${restarts_after}" == "${restarts_before}" ]]; then
+        warn "Prometheus is running but not ready after 60 s; it may still be replaying its write-ahead log"
+        return 0
+    fi
+    warn "listeners on port 9090:"
+    ss -Hltnp '( sport = :9090 )' >&2 || true
+    docker logs --tail 20 prometheus >&2 || true
+    die "Prometheus is not serving on 127.0.0.1:9090 (container ${status}, $((restarts_after - restarts_before)) restarts in 60 s); another process may hold port 9090"
 }
 
 # ---------------------------------------------------------------------------

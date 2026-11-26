@@ -432,6 +432,11 @@ The installer gives the AMI's default user ownership of the monitoring files
 and adds it to the `docker` group: `ec2-user` on RHEL, `rocky` on Rocky Linux
 and `ubuntu` on Ubuntu.
 
+The Rocky Linux EC2 images enable the Cockpit web console (`cockpit.socket`)
+on port 9090, where Prometheus listens. On login nodes the installer stops
+and disables `cockpit.socket` when it listens on 9090. To keep Cockpit, move
+it to another port in the AMI.
+
 ## Architecture
 
 ```

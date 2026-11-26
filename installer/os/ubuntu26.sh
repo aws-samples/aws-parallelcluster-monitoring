@@ -8,8 +8,11 @@ set -euo pipefail
 log "Installing docker on Ubuntu 26.04"
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
-apt-get install -y ca-certificates curl gnupg jq bc
+# Wait for the apt and dpkg locks instead of failing: on a node booted from an
+# AMI more than a day old, apt-daily-upgrade.timer (Persistent) starts
+# unattended-upgrades in the first minutes after boot, while this script runs.
+apt-get -o DPkg::Lock::Timeout=600 update
+apt-get -o DPkg::Lock::Timeout=600 install -y ca-certificates curl gnupg jq bc
 
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
@@ -22,8 +25,8 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
     > /etc/apt/sources.list.d/docker.list
 
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt-get -o DPkg::Lock::Timeout=600 update
+apt-get -o DPkg::Lock::Timeout=600 install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 systemctl enable docker
 systemctl start docker

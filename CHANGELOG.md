@@ -2,9 +2,19 @@
 
 ## v2.13 — 2026-11-25
 
-Adds AWS PCS support for RHEL 10, Rocky Linux 10 and Ubuntu 26.04. No
-breaking changes: on the operating systems that were already supported, the
-installer runs the same steps as before.
+Adds AWS PCS support for RHEL 10, Rocky Linux 10 and Ubuntu 26.04. On the
+operating systems that were already supported, the installer runs the same
+steps as before, apart from the behavior changes below.
+
+Behavior changes:
+- On head and login nodes, the installer stops and disables `cockpit.socket`
+  when it listens on port 9090, which Prometheus needs. Rocky Linux EC2
+  images enable it.
+- A port conflict on 9090 now fails the install instead of passing
+  silently (see Changed).
+- On Ubuntu GPU nodes (22.04, 24.04 and 26.04), the NVIDIA Container
+  Toolkit install waits up to 10 minutes for the apt and dpkg locks instead
+  of failing (see Fixed).
 
 ### Added
 
@@ -22,9 +32,43 @@ installer runs the same steps as before.
     signatures with rpm-sequoia, so a failed import now stops the install.
   - GPU nodes install the NVIDIA Container Toolkit from NVIDIA's repository,
     with the same commands as on the other operating systems.
+  - On EL10, the netfilter modules that Docker's iptables rules need
+    (`xt_conntrack`, `br_netfilter`, `nft_compat` and others) ship in
+    `kernel-modules-extra`, which `iptables-nft` only recommends. Left to
+    dnf, that package came from the newest kernel in the repositories and
+    pulled that kernel in, so the running kernel had no modules and
+    `dockerd` failed with `RULE_APPEND failed (No such file or directory):
+    rule in chain PREROUTING` until a reboot. The live validation hit this on
+    Rocky Linux 10.3 (running kernel 6.12.0-264.20.1, newest 6.12.0-264.21.1).
+    `rhel10.sh` now installs `kernel-modules-extra` for the running kernel
+    when the modules are missing.
+  - `ubuntu26.sh` waits up to 10 minutes for the apt and dpkg locks
+    (`DPkg::Lock::Timeout=600`). On a node booted from an AMI that is more
+    than a day old, `apt-daily-upgrade.timer` starts unattended-upgrades in
+    the first minutes after boot.
+  - The Rocky Linux EC2 images enable `cockpit.socket` on port 9090, where
+    Prometheus listens, so Prometheus restarted in a loop on Rocky login
+    nodes. Before it starts the containers on a head or login node, the
+    installer now stops and disables `cockpit.socket` when it listens on
+    9090; it reads the socket unit, because `ss` shows systemd as the owner.
+    Cockpit on another port is left alone. If you use Cockpit on a login
+    node, move it to another port before you install.
   - AWS PCS provides no AMI for these operating systems. The README lists what
     a custom AMI must include: the AWS CLI on login nodes, and the NVIDIA
     driver and a way to detect the GPU on GPU nodes.
+
+### Changed
+
+- **Head and login nodes: the install fails when Prometheus can't serve.**
+  `docker compose up` succeeds even when Prometheus can't bind
+  127.0.0.1:9090 and restarts in a loop, and the install used to report
+  success with every dashboard empty. After it starts the containers, the
+  installer now waits up to 60 s for Prometheus to answer `/-/ready`. The
+  install fails when the Prometheus container isn't running or restarts
+  during the wait, for example because another process holds port 9090, and
+  prints the port 9090 listeners and the Prometheus log. When Prometheus runs
+  but isn't ready yet, for example while it replays a large write-ahead log
+  on a re-run, the installer only warns.
 
 ### Fixed
 
@@ -34,6 +78,13 @@ installer runs the same steps as before.
   `installer/platform/pcs.sh` now use `rocky` when `ec2-user` doesn't exist.
   Nodes that have `ec2-user`, or `ubuntu` with `/home/ubuntu`, keep the user
   they had.
+- **Ubuntu GPU nodes: the NVIDIA Container Toolkit install could fail when
+  another apt process held the dpkg lock.** `apt-get install` stopped at
+  once with `Could not get lock /var/lib/dpkg/lock-frontend`. In the live
+  validation, unattended-upgrades held the lock on an Ubuntu 26.04 GPU node a
+  few minutes after boot; the same step runs on Ubuntu 22.04 and 24.04 GPU
+  nodes. The toolkit's `apt-get update` and `apt-get install` now wait up to
+  10 minutes for the locks (`DPkg::Lock::Timeout=600`).
 
 ## v2.12 — 2026-11-26
 
