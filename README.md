@@ -444,7 +444,8 @@ Images are pinned in `compose/*.yml` and never use `latest`: NGINX tracks the 1.
 - **IAM**: least-privilege policy available — see [iam/README.md](iam/README.md)
 - **TLS**: self-signed cert with SANs (localhost, private IP, hostname)
 - **IMDS**: works with `Imds.Secured=true` via credential sidecar; the credentials file is readable only by root and the monitoring containers — see [docs/imds-secured-design.md](docs/imds-secured-design.md)
-- **Network**: Grafana, Prometheus, the Pushgateway, the Slurm exporter and cloudwatch-exporter listen on 127.0.0.1; in the monitoring stack only nginx (80/443) and node_exporter (9100) listen on the network. nginx serves `/prometheus/` and `/pushgateway/` only to local clients (the node itself and SSM port forwarding)
+- **Network**: on the head/login node, Grafana, Prometheus, the Pushgateway, the Slurm exporter and cloudwatch-exporter listen on 127.0.0.1, and only nginx (80/443) and node_exporter (9100) listen on the network. nginx serves `/prometheus/` and `/pushgateway/` only to local clients (the node itself and SSM port forwarding). Compute nodes run node_exporter (9100) and, on GPU nodes, dcgm-exporter (9400), which Prometheus scrapes over the network
+- **Docker network**: on the head/login node, cloudwatch-exporter runs on a Docker bridge network, `monitoring-head_default`. Docker gives it a subnet from its default address pools, usually 172.18.0.0/16, and the node routes that subnet to the bridge. If the node must reach hosts in that range, move the network: run `sudo docker compose -f /opt/aws-parallelcluster-monitoring/compose/head.yml -p monitoring-head down`, set `default-address-pools` in `/etc/docker/daemon.json` to an unused range, restart Docker (`sudo systemctl restart docker`) and re-run the installer (`sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`)
 - **No secrets in code**: passwords, tokens, and keys are in SSM or tmpfs only
 
 ## Documentation

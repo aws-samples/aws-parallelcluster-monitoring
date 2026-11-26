@@ -3,9 +3,11 @@
 ## v2.12 — 2026-11-26
 
 Security fixes, the latest stable component versions, fixes for the AWS PCS
-compatibility rules and three dashboard gaps, and corrected IAM documents.
-It fixes the problems listed under Known issues in v2.11; only the memory
-columns of the Slurm user and account panels can stay empty (see Fixed).
+compatibility rules, three dashboard gaps and the Cluster Summary node
+counts, and corrected IAM documents. It fixes the problems listed under
+Known issues in v2.11; only the memory columns of the Slurm user and
+account panels can stay empty (see Fixed). Known issues lists what is still
+open.
 
 Behavior changes:
 - The monitoring services on the head/login node listen on 127.0.0.1 only,
@@ -19,6 +21,9 @@ Behavior changes:
   `DCGM_EXPORTER_IMAGE` override must be dcgm-exporter 4.9.0 or later.
 - On ParallelCluster Ubuntu 24.04 head nodes, the installer stops and
   disables `apache2` when it holds port 80 or 443.
+- The head/login node stack now creates a Docker bridge network, which
+  takes an address range from Docker's default pools, usually
+  172.18.0.0/16 (see cloudwatch-exporter under Changed).
 
 ### Security
 - **Every local user could read the instance role's credentials.**
@@ -118,7 +123,17 @@ Behavior changes:
 - **cloudwatch-exporter runs as a non-root user, on a bridge network.**
   v0.19.0 runs as uid 65534 and reads the credentials file through the
   `monitoring-creds` group. It takes a listen port but no address, so it
-  left the host network and is published on 127.0.0.1:9106 only.
+  left the host network and is published on 127.0.0.1:9106 only. Docker
+  Compose creates the bridge network for it, `monitoring-head_default`,
+  the first Docker network of the head/login node stack. Docker gives it a
+  subnet from its default address pools, usually 172.18.0.0/16, and the
+  node then routes that subnet to the bridge, so it can no longer reach
+  hosts in that range elsewhere, such as in a peered VPC, a secondary VPC
+  CIDR or an on-premises network. Run
+  `docker network inspect monitoring-head_default` to see the subnet. If
+  you use that range, move the network to an unused one with
+  `default-address-pools` in `/etc/docker/daemon.json`, as the README
+  Security section shows.
 - **Grafana 13.3.2.** The dashboards and datasources provision unchanged.
   The image no longer contains `bash`, and `grafana-cli` is not on its
   `PATH`; use `sh` and `grafana cli` in your own `docker exec` commands.
@@ -180,6 +195,17 @@ Behavior changes:
     on the v2.11 validation clusters.
   - ParallelCluster: Slurm Detail **Backfill Cycles per Minute**: the
     exporter now runs with `-slurm.collect-diags` (see Changed).
+- **Cluster Summary: Nodes Allocated and Nodes Down/Drain always showed
+  0.** Each added two series whose `state` labels differ, and such series
+  never match. They now count the nodes in the `alloc` and `mix` states,
+  and in the `down` and `drain` states.
+- **Single-value panels showed a second 0 next to their value.** A query
+  of the form `X or vector(0)` returns X and a separate 0 whenever X has
+  data. These panels now sum X first, so they show one value: on Cluster
+  Summary, the node, CPU and job counts, **Idle CPU-hours (last 24h)** and
+  **Jobs Over Time**; on Slurm Detail, **Failed (since boot)**,
+  **Suspended**, **Controller Threads**, **DBD Agent Queue**, **Backfill
+  Cycles (since boot)** and **Last Backfill Depth**.
 
 ### IAM
 - **The least-privilege ParallelCluster policy didn't grant what the stack
@@ -254,6 +280,18 @@ Behavior changes:
   version, as shown under IAM.
 - **`DCGM_EXPORTER_IMAGE`:** remove an old override. If you need one, it
   must be dcgm-exporter 4.9.0 or later.
+
+### Known issues
+Found while preparing v2.12. Earlier releases have it too.
+- **ParallelCluster: the job counts read 0.** Cluster Summary **Jobs
+  Running**, **Jobs Pending**, **Jobs Completed**, **Jobs Failed** and
+  **Jobs Over Time**, and Slurm Detail **Total Pending Now**, **Total
+  Running Now**, **Failed (since boot)** and **Suspended** read the
+  `slurm_jobs_*` series, which the ParallelCluster Slurm exporter (rivosinc
+  `prometheus-slurm-exporter` 1.8.0) doesn't export. On AWS PCS, Slurm
+  exports them and the panels show data. The Slurm Detail **Top Users** and
+  **Top Accounts** panels show the running and pending jobs per user and
+  account on both platforms.
 
 The v2.12 validation results are added here before the release is
 published: live on ParallelCluster 3.16.3 with Amazon Linux 2023 and
