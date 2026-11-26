@@ -249,10 +249,12 @@ release_web_ports_from_apache2() {
 # restarts in a loop, so check that it serves the landing page.
 # ---------------------------------------------------------------------------
 wait_for_nginx() {
-    local _ body
+    local _
     for _ in $(seq 1 30); do
-        body="$(curl -fsk --max-time 5 https://127.0.0.1/ 2>/dev/null)" || body=""
-        if grep -q '<title>HPC Cluster Monitoring</title>' <<<"${body}"; then
+        # The page goes straight into the here-string: a variable assignment
+        # would copy all of it into the install trace.
+        if grep -q '<title>HPC Cluster Monitoring</title>' \
+            <<<"$(curl -fsk --max-time 5 https://127.0.0.1/ 2>/dev/null)"; then
             log "nginx is serving https://127.0.0.1/"
             return 0
         fi
