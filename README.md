@@ -97,19 +97,38 @@ Pricing API, cached for 24h.
 
 ## Quickstart — ParallelCluster
 
-Add to your `pcluster.yaml` under **both** `HeadNode` and each `SlurmQueue`:
+In your `pcluster.yaml`, add the `CustomActions` under **both** `HeadNode`
+and each `SlurmQueue`, and the monitoring policy under `HeadNode` **only**:
 
 ```yaml
-CustomActions:
-  OnNodeConfigured:
-    Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
-    Args:
-      - latest
-Iam:
-  AdditionalIamPolicies:
-    - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-    - Policy: arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name>
+HeadNode:
+  CustomActions:
+    OnNodeConfigured:
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
+      Args:
+        - latest
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - Policy: arn:aws:iam::<account-id>:policy/pcluster-monitoring-<cluster-name>
+Scheduling:
+  SlurmQueues:
+    - Name: <queue-name>
+      CustomActions:
+        OnNodeConfigured:
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh
+          Args:
+            - latest
+      Iam:
+        AdditionalIamPolicies:
+          - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 ```
+
+> **Keep the monitoring policy off the queues.** Compute nodes make no AWS
+> calls for monitoring: they run only node_exporter, and dcgm-exporter on
+> GPU nodes. On a compute node, the policy would let any job read and
+> change the Grafana admin password. `AmazonSSMManagedInstanceCore` on a
+> queue is only for SSM access to its nodes.
 
 > **Pinning a version**: replace `latest` with a specific tag (e.g. `v2.6`)
 > if you need reproducible deployments. `latest` always pulls the newest
@@ -130,15 +149,17 @@ aws iam create-policy --policy-name pcluster-monitoring-<cluster-name> \
 
 See [iam/README.md](iam/README.md) for details.
 
-> **Quick start alternative**: use these AWS-managed policies instead (overbroad but functional):
+> **Quick start alternative**: use these AWS-managed policies instead (overbroad but functional),
+> also on the `HeadNode` only:
 > ```yaml
-> Iam:
->   AdditionalIamPolicies:
->     - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
->     - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess
->     - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
->     - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
->     - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+> HeadNode:
+>   Iam:
+>     AdditionalIamPolicies:
+>       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+>       - Policy: arn:aws:iam::aws:policy/CloudWatchFullAccess
+>       - Policy: arn:aws:iam::aws:policy/AWSPriceListServiceFullAccess
+>       - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
+>       - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
 > ```
 
 ## Quickstart — AWS PCS
@@ -190,12 +211,25 @@ tmp="$(mktemp)" &&
 
 ### 3. IAM instance profile permissions
 
-The instance profile needs:
-- `pcs:GetCluster`, `pcs:ListComputeNodeGroups`, `pcs:RegisterComputeNodeGroupInstance`
-- `ec2:DescribeInstances`, `ec2:DescribeVolumes`, `ec2:CreateTags`
-- `ssm:GetParameter`, `ssm:PutParameter`
-- `pricing:GetProducts`
-- `kms:Decrypt` (condition: via `ssm.<region>.amazonaws.com`)
+The **login node** instance profile needs:
+- `pcs:GetCluster`, to find the slurmctld endpoint
+- `ec2:DescribeInstances`, for Prometheus EC2 service discovery and the cost
+  metrics
+- `ssm:GetParameter`, `ssm:PutParameter` and `ssm:AddTagsToResource` on
+  `arn:aws:ssm:<region>:<account-id>:parameter/pcs/<cluster-id>/grafana/*`,
+  for the Grafana admin password and the optional Cognito config
+- `kms:Decrypt`, with the condition
+  `kms:ViaService = ssm.<region>.amazonaws.com`, to read those SecureString
+  parameters
+- `pricing:GetProducts`, for the cost metrics
+- `cloudwatch:ListMetrics` and `cloudwatch:GetMetricStatistics`, for the FSx
+  and EFS metrics of the Storage dashboard (cloudwatch-exporter)
+- `pcs:RegisterComputeNodeGroupInstance`, when a compute node group launches
+  the login node
+
+**Compute node groups** need only what PCS itself requires,
+`pcs:RegisterComputeNodeGroupInstance`. The monitoring stack on compute
+nodes makes no AWS calls.
 
 **Important**: the IAM role name must start with `AWSPCS` or use path
 `/aws-pcs/` (PCS requirement for compute-node-group instance profiles).

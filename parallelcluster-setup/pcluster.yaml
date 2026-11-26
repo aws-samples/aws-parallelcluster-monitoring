@@ -1,12 +1,11 @@
 # Example ParallelCluster 3.x config using aws-parallelcluster-monitoring.
-# Validated on ParallelCluster 3.16.3 with alinux2023. ubuntu2404,
-# ubuntu2204 and rhel9 also work; ubuntu2404 head nodes need the apache2
-# workaround under Known issues in the v2.11 CHANGELOG. alinux2 works only
-# on ParallelCluster 3.15 or earlier.
+# Validated on ParallelCluster 3.16.3 with alinux2023 and ubuntu2404.
+# ubuntu2204 and rhel9 also work. alinux2 works only on ParallelCluster
+# 3.15 or earlier.
 #
 # post-install.sh accepts up to two args:
 #   Args:
-#     - <ref>         # tag (e.g. v2.11), branch (e.g. main), or latest. Default: latest
+#     - <ref>         # tag (e.g. v2.12), branch (e.g. main), or latest. Default: latest
 #     - <repo_slug>   # owner/repo. Default: aws-samples/aws-parallelcluster-monitoring
 #
 # Testing from a fork:
@@ -33,9 +32,9 @@ HeadNode:
       VolumeType: gp3
   CustomActions:
     OnNodeConfigured:
-      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.11/post-install.sh
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.12/post-install.sh
       Args:
-        - v2.11
+        - v2.12
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -69,9 +68,9 @@ Scheduling:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.11/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v2.12/post-install.sh
           Args:
-            - v2.11
+            - v2.12
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -80,10 +79,9 @@ Scheduling:
           # session manager. The overbroad policies are HeadNode-only.
 Region: us-east-2
 Image:
-  # Validated on ParallelCluster 3.16.3 with alinux2023. ubuntu2404,
-  # ubuntu2204 and rhel9 also work; ubuntu2404 head nodes need the apache2
-  # workaround under Known issues in the v2.11 CHANGELOG. alinux2 works only
-  # on ParallelCluster 3.15 or earlier.
+  # Validated on ParallelCluster 3.16.3 with alinux2023 and ubuntu2404.
+  # ubuntu2204 and rhel9 also work. alinux2 works only on ParallelCluster
+  # 3.15 or earlier.
   Os: alinux2023
 Tags:
   - Key: 'Grafana'
