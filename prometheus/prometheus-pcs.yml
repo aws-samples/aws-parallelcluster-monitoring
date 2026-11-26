@@ -67,6 +67,13 @@ scrape_configs:
     honor_labels: true
     static_configs:
       - targets: ['localhost:9091']
+    # Cost figures come only from the collector's root-only textfile. Every
+    # local user can push here, and honor_labels lets a push copy the
+    # textfile series' labels, so drop look-alikes.
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'cluster_cost_.+|cluster:cluster_cost_.+|node_textfile_.+'
+        action: drop
 
   - job_name: 'cloudwatch_exporter'
     scrape_interval: 60s

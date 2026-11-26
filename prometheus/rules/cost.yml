@@ -1,0 +1,26 @@
+groups:
+  - name: cluster_cost
+    interval: 15s
+    rules:
+      # Cost series are read only from the monitoring node's own node_exporter:
+      # job ec2_instances (ParallelCluster) or login_node (PCS), with
+      # instance_name="HeadNode". Recording-rule outputs have no job label, and
+      # every scraped series has one, so {job=""} selects only these rules.
+      #
+      # Present only while the collector's textfile is less than 5 minutes old.
+      - record: cluster_cost_collector:fresh
+        expr: |
+          (time() - max(node_textfile_mtime_seconds{job=~"ec2_instances|login_node",instance_name="HeadNode",file=~".*/cluster_cost\\.prom"})) < 300
+      - record: cluster:cluster_cost_usd_per_hour:sum
+        expr: |
+          sum(cluster_cost_usd_per_hour{job=~"ec2_instances|login_node",instance_name="HeadNode"})
+          and on() cluster_cost_collector:fresh{job=""}
+      # Month-to-date + 24 h average rate x hours left in the UTC month, while fresh.
+      - record: cluster:cluster_cost_projected_month_usd:avg_24h
+        expr: |
+          (
+            sum(cluster_cost_accumulated_usd{job=~"ec2_instances|login_node",instance_name="HeadNode",period="month"})
+            + on() avg_over_time(cluster:cluster_cost_usd_per_hour:sum{job=""}[24h])
+            * on() (days_in_month() * 24 - ((day_of_month() - 1) * 24 + hour() + minute() / 60))
+          )
+          and on() cluster_cost_collector:fresh{job=""}

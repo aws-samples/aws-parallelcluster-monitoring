@@ -1,0 +1,75 @@
+rule_files:
+  - ../../../prometheus/rules/cost.yml
+evaluation_interval: 15s
+tests:
+  # ParallelCluster head node. The collector writes its file every minute, constant 2 USD/h
+  # total, month-to-date 100 USD. The head node's target labels come along (instance_type is
+  # the head node's own type). Forged look-alikes from a compute node's port 9400 and from a
+  # RES desktop must change nothing (finding 28).
+  - interval: 1m
+    input_series:
+      - series: 'node_textfile_mtime_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",instance_type="c6i.large",file="/textfile/cluster_cost.prom"}'
+        values: '0+60x20200'
+      # Another textfile on the same node must not count as the cost collector.
+      - series: 'node_textfile_mtime_seconds{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",instance_type="c6i.large",file="/textfile/slurm_jobs.prom"}'
+        values: '0+60x20200'
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",instance_type="c6i.large",component="instance",node_role="compute",queue="q1",ec2_instance_type="g4dn.xlarge",purchase_option="on_demand"}'
+        values: '1.5x20200'
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",instance_type="c6i.large",component="ebs",node_role="compute",queue="q1",ec2_instance_type="g4dn.xlarge",purchase_option="on_demand"}'
+        values: '0.5x20200'
+      - series: 'cluster_cost_accumulated_usd{job="ec2_instances",instance="10.0.0.10:9100",instance_name="HeadNode",instance_type="c6i.large",period="month",component="instance",node_role="compute",queue="q1",ec2_instance_type="g4dn.xlarge",purchase_option="on_demand"}'
+        values: '100x20200'
+      # Forged: a Slurm job serving cost series on a CPU compute node's free port 9400.
+      - series: 'cluster_cost_usd_per_hour{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",instance_type="c6i.large",component="instance",node_role="compute",queue="q1",ec2_instance_type="p5.48xlarge",purchase_option="on_demand"}'
+        values: '98x20200'
+      - series: 'cluster_cost_accumulated_usd{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",instance_type="c6i.large",period="month",component="instance",node_role="compute",queue="q1",ec2_instance_type="p5.48xlarge",purchase_option="on_demand"}'
+        values: '5000x20200'
+      # Forged: series named like the recording-rule outputs, from a RES desktop.
+      - series: 'cluster:cluster_cost_usd_per_hour:sum{job="res_instances",instance="10.0.2.7:9100",instance_name="RES"}'
+        values: '100x20200'
+      - series: 'cluster:cluster_cost_projected_month_usd:avg_24h{job="res_instances",instance="10.0.2.7:9100",instance_name="RES"}'
+        values: '1x20200'
+    promql_expr_test:
+      - expr: cluster:cluster_cost_usd_per_hour:sum{job=""}
+        eval_time: 10d
+        exp_samples:
+          - labels: 'cluster:cluster_cost_usd_per_hour:sum'
+            value: 2
+      # 1970-01-11T00:00Z: 100 + 2 x (31 x 24 - 10 x 24) = 1108
+      - expr: cluster:cluster_cost_projected_month_usd:avg_24h{job=""}
+        eval_time: 10d
+        exp_samples:
+          - labels: 'cluster:cluster_cost_projected_month_usd:avg_24h'
+            value: 1108
+  # PCS login node. The collector stops writing after 1 h (the file keeps its old mtime and
+  # node_exporter keeps serving it): freshness, the total and the projection disappear 5 minutes
+  # later. A compute node that serves a fresh-looking mtime for a file of the same name, and a
+  # series named cluster_cost_collector:fresh, must not keep them alive.
+  - interval: 1m
+    input_series:
+      - series: 'node_textfile_mtime_seconds{job="login_node",instance="localhost:9100",instance_name="HeadNode",file="/textfile/cluster_cost.prom"}'
+        values: '0+60x60 3600x120'
+      - series: 'cluster_cost_usd_per_hour{job="login_node",instance="localhost:9100",instance_name="HeadNode",component="instance",node_role="login",ec2_instance_type="t3.medium",purchase_option="on_demand"}'
+        values: '0.0416x180'
+      - series: 'cluster_cost_accumulated_usd{job="login_node",instance="localhost:9100",instance_name="HeadNode",period="month",component="instance",node_role="login",ec2_instance_type="t3.medium",purchase_option="on_demand"}'
+        values: '5x180'
+      - series: 'node_textfile_mtime_seconds{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute",file="/textfile/cluster_cost.prom"}'
+        values: '0+60x180'
+      - series: 'cluster_cost_collector:fresh{job="ec2_instances",instance="10.0.1.5:9400",instance_name="Compute"}'
+        values: '1x180'
+    promql_expr_test:
+      # 120 s since the last write: the forged mtime (0 s old) is not taken.
+      - expr: cluster_cost_collector:fresh{job=""}
+        eval_time: 62m
+        exp_samples:
+          - labels: 'cluster_cost_collector:fresh'
+            value: 120
+      - expr: cluster_cost_collector:fresh{job=""}
+        eval_time: 70m
+        exp_samples: []
+      - expr: cluster:cluster_cost_usd_per_hour:sum{job=""}
+        eval_time: 70m
+        exp_samples: []
+      - expr: cluster:cluster_cost_projected_month_usd:avg_24h{job=""}
+        eval_time: 70m
+        exp_samples: []
