@@ -718,7 +718,13 @@ Validated live:
   the RHEL instances were priced at the RHEL On-Demand rate (operation
   `RunInstances:0010`);
 - the standalone PCS login node's discovery and fees;
-- AWS CLI 2.31.35, 2.33.0, 2.40.3 and 2.41.0 error formats.
+- AWS CLI 2.31.35, 2.33.0, 2.40.3 and 2.41.0 error formats;
+- on 2026-11-27, AWS PCS with Slurm 26.05.5 and node groups in standard
+  configuration: a login node group, identified by its own node group
+  (`LOGIN_NODE_GROUP_ID`), on the PCS-ready DLAMI, with CPU and GPU node
+  groups. 87 checks matched with one login node group, and 98 with a
+  launch-template login node group tagged `monitoring-role=login` beside
+  it.
 
 Covered by unit tests only:
 - the Slurm 24.11 JSON of older ParallelCluster versions;

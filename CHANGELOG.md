@@ -212,6 +212,70 @@ Rejected:
   the limitation; "How it works" lists `LOGIN_NODE_GROUP_ID`; an upgrade
   note covers env files without it.
 
+### Validation
+
+This release was validated live on 2026-11-27 in us-east-1, on an AWS PCS
+cluster of size SMALL with Slurm 26.05.5, accounting off, and PCS agent
+1.6.0-1:
+- **Standard configuration**, set up from the README's two JSON blocks: a
+  login node group (t3.large), a CPU node group (c6i.large) and a GPU node
+  group (g4dn.xlarge, Tesla T4, driver 595.112.07) on the PCS-ready DLAMI
+  (Ubuntu 24.04, Docker 29.9.3), which is the console's default, and a CPU
+  node group on the Amazon Linux 2023 sample AMI, where the action
+  installed Docker 25.0.14. The actions took 105 s on the login node, 20 s
+  and 35 s on the CPU nodes, and 71 s on the GPU node, where the installer
+  updated the NVIDIA Container Toolkit from 1.20.1 to 1.20.2 and started
+  dcgm-exporter.
+- **Launch templates** with the README's unchanged user data: a CPU node
+  group and, later, a login node group tagged `monitoring-role=login`, both
+  on the Amazon Linux 2023 sample AMI.
+
+Every check passed:
+- **Install.** Every lifecycle action exited 0. Each install log named the
+  source of the node's identity (`node lifecycle action` or
+  `instance tags`), and each `pcs-node.env` held the node's instance,
+  cluster, node group and role.
+- **Login node identified.** Prometheus on the login node dropped its own
+  node group from EC2 service discovery and served the login node once, as
+  `HeadNode`. The four compute nodes were `Compute`, with no duplicate
+  `node_uname_info` series. Login Node List and Compute Node List showed
+  exactly those rows. The cost collector counted 1 login and 4 compute
+  nodes. An independent calculation, which took the login node groups from
+  the PCS queues (a node group in no queue), matched all 87 figures within
+  $0.000001 per hour. Eight dashboards ran every panel query through
+  Grafana without an error.
+- **Re-run and reboot.** A re-run of `install.sh` without the lifecycle
+  action's variables used the saved identity. It left `prometheus.yml`,
+  `cluster-cost.env`, `pcs-node.env` and the containers unchanged. The
+  Grafana password refresh worked, and so did an admin login with the
+  password from SSM. After `scontrol reboot`, the CPU node kept its
+  instance, the action didn't run again, and Prometheus scraped the node
+  again after 43 s.
+- **Launch templates.** Both launch-template nodes found their identity in
+  the instance tags, as before. With both login nodes up, the
+  standard-configuration login node dropped the launch-template login node
+  by its tag and counted it as a login node. The launch-template login
+  node showed the other one as a compute node in its node group's queue
+  line, which is the known limitation above. After the
+  standard-configuration login node group was deleted, the launch-template
+  login node passed the same checks on its own.
+- **v3.0**, run on the same standard-configuration node, stopped with
+  `Cannot detect platform`.
+- **No instance tags in IMDS.** On every standard-configuration node,
+  `meta-data/tags/instance` returned 404. The launch templates that PCS
+  creates for these node groups don't enable instance tags in metadata, and
+  the node group's own tags don't reach the instances. The
+  `aws:pcs:cluster-id` and `aws:pcs:compute-node-group-id` EC2 tags are
+  present, and EC2 service discovery and the collector rely on them.
+  `/etc/aws-pcs` existed on no node.
+
+Not validated live: Slurm 25.11, arm64, RHEL 10, Rocky Linux 10 and
+Ubuntu 26.04 custom AMIs in standard configuration, more than one
+standard-configuration login node group, and node groups that scale
+(minimum below maximum). The dpkg lock wait didn't run either: the
+PCS-ready DLAMI already has `jq`, `bc` and `python3`, so the installer
+called no `apt-get`.
+
 ## v3.0 — 2026-11-27
 
 Rebuilds the Cluster Costs feature, collector and dashboard, on
