@@ -138,8 +138,21 @@ scrape_configs:
       # with MonitoringRole=none) present an empty string here, which does NOT
       # match 'login', so they are kept and treated as compute. This frees the
       # EC2 'Name' tag for arbitrary operator use.
+      #
+      # Node groups without a launch template (standard configuration) can't
+      # tag their instances, so the second rule drops every instance of this
+      # login node's own compute node group: the installer substitutes its ID,
+      # from the node lifecycle action's PCS_COMPUTE_NODE_GROUP_ID or the
+      # instance's aws:pcs:compute-node-group-id tag. A login node launched
+      # outside PCS has no node group, and the installer writes 'none'. The
+      # regex is anchored, and no PCS node group ID is 'none', so it then
+      # drops nothing. (An empty regex would match every target without the
+      # tag.)
       - source_labels: [__meta_ec2_tag_monitoring_role]
         regex: login
+        action: drop
+      - source_labels: [__meta_ec2_tag_aws_pcs_compute_node_group_id]
+        regex: '__PCS_LOGIN_NODE_GROUP_ID__'
         action: drop
       - source_labels: [__meta_ec2_tag_aws_pcs_compute_node_group_id]
         target_label: node_group_id
