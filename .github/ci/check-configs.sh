@@ -37,14 +37,23 @@ fail() {
     exit 1
 }
 
-# The image that compose/head.yml pins for a service.
+# The image that compose/head.yml pins for a service, pulled unless it's
+# present. A registry can refuse an anonymous pull for a while, so the pull
+# is tried three times.
 image_of() {
-    local image
+    local image try
     image="$(awk -v svc="  $1:" '
         $0 == svc { found = 1; next }
         found && /^([^ #]|  [^ #])/ { exit }
         found && $1 == "image:" { gsub(/["\047]/, "", $2); print $2; exit }' compose/head.yml)"
     [[ -n "${image}" ]] || fail "no image for service $1 in compose/head.yml"
+    if ! docker image inspect "${image}" >/dev/null 2>&1; then
+        for try in 1 2 3; do
+            docker pull -q "${image}" >&2 && break
+            [[ "${try}" == 3 ]] && fail "could not pull ${image}"
+            sleep 20
+        done
+    fi
     echo "${image}"
 }
 

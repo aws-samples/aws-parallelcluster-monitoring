@@ -125,19 +125,32 @@ jobs:
       fail-fast: false
       matrix:
         # The oldest Python the collector supports (Amazon Linux 2's) and the
-        # newest release.
+        # newest release. The official python:<version>-slim images, pinned
+        # by digest.
         include:
           - python: '3.7'
-            image: public.ecr.aws/docker/library/python:3.7-slim@sha256:b53f496ca43e5af6994f8e316cf03af31050bf7944e0e4a308ad86c001cf028b
+            digest: sha256:b53f496ca43e5af6994f8e316cf03af31050bf7944e0e4a308ad86c001cf028b
           - python: '3.14'
-            image: public.ecr.aws/docker/library/python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b
+            digest: sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - name: python3 -m unittest discover -s cost/tests -t cost
+      - name: Pull python:${{ matrix.python }}-slim
         env:
-          IMAGE: ${{ matrix.image }}
+          PYTHON: ${{ matrix.python }}
+          DIGEST: ${{ matrix.digest }}
+        # Docker Hub, or the same image from its Amazon ECR Public mirror when
+        # Docker Hub refuses the anonymous pull.
+        run: |
+          for image in "python:${PYTHON}-slim@${DIGEST}" "public.ecr.aws/docker/library/python:${PYTHON}-slim@${DIGEST}"; do
+              if docker pull -q "${image}"; then
+                  echo "IMAGE=${image}" >> "${GITHUB_ENV}"
+                  exit 0
+              fi
+          done
+          exit 1
+      - name: python3 -m unittest discover -s cost/tests -t cost
         run: |
           docker run --rm --network none --user "$(id -u):$(id -g)" -v "${PWD}:/w:ro" -w /w "${IMAGE}" \
               python3 -B -m unittest discover -s cost/tests -t cost
