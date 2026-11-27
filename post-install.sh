@@ -3,11 +3,17 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #
-# Monitoring install entrypoint. Works with both AWS ParallelCluster
-# (via OnNodeConfigured CustomActions) and AWS PCS (via launch template
-# user data).
+# Monitoring install entrypoint. Works with AWS ParallelCluster (via
+# OnNodeConfigured CustomActions) and AWS PCS (via a node lifecycle action,
+# or launch template user data).
 #
-# Usage: post-install.sh [ref] [repo_slug]
+# Usage: post-install.sh [--role login|compute] [ref] [repo_slug]
+#   --role     AWS PCS only: the node's role, for node groups whose instances
+#              have no monitoring-role tag in IMDS (node lifecycle actions,
+#              where the node group has no launch template). login runs the
+#              monitoring stack, compute the exporters. Also --role=<role>;
+#              allowed anywhere among the arguments.
+#              Default: the monitoring-role instance tag, else compute.
 #   ref        Git tag, branch, or "latest" (resolves to newest release).
 #              Default: latest
 #   repo_slug  GitHub "owner/repo" to download from.
@@ -15,8 +21,43 @@
 #
 set -euo pipefail
 
-REF="${1:-latest}"
-REPO_SLUG="${2:-aws-samples/aws-parallelcluster-monitoring}"
+# Separate --role from the positional arguments, and check it before
+# anything is downloaded.
+role_given=0
+role=""
+positional=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --role)
+            role_given=1
+            role="${2:-}"
+            shift
+            [[ $# -gt 0 ]] && shift
+            ;;
+        --role=*)
+            role_given=1
+            role="${1#--role=}"
+            shift
+            ;;
+        *)
+            positional+=("$1")
+            shift
+            ;;
+    esac
+done
+if [[ "${role_given}" == 1 ]]; then
+    case "${role}" in
+        login|compute) export MONITORING_ROLE="${role}" ;;
+        *)
+            echo "ERROR: --role must be login or compute, not '${role}'" >&2
+            echo "Usage: post-install.sh [--role login|compute] [ref] [repo_slug]" >&2
+            exit 2
+            ;;
+    esac
+fi
+
+REF="${positional[0]:-latest}"
+REPO_SLUG="${positional[1]:-aws-samples/aws-parallelcluster-monitoring}"
 MONITORING_DIR_NAME="aws-parallelcluster-monitoring"
 # Download into a private directory that is removed on exit. A fixed /tmp
 # path could be pre-created by another local user, who could then block the

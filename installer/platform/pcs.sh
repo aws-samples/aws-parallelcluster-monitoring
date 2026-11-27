@@ -5,22 +5,50 @@
 #
 # AWS Parallel Computing Service (PCS) platform module.
 #
-# Identifies a PCS node by the union of two tag sources:
+# Resolves the node's cluster, compute node group and role from the first
+# source that has them:
 #
-# 1. Compute nodes launched by PCS itself carry these tags
-#    (set by PCS, not user-controllable, only present on ng instances):
-#      aws:pcs:cluster-id
-#      aws:pcs:compute-node-group-id
+# 1. The node lifecycle action. On node groups in standard configuration (no
+#    launch template), post-install.sh runs as a lifecycle action. The PCS
+#    agent exports PCS_CLUSTER_ID and PCS_COMPUTE_NODE_GROUP_ID, and the
+#    role comes from post-install.sh's --role argument (MONITORING_ROLE).
+#    These nodes have no user data and no instance tags in IMDS.
 #
-# 2. Login nodes are typically launched outside PCS (a plain EC2 instance
-#    against the cluster's SG), so they don't get the aws:pcs:* tags
-#    automatically. The launch template should set:
-#      monitoring-role=login
-#      pcs-cluster-id=<id>          (mirror of aws:pcs:cluster-id)
-#    The aws: tag namespace is reserved by AWS, hence the mirror.
+# 2. The instance tags, through IMDS (launch templates with
+#    InstanceMetadataTags=enabled):
+#      aws:pcs:cluster-id, aws:pcs:compute-node-group-id
+#        set by PCS on the instances of a compute node group;
+#      pcs-cluster-id=<id>, monitoring-role=login
+#        set by the launch template of a login node launched outside PCS,
+#        which gets no aws:pcs:* tags. The aws: tag namespace is reserved by
+#        AWS, hence the mirror.
+#
+# 3. The identity saved by an earlier install on this instance
+#    (PCS_NODE_ENV_FILE, see platform.sh), for re-runs of install.sh outside
+#    the lifecycle action.
 #
 # Reads cluster metadata (slurmctld endpoint) via the PCS API.
 #
+
+# _save_pcs_identity <cluster ID> <node group ID> <role>: write
+# PCS_NODE_ENV_FILE (root, 0644, through a temporary file and a rename),
+# with this instance's ID. Called by _load_pcs, which defines _imds.
+_save_pcs_identity() {
+    local instance_id role="$3" tmp="${PCS_NODE_ENV_FILE}.new"
+    instance_id=$(_imds "instance-id" 2>/dev/null) || instance_id=""
+    if [[ ! "${instance_id}" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+        warn "Could not read this instance's ID from IMDS: not saving the PCS identity to ${PCS_NODE_ENV_FILE}"
+        return 0
+    fi
+    # A monitoring-role tag can hold any value; save only one the file's
+    # parser accepts.
+    [[ "${role}" =~ ^[A-Za-z0-9_-]{0,128}$ ]] || role=""
+    install -d -m 0755 "$(dirname "${PCS_NODE_ENV_FILE}")"
+    printf 'INSTANCE_ID=%s\nPCS_CLUSTER_ID=%s\nPCS_COMPUTE_NODE_GROUP_ID=%s\nMONITORING_ROLE=%s\n' \
+        "${instance_id}" "$1" "$2" "${role}" > "${tmp}"
+    chmod 0644 "${tmp}"
+    mv -f "${tmp}" "${PCS_NODE_ENV_FILE}"
+}
 
 _load_pcs() {
     local token
@@ -33,20 +61,53 @@ _load_pcs() {
             "http://169.254.169.254/latest/meta-data/$1"
     }
 
-    # Try the PCS-managed tag first; fall back to the user-set mirror tag
-    # for login nodes that were launched directly against the cluster.
-    local cluster_id ng_id region node_type
-    cluster_id=$(_imds "tags/instance/aws:pcs:cluster-id" 2>/dev/null) \
-        || cluster_id=$(_imds "tags/instance/pcs-cluster-id" 2>/dev/null) \
-        || die "Cannot detect PCS cluster: instance has neither aws:pcs:cluster-id (set by PCS on managed nodes) nor pcs-cluster-id (mirror tag for login nodes). Check MetadataOptions.InstanceMetadataTags=enabled on the launch template, and that the user-data sets pcs-cluster-id for login-fleet instances launched outside PCS."
-
-    ng_id=$(_imds "tags/instance/aws:pcs:compute-node-group-id" 2>/dev/null || echo "")
+    # Cluster and compute node group. A login node launched outside PCS has
+    # no node group.
+    local cluster_id="" ng_id="" region node_type id_source role_source
+    if [[ -n "${PCS_CLUSTER_ID:-}" ]]; then
+        cluster_id="${PCS_CLUSTER_ID}"
+        ng_id="${PCS_COMPUTE_NODE_GROUP_ID:-}"
+        id_source="node lifecycle action"
+    elif cluster_id=$(_imds "tags/instance/aws:pcs:cluster-id" 2>/dev/null) \
+        || cluster_id=$(_imds "tags/instance/pcs-cluster-id" 2>/dev/null); then
+        ng_id=$(_imds "tags/instance/aws:pcs:compute-node-group-id" 2>/dev/null || echo "")
+        id_source="instance tags"
+    elif [[ -n "${SAVED_PCS_CLUSTER_ID:-}" ]]; then
+        cluster_id="${SAVED_PCS_CLUSTER_ID}"
+        ng_id="${SAVED_PCS_NODE_GROUP_ID:-}"
+        id_source="saved identity"
+    else
+        die "Cannot detect the PCS cluster: no PCS_CLUSTER_ID from a node lifecycle action, no aws:pcs:cluster-id or pcs-cluster-id instance tag in IMDS, and no identity saved on this instance in ${PCS_NODE_ENV_FILE}. On node groups without a launch template, run post-install.sh as a node lifecycle action. With a launch template, set MetadataOptions.InstanceMetadataTags=enabled, and set pcs-cluster-id on login nodes launched outside PCS."
+    fi
+    # The IDs go into sed expressions and env files. Every PCS ID matches.
+    [[ "${cluster_id}" =~ ^[A-Za-z0-9_-]{1,128}$ ]] \
+        || die "Invalid PCS cluster ID from the ${id_source}: '${cluster_id:0:140}'"
+    [[ -z "${ng_id}" || "${ng_id}" =~ ^[A-Za-z0-9_-]{1,128}$ ]] \
+        || die "Invalid PCS compute node group ID from the ${id_source}: '${ng_id:0:140}'"
 
     region=$(_imds "placement/region") || die "Could not read region"
 
-    # Node type: 'monitoring-role' tag identifies which node runs the
-    # full monitoring stack (login). Default: compute.
-    node_type=$(_imds "tags/instance/monitoring-role" 2>/dev/null || echo "compute")
+    # Node type: login runs the full monitoring stack, compute the exporters.
+    # post-install.sh --role sets MONITORING_ROLE; with a launch template the
+    # monitoring-role tag does (any other value, such as none, skips the
+    # install). Default: compute.
+    if [[ -n "${MONITORING_ROLE:-}" ]]; then
+        case "${MONITORING_ROLE}" in
+            login|compute) node_type="${MONITORING_ROLE}" ;;
+            *) die "MONITORING_ROLE must be login or compute, not '${MONITORING_ROLE:0:64}'" ;;
+        esac
+        role_source="--role"
+    elif node_type=$(_imds "tags/instance/monitoring-role" 2>/dev/null); then
+        role_source="monitoring-role tag"
+    elif [[ -n "${SAVED_MONITORING_ROLE:-}" ]]; then
+        node_type="${SAVED_MONITORING_ROLE}"
+        role_source="saved identity"
+    else
+        node_type="compute"
+        role_source="default"
+    fi
+    log "PCS identity from ${id_source}: cluster ${cluster_id}, node group ${ng_id:-none}, role ${node_type} (${role_source})"
+    _save_pcs_identity "${cluster_id}" "${ng_id}" "${node_type}"
 
     # Slurmctld endpoint: needed by Prometheus to scrape native /metrics
     # on PCS. Discovered via PCS API on the login node.

@@ -32,19 +32,28 @@ if [[ -r /etc/parallelcluster/cfnconfig ]]; then
     REGION="${cfn_region}"
 else
     PLATFORM="pcs"
+    # The cluster ID that the installer resolved and saved in pcs-node.env.
+    # It is the only source on node groups without a launch template, whose
+    # instances have no tags in IMDS. Keep the path and the format in sync
+    # with installer/platform/platform.sh (PCS_NODE_ENV_FILE).
+    CLUSTER_NAME=$(sed -n '/^PCS_CLUSTER_ID=[A-Za-z0-9_-]\{1,128\}$/{s/^PCS_CLUSTER_ID=//p;q;}' \
+        /etc/aws-parallelcluster-monitoring/pcs-node.env 2>/dev/null) || CLUSTER_NAME=""
     _tok=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
         http://169.254.169.254/latest/api/token 2>/dev/null)
-    # PCS-managed compute nodes get aws:pcs:cluster-id; login fleets
-    # launched outside PCS use the pcs-cluster-id mirror tag (PCS reserves
-    # the aws: prefix). See installer/platform/pcs.sh for the same logic.
-    CLUSTER_NAME=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
-        http://169.254.169.254/latest/meta-data/tags/instance/aws:pcs:cluster-id 2>/dev/null) \
-        || CLUSTER_NAME=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
-        http://169.254.169.254/latest/meta-data/tags/instance/pcs-cluster-id 2>/dev/null)
+    # Without that file (an install before it existed): PCS-managed compute
+    # nodes get aws:pcs:cluster-id; login fleets launched outside PCS use the
+    # pcs-cluster-id mirror tag (PCS reserves the aws: prefix). See
+    # installer/platform/pcs.sh for the same logic.
+    if [[ -z "$CLUSTER_NAME" ]]; then
+        CLUSTER_NAME=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+            http://169.254.169.254/latest/meta-data/tags/instance/aws:pcs:cluster-id 2>/dev/null) \
+            || CLUSTER_NAME=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
+            http://169.254.169.254/latest/meta-data/tags/instance/pcs-cluster-id 2>/dev/null)
+    fi
     REGION=$(curl -sf -H "X-aws-ec2-metadata-token: $_tok" \
         http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null)
     [[ -z "$CLUSTER_NAME" || -z "$REGION" ]] && {
-        echo "ERROR: unable to detect platform (no cfnconfig, no PCS tags)" >&2
+        echo "ERROR: unable to detect platform (no cfnconfig, no saved PCS identity, no PCS tags)" >&2
         exit 1
     }
 fi

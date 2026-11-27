@@ -218,13 +218,16 @@ ensure_jq_and_bc() {
         return 0
     fi
     log "Fast path: installing missing head/login tools: ${missing[*]}"
+    # DPkg::Lock::Timeout makes apt-get install wait for the dpkg lock instead
+    # of failing: unattended-upgrades can hold it in the first minutes after
+    # boot, when a node lifecycle action runs on an AMI with Docker baked in.
     if [[ "${OS_ID}" == "ubuntu" ]]; then
-        DEBIAN_FRONTEND=noninteractive apt-get update || true
+        DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 update || true
     fi
     for tool in "${missing[@]}"; do
         case "${OS_ID}:${OS_VERSION_ID}" in
             amzn:2)   yum -y install "${tool}" ;;
-            ubuntu:*) DEBIAN_FRONTEND=noninteractive apt-get install -y "${tool}" ;;
+            ubuntu:*) DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y "${tool}" ;;
             *)        dnf -y install "${tool}" ;;
         esac || warn "could not install ${tool}"
     done
@@ -371,9 +374,11 @@ require_python3() {
     local check='import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)'
     /usr/bin/python3 -c "${check}" 2>/dev/null && return 0
     log "Installing python3 for the cost collector"
+    # DPkg::Lock::Timeout: see ensure_jq_and_bc.
     case "${OS_ID}:${OS_VERSION_ID}" in
         amzn:2)   yum -y install python3 ;;
-        ubuntu:*) { apt-get update || true; } && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 ;;
+        ubuntu:*) { apt-get -o DPkg::Lock::Timeout=600 update || true; } \
+                      && DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y python3 ;;
         *)        dnf -y install python3 ;;
     esac || true
     /usr/bin/python3 -c "${check}" 2>/dev/null \
