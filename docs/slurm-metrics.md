@@ -261,6 +261,10 @@ Other differences:
   it ends, 300 s by default, and the native series count only the jobs it
   holds. Jobs Completed, Jobs Failed and Failed (recent) count the jobs that
   ended in the last few minutes.
+- **Jobs waiting for their nodes.** A job whose nodes are still starting,
+  such as a job on a ParallelCluster dynamic node that is powering up,
+  counts as running in Jobs Running, Total Running Now, Jobs Over Time, Top
+  Users and Top Accounts. `squeue` shows it as CONFIGURING.
 - **Suspended jobs.** Their CPUs count as allocated in Top users (CPUs
   allocated) on Cluster Summary, and in Top Users, Top Accounts and Account
   Quota Utilization on Slurm Detail.

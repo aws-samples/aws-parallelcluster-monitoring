@@ -197,6 +197,9 @@ powered-down and draining nodes as `sinfo` does, on AWS PCS too.
     the Slurm exporter, whose own sdiag request counts as a thread;
   - Jobs Completed, Jobs Failed and Failed (recent) count only the jobs that
     ended in the last `MinJobAge`, 300 s by default;
+  - a job whose nodes are still starting, which `squeue` shows as
+    CONFIGURING, counts as running in Jobs Running, Total Running Now, Jobs
+    Over Time, Top Users and Top Accounts;
   - without Slurm accounting, Top Accounts shows an empty account, where the
     Slurm exporter shows `(null)`;
   - the default partition's name has no `*` in Top partitions (CPUs
