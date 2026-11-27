@@ -113,7 +113,7 @@ ParallelCluster docs for inline custom roles.
 
 ## Validation
 
-vNEXT changes only the EC2 statement, so its validation checks the actions
+v3.0 changes only the EC2 statement, so its validation checks the actions
 the cost collector calls. Both checks passed on 2026-11-26:
 - **IAM policy simulator** (`aws iam simulate-custom-policy`):
   `ec2:DescribeInstances`, `ec2:DescribeVolumes`,
@@ -133,4 +133,4 @@ the cost collector calls. Both checks passed on 2026-11-26:
 
 The policy's other statements are unchanged since v2.12, and their checks
 (SSM parameters, log groups, FSx, EFS and the Grafana CloudWatch
-datasource) weren't repeated for vNEXT.
+datasource) weren't repeated for v3.0.

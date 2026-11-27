@@ -1,6 +1,6 @@
 # Changelog
 
-## vNEXT — YYYY-MM-DD
+## v3.0 — 2026-11-27
 
 Rebuilds the Cluster Costs feature, collector and dashboard, on
 ParallelCluster and AWS PCS. The new collector prices every running cluster

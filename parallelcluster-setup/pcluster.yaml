@@ -5,7 +5,7 @@
 #
 # post-install.sh accepts up to two args:
 #   Args:
-#     - <ref>         # tag (e.g. vNEXT), branch (e.g. main), or latest. Default: latest
+#     - <ref>         # tag (e.g. v3.0), branch (e.g. main), or latest. Default: latest
 #     - <repo_slug>   # owner/repo. Default: aws-samples/aws-parallelcluster-monitoring
 #
 # Testing from a fork:
@@ -32,9 +32,9 @@ HeadNode:
       VolumeType: gp3
   CustomActions:
     OnNodeConfigured:
-      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/vNEXT/post-install.sh
+      Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v3.0/post-install.sh
       Args:
-        - vNEXT
+        - v3.0
   Iam:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
@@ -69,9 +69,9 @@ Scheduling:
             VolumeType: gp3
       CustomActions:
         OnNodeConfigured:
-          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/vNEXT/post-install.sh
+          Script: https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/v3.0/post-install.sh
           Args:
-            - vNEXT
+            - v3.0
       Iam:
         AdditionalIamPolicies:
           - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
