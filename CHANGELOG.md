@@ -1,11 +1,47 @@
 # Changelog
 
-## Unreleased
+## v3.1 — 2026-11-27
 
-Adds CI, and removes the account-specific values from `test-clusters/`.
-Neither changes what the installer deploys.
+Adds support for AWS PCS compute node groups in standard configuration,
+which have no launch template. Since 2026-11-12 the PCS console creates
+node groups this way by default. Their nodes get no user data, and only a
+custom launch template can set instance metadata options such as instance
+tags, which the installer needed to find the cluster and the node's role:
+it stopped with `Cannot detect platform`. `post-install.sh` now runs there
+as a PCS node lifecycle action, on login, CPU and GPU nodes. Node groups
+that use a launch template with user data keep working with the same
+configuration.
 
+It also ships the CI and the `test-clusters/` changes that landed on
+`main` after v3.0. Neither changes what the installer deploys.
 ### Added
+
+- **Install as a node lifecycle action.** Add `post-install.sh` to a node
+  group at the `nodeBootstrapped` stage, with the arguments
+  `--role login latest` on the login node group and `latest` on compute
+  node groups. The README gives the console fields and the
+  `--node-lifecycle-actions` JSON. The installer takes the cluster and the
+  compute node group from the `PCS_CLUSTER_ID` and
+  `PCS_COMPUTE_NODE_GROUP_ID` variables that the PCS agent exports to
+  lifecycle scripts. It needs PCS agent 1.5.0-1 or later.
+- **`post-install.sh --role login|compute`** (also `--role=<role>`,
+  anywhere among the arguments) sets the node's role. Any other value exits
+  with status 2 before anything is downloaded. Without `--role`, the role
+  comes from the `monitoring-role` instance tag as before, else the node is
+  a compute node. The positional `[ref] [repo_slug]` arguments are
+  unchanged.
+- **The installer saves each PCS node's identity** in
+  `/etc/aws-parallelcluster-monitoring/pcs-node.env` (root, 0644): the
+  instance ID, cluster ID, compute node group ID and role. A re-run of
+  `sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`, for
+  Cognito SSO or RES, uses it when the lifecycle action's variables and the
+  instance tags are missing, so a standard-configuration login node stays a
+  login node. The file is parsed, never sourced, and only counts on the
+  instance that wrote it, so the instances of an AMI baked from a monitored
+  node don't inherit its role. The install log names the source it used:
+  `PCS identity from node lifecycle action`, `instance tags` or
+  `saved identity`.
+
 
 - **CI.** A GitHub Actions workflow, `.github/workflows/ci.yml`, runs on
   every push to `main` and on every pull request. It needs no AWS account
@@ -34,81 +70,6 @@ Neither changes what the installer deploys.
   Prometheus, nginx and cloudwatch-exporter checks run the images that
   `compose/head.yml` pins. The check scripts are in `.github/ci/` and also
   run locally.
-
-### Changed
-
-- **`test-clusters/` has no account-specific values.** The scripts no longer
-  contain subnet, VPC, FSx, key pair or AMI IDs, or a Region. They read
-  their parameters from `test-clusters/config.env`, which git ignores, or
-  from the environment: `REGION` and `SUBNET_ID` are required, and `REF`
-  and `REPO` choose what the nodes install (`main` by default). The VPC
-  comes from the subnet, and the AMIs from a lookup by name. The old values
-  remain in the git history.
-- **`test-clusters/` matches the current platforms.**
-  - `pc-create.sh` writes the ParallelCluster configuration to
-    `.state/pc-cluster.yaml`, which replaces `pc-cluster.yaml`, and
-    `--dryrun` validates it without creating anything. The head node gets
-    the README's quick-start policies, `AmazonEC2ReadOnlyAccess` included.
-    The Python virtual environment that pcluster 3.15 needed is gone.
-  - On AWS PCS, the cluster runs Slurm 26.05 by default. The login and CPU
-    nodes use the newest AWS PCS sample AMI and the GPU node the newest
-    PCS-ready DLAMI, which has the NVIDIA driver. The login node is a node
-    group in no queue instead of a separate instance. The IAM roles have the
-    permissions that the README lists, and the instance tags come from the
-    launch templates, as in the README's quickstart.
-  - `test-clusters/README.md` describes the parameters, the resources and
-    their prices.
-
-### Documentation
-
-- **Roadmap.** The CI item is done. hadolint is dropped from it, because
-  the repository has no Dockerfiles.
-- **v3.0 on RHEL 10, Rocky Linux 10 and Ubuntu 26.04.** After its release,
-  on 2026-11-27, v3.0 was validated live on these operating systems on AWS
-  PCS with Slurm 26.05.5, with a login node and a CPU compute node each.
-  [docs/cost-estimates.md](docs/cost-estimates.md) moves them from "Covered
-  by unit tests only" to "Validated live", and the README's section on them
-  says what the v3.0 and v2.13 validations covered.
-
-## vNEXT — 2026-11-27
-
-Adds support for AWS PCS compute node groups in standard configuration,
-which have no launch template. Since 2026-11-12 the PCS console creates
-node groups this way by default. Their nodes get no user data, and only a
-custom launch template can set instance metadata options such as instance
-tags, which the installer needed to find the cluster and the node's role:
-it stopped with `Cannot detect platform`. `post-install.sh` now runs there
-as a PCS node lifecycle action, on login, CPU and GPU nodes. Node groups
-that use a launch template with user data keep working with the same
-configuration.
-
-### Added
-
-- **Install as a node lifecycle action.** Add `post-install.sh` to a node
-  group at the `nodeBootstrapped` stage, with the arguments
-  `--role login latest` on the login node group and `latest` on compute
-  node groups. The README gives the console fields and the
-  `--node-lifecycle-actions` JSON. The installer takes the cluster and the
-  compute node group from the `PCS_CLUSTER_ID` and
-  `PCS_COMPUTE_NODE_GROUP_ID` variables that the PCS agent exports to
-  lifecycle scripts. It needs PCS agent 1.5.0-1 or later.
-- **`post-install.sh --role login|compute`** (also `--role=<role>`,
-  anywhere among the arguments) sets the node's role. Any other value exits
-  with status 2 before anything is downloaded. Without `--role`, the role
-  comes from the `monitoring-role` instance tag as before, else the node is
-  a compute node. The positional `[ref] [repo_slug]` arguments are
-  unchanged.
-- **The installer saves each PCS node's identity** in
-  `/etc/aws-parallelcluster-monitoring/pcs-node.env` (root, 0644): the
-  instance ID, cluster ID, compute node group ID and role. A re-run of
-  `sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`, for
-  Cognito SSO or RES, uses it when the lifecycle action's variables and the
-  instance tags are missing, so a standard-configuration login node stays a
-  login node. The file is parsed, never sourced, and only counts on the
-  instance that wrote it, so the instances of an AMI baked from a monitored
-  node don't inherit its role. The install log names the source it used:
-  `PCS identity from node lifecycle action`, `instance tags` or
-  `saved identity`.
 
 ### How a login node is identified in standard configuration
 
@@ -178,6 +139,29 @@ Rejected:
   Container Toolkit. A lifecycle action runs minutes after boot, when
   unattended-upgrades can hold that lock.
 
+
+- **`test-clusters/` has no account-specific values.** The scripts no longer
+  contain subnet, VPC, FSx, key pair or AMI IDs, or a Region. They read
+  their parameters from `test-clusters/config.env`, which git ignores, or
+  from the environment: `REGION` and `SUBNET_ID` are required, and `REF`
+  and `REPO` choose what the nodes install (`main` by default). The VPC
+  comes from the subnet, and the AMIs from a lookup by name. The old values
+  remain in the git history.
+- **`test-clusters/` matches the current platforms.**
+  - `pc-create.sh` writes the ParallelCluster configuration to
+    `.state/pc-cluster.yaml`, which replaces `pc-cluster.yaml`, and
+    `--dryrun` validates it without creating anything. The head node gets
+    the README's quick-start policies, `AmazonEC2ReadOnlyAccess` included.
+    The Python virtual environment that pcluster 3.15 needed is gone.
+  - On AWS PCS, the cluster runs Slurm 26.05 by default. The login and CPU
+    nodes use the newest AWS PCS sample AMI and the GPU node the newest
+    PCS-ready DLAMI, which has the NVIDIA driver. The login node is a node
+    group in no queue instead of a separate instance. The IAM roles have the
+    permissions that the README lists, and the instance tags come from the
+    launch templates, as in the README's quickstart.
+  - `test-clusters/README.md` describes the parameters, the resources and
+    their prices.
+
 ### Known limitations
 
 - **One login node group in standard configuration.** Only the monitoring
@@ -211,6 +195,16 @@ Rejected:
   node groups without `monitoring-role=login`") gives the three rules and
   the limitation; "How it works" lists `LOGIN_NODE_GROUP_ID`; an upgrade
   note covers env files without it.
+
+
+- **Roadmap.** The CI item is done. hadolint is dropped from it, because
+  the repository has no Dockerfiles.
+- **v3.0 on RHEL 10, Rocky Linux 10 and Ubuntu 26.04.** After its release,
+  on 2026-11-27, v3.0 was validated live on these operating systems on AWS
+  PCS with Slurm 26.05.5, with a login node and a CPU compute node each.
+  [docs/cost-estimates.md](docs/cost-estimates.md) moves them from "Covered
+  by unit tests only" to "Validated live", and the README's section on them
+  says what the v3.0 and v2.13 validations covered.
 
 ### Validation
 
