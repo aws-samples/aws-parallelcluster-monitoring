@@ -132,7 +132,8 @@ at an upgrade. A running head node doesn't switch when `MetricsType` changes.
 
 On the head node:
 
-- The install log names the source and the reason:
+- The install log names the source and the reason of the last
+  `post-install.sh` run, at cluster creation or at an upgrade:
 
   ```bash
   sudo grep 'Slurm metrics source' /var/log/parallelcluster-monitoring-install.log
@@ -141,6 +142,11 @@ On the head node:
   ```
   [monitoring-install] Slurm metrics source: native (slurmctld serves them on 127.0.0.1:6820)
   ```
+
+  A re-run of `install.sh` prints the same line in its own output, and
+  doesn't write the install log. After such a re-run, the install log still
+  names the source of the last `post-install.sh` run, so use the two checks
+  below.
 
 - `systemctl status slurm_exporter` reports that the unit can't be found on
   the native path, and that it is active on the Slurm exporter path.
@@ -166,7 +172,9 @@ Until the re-run, the head node keeps its native scrape jobs, and they get no
 data. Without `MetricsType`, slurmctld still answers every endpoint with HTTP
 200 and an empty body, so Prometheus marks the targets up, stores no samples,
 and the Slurm panels read 0 or show no data.
-`scrape_samples_scraped{job=~"slurm_openmetrics.*"} == 0` shows this state.
+`scrape_samples_scraped{job=~"slurm_openmetrics.*", job!="slurm_openmetrics_jobs_users_accts"} == 0`
+shows this state. It leaves out the job `slurm_openmetrics_jobs_users_accts`,
+whose endpoint is also empty when the cluster has no jobs.
 
 To keep the Slurm exporter on a cluster, don't set `MetricsType`.
 

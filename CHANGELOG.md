@@ -27,11 +27,12 @@ powered-down and draining nodes as `sinfo` does, on AWS PCS too.
   - stops and disables `slurm_exporter.service`, and deletes its unit and
     `/usr/bin/prometheus-slurm-exporter`, if they exist.
 
-  In every other case it installs the Slurm exporter, as before. The
-  install log names the source and the reason, for example
+  In every other case it installs the Slurm exporter, as before. Each run
+  prints the source and the reason, for example
   `Slurm metrics source: native (slurmctld serves them on 127.0.0.1:6820)`
   or `Slurm metrics source: exporter (HTTP 200 without the slurm_jobs
-  series: MetricsType is not metrics/openmetrics)`.
+  series: MetricsType is not metrics/openmetrics)`, and the install log
+  keeps the line of the last `post-install.sh` run.
 - `prometheus/scrape-slurm-native.yml` and
   `prometheus/scrape-slurm-exporter.yml`, the Slurm scrape jobs of each
   source.
@@ -169,7 +170,10 @@ powered-down and draining nodes as `sinfo` does, on AWS PCS too.
   `pcluster update-cluster`, then re-run the installer on the head node
   (`sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`).
   Until the re-run, a head node that scrapes native metrics reads 0 on its
-  Slurm panels once `MetricsType` is gone.
+  Slurm panels once `MetricsType` is gone. The re-run prints the source it
+  chooses but doesn't write the install log, so check the switch with
+  `systemctl` or Prometheus's targets
+  ([docs/slurm-metrics.md](docs/slurm-metrics.md#check-which-source-a-head-node-uses)).
 - Never set `MetricsType` on ParallelCluster 3.14: its Slurm 24.11 rejects
   the key, and slurmctld doesn't start.
 - Clusters without `MetricsType` keep the Slurm exporter and every panel
