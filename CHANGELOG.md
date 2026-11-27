@@ -1,6 +1,6 @@
 # Changelog
 
-## vNEXT — 2026-11-27
+## v3.2 — 2026-11-27
 
 Uses Slurm's native metrics on ParallelCluster head nodes whose slurmctld
 serves them, as AWS PCS already does, and keeps the Slurm exporter
