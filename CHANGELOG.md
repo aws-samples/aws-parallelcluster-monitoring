@@ -1,6 +1,6 @@
 # Changelog
 
-## vNEXT — 2026-11-27
+## Unreleased
 
 Adds CI, and removes the account-specific values from `test-clusters/`.
 Neither changes what the installer deploys.
