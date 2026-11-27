@@ -1,0 +1,10 @@
+# yamllint configuration for CI: yamllint --strict -c .github/ci/yamllint.yml
+extends: relaxed
+
+rules:
+  line-length: disable
+  indentation:
+    # installer/install.sh appends this snippet under scrape_configs, so it
+    # starts at the indentation of a scrape job.
+    ignore: |
+      prometheus/prometheus-res.yml

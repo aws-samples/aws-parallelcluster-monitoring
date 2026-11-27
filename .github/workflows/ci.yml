@@ -1,0 +1,143 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Static checks on every push to main and on every pull request. They need no
+# AWS account and no secrets. Each step runs one command from the repository
+# root, so a check can be repeated locally with the same command; the
+# checks in .github/ci/check-configs.sh need Docker.
+#
+# The tools are pinned here by version and SHA-256. The Prometheus, nginx and
+# cloudwatch-exporter images are the ones compose/head.yml deploys, so the
+# configurations are checked by the versions that run them.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # Every push to main keeps its own result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SHELLCHECK_VERSION: v0.11.0
+  SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+  ACTIONLINT_VERSION: 1.7.12
+  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+  # The version installer/common.sh installs (COMPOSE_PLUGIN_VERSION).
+  COMPOSE_VERSION: v5.8.0
+  COMPOSE_SHA256: b8840f5008c447f41fce0a57ae3adeab42c89b1eb6e6012524bcabbfb4ffbaf6
+
+jobs:
+  lint:
+    name: shellcheck, yamllint, actionlint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install shellcheck, actionlint and yamllint
+        run: |
+          cd "${RUNNER_TEMP}"
+          mkdir bin
+          curl -fsSLO "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" | sha256sum -c -
+          tar -xJf "shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" -C bin --strip-components=1 "shellcheck-${SHELLCHECK_VERSION}/shellcheck"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | sha256sum -c -
+          tar -xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -C bin actionlint
+          python3 -m venv venv
+          venv/bin/python -m pip install --quiet --disable-pip-version-check --require-hashes \
+              -r "${GITHUB_WORKSPACE}/.github/ci/requirements.txt"
+          ln -s "${RUNNER_TEMP}/venv/bin/yamllint" bin/yamllint
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+      - name: shellcheck
+        run: |
+          shellcheck --version
+          git ls-files -z -- '*.sh' | xargs -0 shellcheck -x
+      - name: yamllint
+        run: |
+          yamllint --version
+          git ls-files -z -- '*.yml' '*.yaml' | xargs -0 yamllint --strict -c .github/ci/yamllint.yml
+      - name: actionlint
+        run: |
+          actionlint --version
+          actionlint
+
+  configs:
+    name: Prometheus, Compose, nginx and cloudwatch-exporter configs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Docker Compose
+        run: |
+          pinned="$(sed -n 's/^readonly COMPOSE_PLUGIN_VERSION="\(.*\)"$/\1/p' installer/common.sh)"
+          if [[ "${pinned}" != "${COMPOSE_VERSION}" ]]; then
+              echo "::error file=installer/common.sh::installer/common.sh installs Compose ${pinned:-?}, CI ${COMPOSE_VERSION}. Update COMPOSE_VERSION and COMPOSE_SHA256 in .github/workflows/ci.yml."
+              exit 1
+          fi
+          mkdir "${RUNNER_TEMP}/bin"
+          curl -fsSL -o "${RUNNER_TEMP}/bin/docker-compose" \
+              "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-x86_64"
+          echo "${COMPOSE_SHA256}  ${RUNNER_TEMP}/bin/docker-compose" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/docker-compose"
+      - name: Prometheus configs, rules, rule unit tests and dashboard queries
+        run: .github/ci/check-configs.sh prometheus
+      - name: Compose files
+        run: COMPOSE="${RUNNER_TEMP}/bin/docker-compose" .github/ci/check-configs.sh compose
+      - name: nginx configuration
+        run: .github/ci/check-configs.sh nginx
+      - name: cloudwatch-exporter configuration
+        run: .github/ci/check-configs.sh cloudwatch
+
+  dashboards-and-docs:
+    name: Dashboards and Markdown links
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Dashboards (JSON, UIDs, links)
+        run: python3 .github/ci/check-dashboards.py
+      - name: Markdown links
+        run: python3 .github/ci/check-markdown-links.py
+
+  cost-unit-tests:
+    name: Cost collector unit tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest Python the collector supports (Amazon Linux 2's) and the
+        # newest release.
+        include:
+          - python: '3.7'
+            image: public.ecr.aws/docker/library/python:3.7-slim@sha256:b53f496ca43e5af6994f8e316cf03af31050bf7944e0e4a308ad86c001cf028b
+          - python: '3.14'
+            image: public.ecr.aws/docker/library/python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: python3 -m unittest discover -s cost/tests -t cost
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          docker run --rm --network none --user "$(id -u):$(id -g)" -v "${PWD}:/w:ro" -w /w "${IMAGE}" \
+              python3 -B -m unittest discover -s cost/tests -t cost

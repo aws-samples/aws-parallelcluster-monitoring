@@ -513,9 +513,12 @@ Images are pinned in `compose/*.yml` and never use `latest`: NGINX tracks the 1.
 
 ## Roadmap
 
-- Amazon Managed Prometheus / Managed Grafana path
-- CDK module for automated deployment
-- CI pipeline (shellcheck, hadolint, smoke tests)
+- [ ] Amazon Managed Prometheus / Managed Grafana path
+- [ ] CDK module for automated deployment
+- [x] CI pipeline: static checks and unit tests on every push to `main` and
+  every pull request ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+  Smoke tests on live clusters are still manual;
+  [test-clusters/](test-clusters/) creates the clusters.
 
 ## License
 

@@ -1,5 +1,69 @@
 # Changelog
 
+## vNEXT — 2026-11-27
+
+Adds CI, and removes the account-specific values from `test-clusters/`.
+Neither changes what the installer deploys.
+
+### Added
+
+- **CI.** A GitHub Actions workflow, `.github/workflows/ci.yml`, runs on
+  every push to `main` and on every pull request. It needs no AWS account
+  and no secrets, and runs:
+  - shellcheck on every shell script, yamllint on every YAML file, and
+    actionlint on the workflow;
+  - `promtool check config` on `prometheus/prometheus.yml` and
+    `prometheus/prometheus-pcs.yml`, rendered as the installer renders them,
+    each with and without the RES snippet; `promtool check rules` on
+    `prometheus/rules/` and on every Prometheus query in the dashboards; and
+    `promtool test rules` on the rule unit tests;
+  - `docker compose config` on the three compose files, with checks that the
+    head node's services keep listening on 127.0.0.1 and that only
+    Prometheus, Grafana and cloudwatch-exporter get the group that reads the
+    credentials file; `nginx -t` on `nginx/conf.d/`; and cloudwatch-exporter's
+    `--check-config` on its rendered configuration;
+  - checks that every dashboard is valid JSON, that the UIDs are unique in
+    the ParallelCluster and the AWS PCS layout, and that every
+    `/grafana/d/<uid>` link on the landing page and in the dashboards opens
+    a dashboard of the same layout;
+  - a check of the relative links and anchors in the Markdown files;
+  - the cost collector's unit tests, on Python 3.7 and 3.14.
+
+  The tools are pinned by version and SHA-256, and the checkout action by
+  commit SHA. The workflow's token can only read the repository. The
+  Prometheus, nginx and cloudwatch-exporter checks run the images that
+  `compose/head.yml` pins. The check scripts are in `.github/ci/` and also
+  run locally.
+
+### Changed
+
+- **`test-clusters/` has no account-specific values.** The scripts no longer
+  contain subnet, VPC, FSx, key pair or AMI IDs, or a Region. They read
+  their parameters from `test-clusters/config.env`, which git ignores, or
+  from the environment: `REGION` and `SUBNET_ID` are required, and `REF`
+  and `REPO` choose what the nodes install (`main` by default). The VPC
+  comes from the subnet, and the AMIs from a lookup by name. The old values
+  remain in the git history.
+- **`test-clusters/` matches the current platforms.**
+  - `pc-create.sh` writes the ParallelCluster configuration to
+    `.state/pc-cluster.yaml`, which replaces `pc-cluster.yaml`, and
+    `--dryrun` validates it without creating anything. The head node gets
+    the README's quick-start policies, `AmazonEC2ReadOnlyAccess` included.
+    The Python virtual environment that pcluster 3.15 needed is gone.
+  - On AWS PCS, the cluster runs Slurm 26.05 by default. The login and CPU
+    nodes use the newest AWS PCS sample AMI and the GPU node the newest
+    PCS-ready DLAMI, which has the NVIDIA driver. The login node is a node
+    group in no queue instead of a separate instance. The IAM roles have the
+    permissions that the README lists, and the instance tags come from the
+    launch templates, as in the README's quickstart.
+  - `test-clusters/README.md` describes the parameters, the resources and
+    their prices.
+
+### Documentation
+
+- **Roadmap.** The CI item is done. hadolint is dropped from it, because
+  the repository has no Dockerfiles.
+
 ## v3.0 — 2026-11-27
 
 Rebuilds the Cluster Costs feature, collector and dashboard, on

@@ -52,6 +52,7 @@ _load_pcs() {
     # on PCS. Discovered via PCS API on the login node.
     local slurmctld_ip=""
     if [[ "${node_type}" == "login" ]]; then
+        # shellcheck disable=SC2016  # the backticks are a JMESPath literal
         slurmctld_ip=$(aws pcs get-cluster --region "${region}" \
             --cluster-identifier "${cluster_id}" \
             --query 'cluster.endpoints[?type==`SLURMCTLD`].privateIpAddress | [0]' \

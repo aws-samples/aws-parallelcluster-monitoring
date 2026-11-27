@@ -1,153 +1,127 @@
 #!/usr/bin/env bash
-# Tear down everything created by efs-create.sh / pc-create.sh / pcs-create.sh.
-# Reverse dependency order: PCS resources → PC cluster → EFS.
+# Delete everything that pc-create.sh, efs-create.sh and pcs-create.sh
+# created, in reverse dependency order: the ParallelCluster cluster (its
+# deletion runs while the AWS PCS resources are deleted), the AWS PCS
+# resources, then the EFS file system. Blocks until they're gone.
 #
-# Safe to re-run; skips anything already gone.
+# Safe to re-run: it skips what is already gone. Uses the pcluster CLI on
+# PATH, or $PCLUSTER, of the cluster's version.
 set -uo pipefail
+# shellcheck source=test-clusters/settings.sh
+. "$(dirname "$0")/settings.sh"
+PCLUSTER="${PCLUSTER:-pcluster}"
 
-REGION="us-east-2"
-
-# pcluster 3.15.0 needs Python 3.11; venv if present, system otherwise
-if [[ -x /tmp/pcluster-venv/bin/pcluster ]]; then
-    PCLUSTER=/tmp/pcluster-venv/bin/pcluster
-else
-    PCLUSTER="$(command -v pcluster || true)"
-fi
-
-# ─── ParallelCluster ──────────────────────────────────────────────────
-PC_CLUSTER="monitoring-test-pc"
-echo "[1/3] Deleting ParallelCluster $PC_CLUSTER..."
-[[ -n "$PCLUSTER" ]] && "$PCLUSTER" delete-cluster -n "$PC_CLUSTER" --region "$REGION" 2>/dev/null || true
-# Wait a bit before we delete EFS (PC's compute nodes may still hold mounts)
-echo "  (giving pcluster CFN delete a head start...)"
-sleep 30
-
-# ─── PCS ──────────────────────────────────────────────────────────────
-echo "[2/3] Deleting PCS resources..."
-if [[ -f .state/pcs.env ]]; then
-    # shellcheck disable=SC1091
-    . .state/pcs.env
-
-    # Terminate login instance
-    if [[ -n "${PCS_LOGIN_ID:-}" ]]; then
-        echo "  terminating login: $PCS_LOGIN_ID"
-        aws ec2 terminate-instances --region "$REGION" --instance-ids "$PCS_LOGIN_ID" >/dev/null 2>&1 || true
-    fi
-
-    # Delete queues first
-    if [[ -n "${PCS_CLUSTER_ID:-}" ]]; then
-        for q in $(aws pcs list-queues --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" --query 'queues[].id' --output text 2>/dev/null || true); do
-            echo "  deleting queue $q"
-            aws pcs delete-queue --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" --queue-identifier "$q" >/dev/null 2>&1 || true
-        done
-
-        # Wait for queues gone before deleting node groups (dependency)
-        for _ in $(seq 1 30); do
-            n=$(aws pcs list-queues --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" --query 'length(queues)' --output text 2>/dev/null || echo "0")
-            [[ "$n" == "0" ]] && break
-            echo "    waiting for $n queues to delete..."
-            sleep 10
-        done
-
-        # Delete compute node groups
-        for ng in $(aws pcs list-compute-node-groups --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" --query 'computeNodeGroups[].id' --output text 2>/dev/null || true); do
-            echo "  deleting compute node group $ng"
-            aws pcs delete-compute-node-group --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" --compute-node-group-identifier "$ng" >/dev/null 2>&1 || true
-        done
-
-        # Wait for node groups gone
-        for _ in $(seq 1 60); do
-            n=$(aws pcs list-compute-node-groups --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" --query 'length(computeNodeGroups)' --output text 2>/dev/null || echo "0")
-            [[ "$n" == "0" ]] && break
-            echo "    waiting for $n node groups to delete..."
-            sleep 15
-        done
-
-        # Delete cluster
-        echo "  deleting PCS cluster $PCS_CLUSTER_ID"
-        aws pcs delete-cluster --region "$REGION" --cluster-identifier "$PCS_CLUSTER_ID" >/dev/null 2>&1 || true
-    fi
-
-    # Delete launch templates
-    for lt in "${PCS_LT_LOGIN:-}" "${PCS_LT_CPU:-}" "${PCS_LT_GPU:-}"; do
-        [[ -z "$lt" ]] && continue
-        echo "  deleting LT $lt"
-        aws ec2 delete-launch-template --region "$REGION" --launch-template-id "$lt" >/dev/null 2>&1 || true
+wait_until() { # wait_until TRIES SECONDS DESCRIPTION COMMAND...: until COMMAND succeeds
+    local tries="$1" seconds="$2" what="$3" _
+    shift 3
+    for _ in $(seq 1 "${tries}"); do
+        "$@" && return 0
+        echo "    waiting for ${what}..."
+        sleep "${seconds}"
     done
+    echo "WARNING: timed out waiting for ${what}" >&2
+    return 1
+}
+delete_sg() { aws ec2 delete-security-group --group-id "$1" 2>/dev/null; }
 
-    # Delete IAM role + instance profile
-    if [[ -n "${PCS_INSTANCE_PROFILE:-}" ]]; then
-        echo "  removing IAM role $PCS_INSTANCE_PROFILE"
-        aws iam remove-role-from-instance-profile --instance-profile-name "$PCS_INSTANCE_PROFILE" --role-name "$PCS_INSTANCE_PROFILE" 2>/dev/null || true
-        aws iam delete-instance-profile --instance-profile-name "$PCS_INSTANCE_PROFILE" 2>/dev/null || true
-        for arn in $(aws iam list-attached-role-policies --role-name "$PCS_INSTANCE_PROFILE" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null || true); do
-            aws iam detach-role-policy --role-name "$PCS_INSTANCE_PROFILE" --policy-arn "$arn" 2>/dev/null || true
-        done
-        for p in $(aws iam list-role-policies --role-name "$PCS_INSTANCE_PROFILE" --query 'PolicyNames[]' --output text 2>/dev/null || true); do
-            aws iam delete-role-policy --role-name "$PCS_INSTANCE_PROFILE" --policy-name "$p" 2>/dev/null || true
-        done
-        aws iam delete-role --role-name "$PCS_INSTANCE_PROFILE" 2>/dev/null || true
+# ─── ParallelCluster ─────────────────────────────────────────────────────
+echo "[1/3] ParallelCluster ${PC_CLUSTER}"
+pc_exists() { "${PCLUSTER}" describe-cluster -n "${PC_CLUSTER}" --region "${REGION}" >/dev/null 2>&1; }
+pc_gone() { ! pc_exists; }
+if ! command -v "${PCLUSTER}" >/dev/null; then
+    echo "  WARNING: no pcluster CLI; skipping ParallelCluster" >&2
+elif pc_exists; then
+    "${PCLUSTER}" delete-cluster -n "${PC_CLUSTER}" --region "${REGION}" >/dev/null && echo "  deleting"
+else
+    echo "  not found"
+fi
+
+# ─── AWS PCS ─────────────────────────────────────────────────────────────
+echo "[2/3] AWS PCS ${PCS_CLUSTER}"
+if [[ -f "${STATE}/pcs.env" ]]; then
+    # shellcheck source=/dev/null
+    . "${STATE}/pcs.env"
+    if [[ -f "${STATE}/efs.env" ]]; then
+        # shellcheck source=/dev/null
+        . "${STATE}/efs.env"
     fi
-
-    # Delete PCS instance SG (after cluster gone)
+    id="${PCS_CLUSTER_ID:-}"
+    queues() { aws pcs list-queues --cluster-identifier "${id}" --query 'queues[].id' --output text; }
+    node_groups() {
+        aws pcs list-compute-node-groups --cluster-identifier "${id}" --query 'computeNodeGroups[].id' --output text
+    }
+    no_queues() { [[ -z "$(queues 2>/dev/null)" ]]; }
+    no_node_groups() { [[ -z "$(node_groups 2>/dev/null)" ]]; }
+    cluster_gone() { ! aws pcs get-cluster --cluster-identifier "${id}" >/dev/null 2>&1; }
+    if [[ -n "${id}" ]] && ! cluster_gone; then
+        for q in $(queues); do
+            echo "  deleting queue ${q}"
+            aws pcs delete-queue --cluster-identifier "${id}" --queue-identifier "${q}" >/dev/null
+        done
+        wait_until 30 10 "the queues" no_queues
+        for ng in $(node_groups); do
+            echo "  deleting node group ${ng}"
+            aws pcs delete-compute-node-group --cluster-identifier "${id}" --compute-node-group-identifier "${ng}" >/dev/null
+        done
+        wait_until 60 15 "the node groups" no_node_groups
+        echo "  deleting cluster ${id}"
+        aws pcs delete-cluster --cluster-identifier "${id}" >/dev/null
+        wait_until 60 15 "cluster ${id}" cluster_gone
+    fi
+    for lt in "${PCS_LT_LOGIN:-}" "${PCS_LT_CPU:-}" "${PCS_LT_GPU:-}"; do
+        [[ -n "${lt}" ]] || continue
+        aws ec2 delete-launch-template --launch-template-id "${lt}" >/dev/null 2>&1 && echo "  deleted launch template ${lt}"
+    done
+    for role in "${PCS_ROLE_LOGIN:-}" "${PCS_ROLE_COMPUTE:-}"; do
+        [[ -n "${role}" ]] || continue
+        aws iam remove-role-from-instance-profile --instance-profile-name "${role}" --role-name "${role}" 2>/dev/null
+        aws iam delete-instance-profile --instance-profile-name "${role}" 2>/dev/null
+        for arn in $(aws iam list-attached-role-policies --role-name "${role}" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null); do
+            aws iam detach-role-policy --role-name "${role}" --policy-arn "${arn}"
+        done
+        for policy in $(aws iam list-role-policies --role-name "${role}" --query 'PolicyNames[]' --output text 2>/dev/null); do
+            aws iam delete-role-policy --role-name "${role}" --policy-name "${policy}"
+        done
+        aws iam delete-role --role-name "${role}" 2>/dev/null && echo "  deleted role and instance profile ${role}"
+    done
     if [[ -n "${PCS_SG:-}" ]]; then
-        # Revoke any cross-SG ingress rules that reference PCS_SG from
-        # the EFS SG (we added one during create for NFS access).
         if [[ -n "${EFS_SG_ID:-}" ]]; then
-            aws ec2 revoke-security-group-ingress --region "$REGION" \
-                --group-id "$EFS_SG_ID" \
-                --ip-permissions "[{\"IpProtocol\":\"tcp\",\"FromPort\":2049,\"ToPort\":2049,\"UserIdGroupPairs\":[{\"GroupId\":\"$PCS_SG\"}]}]" 2>/dev/null || true
+            aws ec2 revoke-security-group-ingress --group-id "${EFS_SG_ID}" --protocol tcp --port 2049 \
+                --source-group "${PCS_SG}" >/dev/null 2>&1
         fi
-        for _ in $(seq 1 20); do
-            aws ec2 delete-security-group --region "$REGION" --group-id "$PCS_SG" 2>/dev/null && break
-            echo "    waiting for SG $PCS_SG to release..."
-            sleep 15
-        done
+        # The cluster's network interfaces may take a few minutes to go.
+        wait_until 20 15 "security group ${PCS_SG} to be released" delete_sg "${PCS_SG}" \
+            && echo "  deleted security group ${PCS_SG}"
     fi
+    rm -f "${STATE}/pcs.env"
+else
+    echo "  no .state/pcs.env"
 fi
 
-# ─── Wait for PC cluster fully gone before EFS ────────────────────────
-echo "  waiting for PC cluster $PC_CLUSTER deletion..."
-for _ in $(seq 1 60); do
-    s=$([[ -n "$PCLUSTER" ]] && "$PCLUSTER" describe-cluster -n "$PC_CLUSTER" --region "$REGION" --query 'clusterStatus' 2>&1 | tr -d '"' | grep -oE 'CREATE_COMPLETE|DELETE_IN_PROGRESS|DELETE_FAILED' || echo "GONE")
-    case "$s" in
-        GONE|"") break ;;
-        DELETE_IN_PROGRESS) sleep 30 ;;
-        DELETE_FAILED) echo "PC delete failed — investigate manually"; break ;;
-        *) sleep 20 ;;
-    esac
-done
-
-# ─── EFS ──────────────────────────────────────────────────────────────
-echo "[3/3] Deleting EFS..."
-if [[ -f .state/efs.env ]]; then
-    # shellcheck disable=SC1091
-    . .state/efs.env
-    if [[ -n "${EFS_ID:-}" ]]; then
-        for mt in $(aws efs describe-mount-targets --region "$REGION" --file-system-id "$EFS_ID" --query 'MountTargets[].MountTargetId' --output text 2>/dev/null || true); do
-            echo "  deleting mount target $mt"
-            aws efs delete-mount-target --region "$REGION" --mount-target-id "$mt" 2>/dev/null || true
-        done
-        # Wait for mount targets gone
-        for _ in $(seq 1 30); do
-            n=$(aws efs describe-mount-targets --region "$REGION" --file-system-id "$EFS_ID" --query 'length(MountTargets)' --output text 2>/dev/null || echo "0")
-            [[ "$n" == "0" ]] && break
-            sleep 10
-        done
-        aws efs delete-file-system --region "$REGION" --file-system-id "$EFS_ID" 2>/dev/null || true
-        echo "  deleted EFS $EFS_ID"
-    fi
-    if [[ -n "${EFS_SG_ID:-}" ]]; then
-        for _ in $(seq 1 20); do
-            aws ec2 delete-security-group --region "$REGION" --group-id "$EFS_SG_ID" 2>/dev/null && break
-            sleep 15
-        done
-        echo "  deleted EFS SG $EFS_SG_ID"
-    fi
+# ─── EFS, once the ParallelCluster cluster is gone ───────────────────────
+if command -v "${PCLUSTER}" >/dev/null; then
+    wait_until 60 30 "ParallelCluster ${PC_CLUSTER} to be deleted" pc_gone
+fi
+echo "[3/3] EFS"
+if [[ -f "${STATE}/efs.env" ]]; then
+    # shellcheck source=/dev/null
+    . "${STATE}/efs.env"
+    mount_targets() { aws efs describe-mount-targets --file-system-id "${EFS_ID}" --query 'MountTargets[].MountTargetId' --output text 2>/dev/null; }
+    no_mount_targets() { [[ -z "$(mount_targets)" ]]; }
+    for mt in $(mount_targets); do
+        echo "  deleting mount target ${mt}"
+        aws efs delete-mount-target --mount-target-id "${mt}"
+    done
+    wait_until 30 10 "the mount targets" no_mount_targets
+    aws efs delete-file-system --file-system-id "${EFS_ID}" 2>/dev/null && echo "  deleted EFS ${EFS_ID}"
+    wait_until 20 15 "security group ${EFS_SG_ID} to be released" delete_sg "${EFS_SG_ID}" \
+        && echo "  deleted security group ${EFS_SG_ID}"
+    rm -f "${STATE}/efs.env"
+else
+    echo "  no .state/efs.env"
 fi
 
-# Clean up state dir
-rm -rf .state
-
+rm -f "${STATE}/pc-cluster.yaml"
+rmdir "${STATE}" 2>/dev/null
 echo
-echo "Teardown complete. The shared FSx Lustre and HPC-Prod-Network VPC are untouched."
+echo "Teardown complete."

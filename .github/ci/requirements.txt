@@ -1,0 +1,13 @@
+# yamllint for CI, pinned with its dependencies by hash:
+#   python3 -m pip install --require-hashes -r .github/ci/requirements.txt
+# The PyYAML wheels are the CPython 3.10-3.14 Linux x86_64 builds.
+yamllint==1.38.0 \
+    --hash=sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220
+pathspec==1.1.1 \
+    --hash=sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
+pyyaml==6.0.4 \
+    --hash=sha256:88a089e6424a8a256321270620d5a4328ad5227fb2061b07d33f596894336914 \
+    --hash=sha256:622aa875fa6533f25fedcffe23079357d65a690d462200afed5d8e9d0e01ebee \
+    --hash=sha256:93bfb2459195406a518e2f487a9bbf01df240175f31e06f5a252ac6734c7bbf0 \
+    --hash=sha256:50588147ab2c6a59b5f990a4905db80899a6c2bd197e046a6201f1e67587e794 \
+    --hash=sha256:c604dc2613c417130479cdd6e55c2faa691b6365aa82b3dafddfcecc2eaf1ac7
