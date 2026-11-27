@@ -349,6 +349,7 @@
     {
       "type": "stat",
       "title": "Jobs Running",
+      "description": "Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -392,6 +393,7 @@
     {
       "type": "stat",
       "title": "Jobs Pending",
+      "description": "Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -443,6 +445,7 @@
     {
       "type": "stat",
       "title": "Jobs Completed",
+      "description": "Jobs in the COMPLETED state that slurmctld still holds. It holds a job for MinJobAge after the job ends (300 s by default), so this counts only jobs that ended in the last few minutes. Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -486,6 +489,7 @@
     {
       "type": "stat",
       "title": "Jobs Failed",
+      "description": "Jobs in the FAILED state that slurmctld still holds. It holds a job for MinJobAge after the job ends (300 s by default), so this counts only jobs that ended in the last few minutes. Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -628,6 +632,7 @@
     {
       "type": "timeseries",
       "title": "Jobs Over Time",
+      "description": "Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 8,
         "w": 24,

@@ -6,6 +6,7 @@ prometheus/scrape-slurm-native.yml. These tests check the marked block, the
 two snippets, the rule files that prometheus.yml loads, and the installer's
 set_slurm_scrape_jobs, run with bash on copies of prometheus.yml.
 """
+import json
 import os
 import shutil
 import stat
@@ -24,6 +25,32 @@ END = "  # END slurm_metrics"
 EXPORTER_JOBS = ["slurm_exporter"]
 NATIVE_JOBS = ["slurm_openmetrics", "slurm_openmetrics_jobs", "slurm_openmetrics_partitions",
                "slurm_openmetrics_scheduler", "slurm_openmetrics_jobs_users_accts"]
+
+DASHBOARDS = os.path.join(q.REPO, "grafana", "dashboards")
+# The Slurm Detail panels that native metrics can't feed at all, and what
+# their note names.
+EMPTY_ON_NATIVE = {
+    "Pending Jobs by Reason": "pending reasons",
+    "Top Pending Reasons (now)": "pending reasons",
+    "Top RPC Message Types (avg time)": "RPC statistics",
+    "Top Users by RPC Count": "RPC statistics",
+}
+# The Slurm Detail tables that lose one column on native metrics.
+COLUMN_ON_EXPORTER = {
+    "Partitions": "CPU Load",
+    "Top Users (by allocated CPUs)": "Mem Alloc (B)",
+    "Top Accounts (by allocated CPUs)": "Mem Alloc (B)",
+    "Account Quota Utilization": "Mem Used (B)",
+}
+# The job panels of the "ParallelCluster: the job counts read 0" known issue.
+JOB_PANELS = {
+    "ParallelCluster.json": ["Jobs Running", "Jobs Pending", "Jobs Completed", "Jobs Failed", "Jobs Over Time"],
+    "slurm-detail.json": ["Total Pending Now", "Total Running Now", "Failed (recent)", "Suspended"],
+}
+# With data, a table's empty cells would show defaults.noValue too: this
+# override keeps them empty, so the note shows only on an empty panel.
+KEEP_EMPTY_CELLS = {"matcher": {"id": "byType", "options": "number"},
+                    "properties": [{"id": "noValue", "value": ""}]}
 
 
 def snippet_lines(text):
@@ -47,6 +74,15 @@ def block_lines(text):
 
 def job_names(lines):
     return list(q.jobs("\n".join(lines) + "\n"))
+
+
+def panels_by_title(name):
+    with open(os.path.join(DASHBOARDS, name)) as f:
+        found = {}
+        for panel in q.walk_panels(json.load(f)["panels"]):
+            assert panel.get("title") not in found, panel.get("title")
+            found[panel.get("title")] = panel
+        return found
 
 
 def set_slurm_scrape_jobs(config, snippet):
@@ -135,6 +171,43 @@ class SetSlurmScrapeJobsTest(unittest.TestCase):
                 result = set_slurm_scrape_jobs(path, NATIVE)
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertEqual(q.read(path), text)
+
+
+class DashboardNotesTest(unittest.TestCase):
+    """The Slurm panels say in place what each metrics source can't feed."""
+
+    def setUp(self):
+        self.detail = panels_by_title("slurm-detail.json")
+
+    def test_failed_is_recent(self):
+        self.assertNotIn("Failed (since boot)", self.detail)
+        self.assertIn("MinJobAge", self.detail["Failed (recent)"]["description"])
+
+    def test_empty_panels_say_why(self):
+        for title, what in sorted(EMPTY_ON_NATIVE.items()):
+            with self.subTest(panel=title):
+                panel = self.detail[title]
+                note = panel["fieldConfig"]["defaults"]["noValue"]
+                self.assertIn("native Slurm metrics", note)
+                self.assertIn(what, note)
+                self.assertIn("Needs the Slurm exporter", panel["description"])
+                self.assertEqual(panel["fieldConfig"]["overrides"], [KEEP_EMPTY_CELLS])
+
+    def test_column_descriptions_name_their_column(self):
+        for title, column in sorted(COLUMN_ON_EXPORTER.items()):
+            with self.subTest(panel=title):
+                panel = self.detail[title]
+                self.assertIn("The %s column needs the Slurm exporter" % column, panel["description"])
+                self.assertNotIn("noValue", panel["fieldConfig"]["defaults"])
+                organize = [t for t in panel["transformations"] if t["id"] == "organize"]
+                self.assertIn(column, organize[0]["options"]["renameByName"].values())
+
+    def test_job_panels_need_native_metrics(self):
+        for name, titles in sorted(JOB_PANELS.items()):
+            panels = panels_by_title(name)
+            for title in titles:
+                with self.subTest(dashboard=name, panel=title):
+                    self.assertIn("reads 0 with the Slurm exporter", panels[title]["description"])
 
 
 if __name__ == "__main__":

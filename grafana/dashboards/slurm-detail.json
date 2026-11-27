@@ -31,6 +31,7 @@
     {
       "type": "table",
       "title": "Partitions",
+      "description": "The CPU Load column needs the Slurm exporter: it is empty with Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set).",
       "gridPos": {
         "h": 10,
         "w": 24,
@@ -190,6 +191,7 @@
     {
       "type": "timeseries",
       "title": "Pending Jobs by Reason",
+      "description": "Needs the Slurm exporter: Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set) have no pending reasons, so this panel is empty with them.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -210,8 +212,23 @@
             "stacking": {
               "mode": "normal"
             }
+          },
+          "noValue": "No pending jobs, or native Slurm metrics, which have no pending reasons"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": ""
+              }
+            ]
           }
-        }
+        ]
       },
       "options": {
         "legend": {
@@ -224,6 +241,7 @@
     {
       "type": "bargauge",
       "title": "Top Pending Reasons (now)",
+      "description": "Needs the Slurm exporter: Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set) have no pending reasons, so this panel is empty with them.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -256,8 +274,23 @@
                 "value": 90
               }
             ]
+          },
+          "noValue": "No pending jobs, or native Slurm metrics, which have no pending reasons"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": ""
+              }
+            ]
           }
-        }
+        ]
       },
       "options": {
         "displayMode": "gradient",
@@ -276,6 +309,7 @@
     {
       "type": "stat",
       "title": "Total Pending Now",
+      "description": "Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -326,6 +360,7 @@
     {
       "type": "stat",
       "title": "Total Running Now",
+      "description": "Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -367,7 +402,8 @@
     },
     {
       "type": "stat",
-      "title": "Failed (since boot)",
+      "title": "Failed (recent)",
+      "description": "Jobs in the FAILED state that slurmctld still holds. It holds a job for MinJobAge after the job ends (300 s by default), so this counts only jobs that ended in the last few minutes. Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -414,6 +450,7 @@
     {
       "type": "stat",
       "title": "Suspended",
+      "description": "Needs Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set); reads 0 with the Slurm exporter.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -468,6 +505,7 @@
     {
       "type": "table",
       "title": "Top Users (by allocated CPUs)",
+      "description": "The Mem Alloc (B) column needs the Slurm exporter: it is empty with Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set).",
       "gridPos": {
         "h": 10,
         "w": 12,
@@ -566,6 +604,7 @@
     {
       "type": "table",
       "title": "Top Accounts (by allocated CPUs)",
+      "description": "The Mem Alloc (B) column needs the Slurm exporter: it is empty with Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set).",
       "gridPos": {
         "h": 10,
         "w": 12,
@@ -676,6 +715,7 @@
     {
       "type": "table",
       "title": "Account Quota Utilization",
+      "description": "The Mem Used (B) column needs the Slurm exporter: it is empty with Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set).",
       "gridPos": {
         "h": 10,
         "w": 24,
@@ -802,6 +842,7 @@
     {
       "type": "stat",
       "title": "Controller Threads",
+      "description": "slurmctld's server threads, as sdiag counts them. The Slurm exporter's own sdiag request counts as one, so an idle controller reads 1 with the exporter and 0 with Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set).",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -1048,6 +1089,7 @@
     {
       "type": "table",
       "title": "Top RPC Message Types (avg time)",
+      "description": "Needs the Slurm exporter: Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set) have no RPC statistics, so this panel is empty with them.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -1076,9 +1118,23 @@
             "cellOptions": {
               "type": "auto"
             }
-          }
+          },
+          "noValue": "No data: native Slurm metrics have no RPC statistics"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": ""
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -1117,6 +1173,7 @@
     {
       "type": "table",
       "title": "Top Users by RPC Count",
+      "description": "Needs the Slurm exporter: Slurm's native metrics (AWS PCS, and ParallelCluster with MetricsType set) have no RPC statistics, so this panel is empty with them.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -1145,9 +1202,23 @@
             "cellOptions": {
               "type": "auto"
             }
-          }
+          },
+          "noValue": "No data: native Slurm metrics have no RPC statistics"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "noValue",
+                "value": ""
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
