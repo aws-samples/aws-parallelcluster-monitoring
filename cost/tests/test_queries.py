@@ -258,7 +258,7 @@ class ConfigsTest(unittest.TestCase):
 
     def test_parallelcluster_config_loads_cost_rules(self):
         text = without_comments(read(os.path.join(PROMETHEUS, "prometheus.yml")))
-        self.assertRegex(text, r"\nrule_files:\n  - /etc/prometheus/rules/cost\.yml\n\s*\nscrape_configs:\n")
+        self.assertRegex(text, r"\nrule_files:\n(?:  - \S+\n)*  - /etc/prometheus/rules/cost\.yml\n(?:  - \S+\n)*\s*\nscrape_configs:\n")
 
 
 class SelfCheckTest(unittest.TestCase):

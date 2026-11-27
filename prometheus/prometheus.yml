@@ -9,13 +9,19 @@ global:
 
 rule_files:
   - /etc/prometheus/rules/cost.yml
+  - /etc/prometheus/rules/pcs-compat.yml
 
 scrape_configs:
+  # The Slurm scrape jobs. installer/install.sh replaces the lines between
+  # the BEGIN and END lines on every run with prometheus/scrape-slurm-exporter.yml
+  # or prometheus/scrape-slurm-native.yml (docs/slurm-metrics.md).
+  # BEGIN slurm_metrics
   - job_name: 'slurm_exporter'
     scrape_interval: 30s
     scrape_timeout: 30s
     static_configs:
       - targets: ['localhost:9092']
+  # END slurm_metrics
 
   - job_name: 'pushgateway'
     honor_labels: true

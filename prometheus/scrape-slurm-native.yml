@@ -1,0 +1,52 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# The Slurm scrape jobs of a ParallelCluster head node whose slurmctld
+# serves Slurm's native metrics (MetricsType=metrics/openmetrics), on port
+# 6820, the first port of ParallelCluster's SlurmctldPort range. They are
+# the jobs of prometheus/prometheus-pcs.yml, where slurmctld listens on 6817.
+# installer/install.sh copies the jobs below, indented by two spaces,
+# between the "# BEGIN slurm_metrics" and "# END slurm_metrics" lines of
+# prometheus/prometheus.yml. See docs/slurm-metrics.md.
+- job_name: 'slurm_openmetrics'
+  scrape_interval: 30s
+  metrics_path: /metrics/nodes
+  static_configs:
+    - targets: ['localhost:6820']
+      labels: {slurm_endpoint: 'nodes'}
+
+- job_name: 'slurm_openmetrics_jobs'
+  scrape_interval: 30s
+  metrics_path: /metrics/jobs
+  static_configs:
+    - targets: ['localhost:6820']
+      labels: {slurm_endpoint: 'jobs'}
+
+- job_name: 'slurm_openmetrics_partitions'
+  scrape_interval: 30s
+  metrics_path: /metrics/partitions
+  static_configs:
+    - targets: ['localhost:6820']
+      labels: {slurm_endpoint: 'partitions'}
+
+- job_name: 'slurm_openmetrics_scheduler'
+  scrape_interval: 30s
+  metrics_path: /metrics/scheduler
+  static_configs:
+    - targets: ['localhost:6820']
+      labels: {slurm_endpoint: 'scheduler'}
+
+# Per-user / per-account metrics. Slurm's docs explicitly warn this
+# endpoint is unbounded — every (user, state) and (account, state)
+# combination is a separate time series. On a large multi-tenant
+# cluster you can easily land in 100k+ series. Scrape it less often
+# and only enable it if you actually use the user/account dashboards.
+# Comment this whole block out if you see Prometheus memory blow up.
+- job_name: 'slurm_openmetrics_jobs_users_accts'
+  scrape_interval: 120s
+  scrape_timeout: 60s
+  metrics_path: /metrics/jobs-users-accts
+  static_configs:
+    - targets: ['localhost:6820']
+      labels: {slurm_endpoint: 'jobs-users-accts'}
