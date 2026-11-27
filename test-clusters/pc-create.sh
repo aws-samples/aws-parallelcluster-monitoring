@@ -131,6 +131,7 @@ Monitoring:
     CloudWatch:
       Enabled: true
       RetentionInDays: 7
+      DeletionPolicy: Delete
 EOF
 echo "Wrote ${CONFIG}"
 

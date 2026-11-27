@@ -23,6 +23,12 @@ wait_until() { # wait_until TRIES SECONDS DESCRIPTION COMMAND...: until COMMAND 
     return 1
 }
 delete_sg() { aws ec2 delete-security-group --group-id "$1" 2>/dev/null; }
+# The installer stores the Grafana admin password in SSM, where it outlives
+# the cluster.
+delete_password() { # delete_password PLATFORM CLUSTER
+    aws ssm delete-parameter --name "/$1/$2/grafana/admin-password" >/dev/null 2>&1 \
+        && echo "  deleted SSM parameter /$1/$2/grafana/admin-password"
+}
 
 # ─── ParallelCluster ─────────────────────────────────────────────────────
 echo "[1/3] ParallelCluster ${PC_CLUSTER}"
@@ -68,6 +74,9 @@ if [[ -f "${STATE}/pcs.env" ]]; then
         aws pcs delete-cluster --cluster-identifier "${id}" >/dev/null
         wait_until 60 15 "cluster ${id}" cluster_gone
     fi
+    if [[ -n "${id}" ]]; then
+        delete_password pcs "${id}"
+    fi
     for lt in "${PCS_LT_LOGIN:-}" "${PCS_LT_CPU:-}" "${PCS_LT_GPU:-}"; do
         [[ -n "${lt}" ]] || continue
         aws ec2 delete-launch-template --launch-template-id "${lt}" >/dev/null 2>&1 && echo "  deleted launch template ${lt}"
@@ -100,7 +109,7 @@ fi
 
 # ─── EFS, once the ParallelCluster cluster is gone ───────────────────────
 if command -v "${PCLUSTER}" >/dev/null; then
-    wait_until 60 30 "ParallelCluster ${PC_CLUSTER} to be deleted" pc_gone
+    wait_until 60 30 "ParallelCluster ${PC_CLUSTER} to be deleted" pc_gone && delete_password parallelcluster "${PC_CLUSTER}"
 fi
 echo "[3/3] EFS"
 if [[ -f "${STATE}/efs.env" ]]; then
