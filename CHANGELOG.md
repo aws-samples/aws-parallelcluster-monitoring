@@ -1,6 +1,6 @@
 # Changelog
 
-## vNEXT — YYYY-MM-DD
+## v3.1.1 — 2026-11-27
 
 Makes Cognito SSO for Grafana work as documented (the repo review's P1-8),
 on ParallelCluster and AWS PCS, through SSM port forwarding and through the
@@ -106,20 +106,35 @@ changes (see Changed).
 - `iam/README.md`: the boot service also reads the Cognito parameter.
 
 ### Upgrade notes
-
-- **With Cognito:** run this release's `post-install.sh` on the head or
-  login node, as the v2.12 upgrade notes show, with this release's tag, or
-  replace the node. `installer/install.sh` alone re-runs the installed
-  release. The installer recreates Grafana with the new root URL. If users
-  open Grafana at a URL other than `https://localhost:8443/grafana/`, add
-  `root_url` to the parameter first.
-- **App clients created by earlier releases' setup script** have the
-  sign-out URL `https://<host>/grafana`, without the final `/`, so sign-out
-  still fails at Cognito with them. On a managed login domain they also
-  have no style, so sign-in fails. Create a new app client with this
-  release's script, store its ID and secret in the parameter, re-run the
-  installer, then delete the old app client.
-
+For clusters that use Cognito SSO:
+1. **Set `root_url` if users don't open Grafana at
+   `https://localhost:8443/grafana/`.** Grafana now builds its callback URL
+   from the root URL, so add `root_url` to the Cognito parameter before you
+   upgrade: for example `https://grafana.example.com/grafana/` when Grafana
+   is reached through a public host name (the ALB of
+   `docs/public-access.md`), or `https://localhost:<port>/grafana/` for
+   another local port. Use the host name that users type, not the ALB's
+   DNS name.
+2. **Update the app client's URLs.** The app client must list
+   `<root URL>login/generic_oauth` as a callback URL and the root URL,
+   with its final `/`, as a sign-out URL, both `https://`. Clients created
+   by earlier releases' setup script don't: that script could only create
+   clients for localhost, with `http://` and `https://localhost/grafana/...`
+   callback URLs (no port) and the sign-out URL `https://<host>/grafana`
+   without the final `/`, and on a managed login domain without a style.
+   The simplest fix is a new client: run this release's
+   `cognito/setup-grafana-client.sh` for the host that users open, store
+   the client ID, secret and printed `GRAFANA_ROOT_URL` in the parameter,
+   and delete the old client after the upgrade. A client created by hand
+   can be kept if you replace any `http://` callback URL with the
+   `https://` one above, and add the sign-out URL.
+3. **Upgrade the node.** Run this release's `post-install.sh` on the head
+   or login node, as the v2.12 upgrade notes show, with this release's
+   tag, or replace the node. `installer/install.sh` alone re-runs the
+   installed release. The installer recreates Grafana with the new root
+   URL and enables `grafana-cognito-refresh.service`.
+Without Cognito, nothing needs to be done. The local admin login works at
+any URL.
 ### Validation
 
 This release was validated live on 2026-11-27 in us-east-1, with Grafana
@@ -163,6 +178,18 @@ session. These checks passed too:
   ALB at either root URL, and with Cognito off or misconfigured.
 - **`allowed_domains`**, with domains separated by a comma and a space, let
   in only users with an email in those domains.
+- **AWS PCS standard configuration (v3.1).** After the rebase onto v3.1,
+  the checks ran again on a PCS login node group without a launch template,
+  with the README's login node lifecycle action, on the Amazon Linux 2023
+  sample AMI. The node had no instance tags in IMDS. The installer took the
+  cluster from the lifecycle action and read
+  `/pcs/<cluster-id>/grafana/cognito`. Sign-in through SSM port forwarding
+  and the local admin login worked, also after a `scontrol reboot`, when
+  the lifecycle action didn't run again and the boot service restored the
+  secret. A re-run of `installer/install.sh` used the saved identity and
+  applied a new `allowed_domains`. The launch-template login node and the
+  ParallelCluster head node passed the earlier checks again on the rebased
+  code.
 - **The client secret** appeared in none of the install log, the journal,
   `/var/log`, `docker inspect` and `docker exec grafana env`. Only the
   Grafana server and CloudWatch plugin processes hold it, as documented.
