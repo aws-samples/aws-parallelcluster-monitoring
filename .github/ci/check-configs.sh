@@ -26,6 +26,8 @@ trap 'rm -rf "${TMP}"' EXIT
 REGION=us-east-1
 PC_CLUSTER_NAME=ci-pc
 PCS_CLUSTER_ID=pcs_ci00000001
+# The login node's compute node group (install.sh writes 'none' without one).
+PCS_LOGIN_NODE_GROUP_ID=pcs_ci00000002
 SLURMCTLD_IP=10.0.0.10
 LOGIN_INSTANCE_ID=i-0123456789abcdef0
 RES_ENVIRONMENT_NAME=ci-res
@@ -85,6 +87,7 @@ check_prometheus() {
                 sed "s|__PC_CLUSTER_NAME__|${PC_CLUSTER_NAME}|g" prometheus/prometheus.yml > "${f}"
             else
                 sed -e "s|__SLURMCTLD_IP__|${SLURMCTLD_IP}|g" -e "s|__PCS_CLUSTER_ID__|${PCS_CLUSTER_ID}|g" \
+                    -e "s|__PCS_LOGIN_NODE_GROUP_ID__|${PCS_LOGIN_NODE_GROUP_ID}|g" \
                     -e "s|__LOGIN_INSTANCE_ID__|${LOGIN_INSTANCE_ID}|g" prometheus/prometheus-pcs.yml > "${f}"
             fi
             if [[ -n "${res}" ]]; then
