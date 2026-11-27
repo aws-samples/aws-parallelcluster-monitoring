@@ -422,35 +422,41 @@ Replace the local `admin` login with corporate SSO via an Amazon
 Cognito User Pool. Users sign in through Cognito's hosted UI; the
 local admin remains as a fallback if Cognito is misconfigured.
 
+Cognito sign-in works at one URL per node, Grafana's root URL. It is
+`https://localhost:8443/grafana/` by default, the SSM port forwarding URL
+of Option B. For another URL, such as an ALB's
+([docs/public-access.md](docs/public-access.md)), set `root_url` in the
+parameter below. The local admin login works at any URL.
+
 Quick setup (full instructions in [cognito/README.md](cognito/README.md)):
 
 ```bash
-# 1. Create a Grafana app client in your existing Cognito user pool
-./cognito/setup-grafana-client.sh <pool-id> <grafana-host> [region]
+# 1. Create a Grafana app client in your existing Cognito user pool, which
+#    needs a prefix or custom domain. <grafana-host> is localhost:8443 for
+#    SSM port forwarding, or your ALB's host name, such as
+#    grafana.example.com.
+eval "$(./cognito/setup-grafana-client.sh <pool-id> <grafana-host> <region>)"
 
-# 2. Store the config as an SSM SecureString
-aws ssm put-parameter \
-    --region <region> \
+# 2. Store the config as an SSM SecureString. The name is
+#    /parallelcluster/<cluster-name>/grafana/cognito on ParallelCluster and
+#    /pcs/<cluster-id>/grafana/cognito on AWS PCS.
+aws ssm put-parameter --region <region> --type SecureString \
     --name "/<platform>/<cluster>/grafana/cognito" \
-    --type SecureString \
-    --value '{
-        "user_pool_id":   "<pool-id>",
-        "client_id":      "<from-step-1>",
-        "client_secret":  "<from-step-1>",
-        "domain":         "<your-cognito-hosted-ui-domain>",
-        "region":         "<region>",
-        "allowed_domains": "example.com"
-    }'
+    --value "$(jq -n \
+        --arg id "${COGNITO_CLIENT_ID}" --arg secret "${COGNITO_CLIENT_SECRET}" \
+        --arg domain "${COGNITO_DOMAIN}" --arg root "${GRAFANA_ROOT_URL}" \
+        '{client_id: $id, client_secret: $secret, domain: $domain, root_url: $root}')"
 
-# 3. Re-run the installer (or recreate the cluster)
+# 3. Re-run the installer on the head/login node (or create the cluster)
 sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
-sudo docker restart grafana
 ```
 
 When the SSM parameter is present, Grafana shows a **Sign in with
-Cognito** button on the login page. The client secret is materialized
+Cognito** button on the login page. The installer, and
+`grafana-cognito-refresh.service` at every boot, write the client secret
 to tmpfs (`/run/grafana-secrets/cognito-client-secret`, mode 0640,
-owned `472:472`). The container's configuration names only that file,
+owned `472:472`), so sign-in keeps working after a reboot. The
+container's configuration names only that file,
 through `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE`, so `docker inspect`
 and `docker exec grafana env` show the file's path, not the secret.
 Inside the container, the Grafana image's entrypoint reads the file and

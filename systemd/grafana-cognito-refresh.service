@@ -1,0 +1,23 @@
+[Unit]
+Description=Write Grafana's root URL and Cognito SSO settings from SSM Parameter Store
+# /run/grafana-secrets is empty after a reboot. Docker starts Grafana
+# without the client secret, and the script restarts it once the secret is
+# back. installer/install.sh enables this unit and runs the script itself.
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/aws-parallelcluster-monitoring/grafana-cognito.env
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=AWS_PAGER=
+# At boot the network or SSM can be slow to answer: the AWS CLI retries
+# throttling, server and connection errors.
+Environment=AWS_RETRY_MODE=standard
+Environment=AWS_MAX_ATTEMPTS=10
+ExecStart=/usr/local/bin/refresh-grafana-cognito.sh
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

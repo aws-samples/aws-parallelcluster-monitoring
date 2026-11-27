@@ -130,20 +130,31 @@ aws route53 change-resource-record-sets --hosted-zone-id <your-zone-id> \
     }'
 ```
 
-#### 6. Update Grafana's root URL
+#### 6. With Cognito SSO, set Grafana's root URL
 
-On the HeadNode, update the compose environment:
+Without Cognito SSO, skip this step: the local admin login works at any
+URL.
 
-```bash
-# In compose/head.yml, change:
-#   GF_SERVER_ROOT_URL=http://%(domain)s/grafana/
-# To:
-#   GF_SERVER_ROOT_URL=https://grafana.example.com/grafana/
+Grafana builds its Cognito callback URL from its root URL, which is
+`https://localhost:8443/grafana/` by default, the SSM port forwarding URL.
+For Cognito sign-in through the ALB, register the ALB's host name and make
+it the root URL (details in [cognito/README.md](../cognito/README.md)):
 
-sudo docker restart grafana
-```
+1. Create an app client for the ALB's host name:
+   ```bash
+   ./cognito/setup-grafana-client.sh <pool-id> grafana.example.com <region>
+   ```
+2. Store its values in the Cognito parameter,
+   `/parallelcluster/<cluster-name>/grafana/cognito` or
+   `/pcs/<cluster-id>/grafana/cognito`, with
+   `"root_url": "https://grafana.example.com/grafana/"`.
+3. Re-run the installer on the head or login node:
+   ```bash
+   sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh
+   ```
 
-Or set it via SSM parameter for the next install run.
+Cognito sign-in then works at `https://grafana.example.com/grafana/`
+only. Over SSM port forwarding, use the local admin login.
 
 #### 7. Browse
 
@@ -152,7 +163,8 @@ Or set it via SSM parameter for the next install run.
 ### Security considerations
 
 - The ALB exposes Grafana to the internet. Make sure you have either:
-  - Cognito SSO enabled (Phase 2b.2), OR
+  - Cognito SSO enabled ([cognito/README.md](../cognito/README.md), with
+    step 6 above), OR
   - A strong admin password (Phase 2a.1 generates a random 32-char one), OR
   - ALB security group restricted to your corporate CIDR
 - Consider enabling WAF on the ALB for additional protection

@@ -1,5 +1,125 @@
 # Changelog
 
+## vNEXT — YYYY-MM-DD
+
+Makes Cognito SSO for Grafana work as documented (the repo review's P1-8),
+on ParallelCluster and AWS PCS, through SSM port forwarding and through the
+ALB of `docs/public-access.md`, also after a reboot. Clusters without
+Cognito keep the local admin login as before, but their Grafana root URL
+changes (see Changed).
+
+### Fixed
+
+- **Cognito sign-in couldn't complete, because Grafana's callback URL was
+  wrong.** Grafana builds the OAuth `redirect_uri` from its root URL, which
+  `compose/head.yml` set to `http://localhost/grafana/`. So Grafana asked
+  Cognito to return users to `http://localhost/grafana/login/generic_oauth`,
+  which is not where users reach Grafana and which the documented setup
+  didn't register. The root URL now defaults to
+  `https://localhost:8443/grafana/`, the README's SSM port forwarding URL,
+  and the new optional `root_url` key of the Cognito parameter sets another
+  URL, such as an ALB's.
+- **`cognito/setup-grafana-client.sh` failed for every host but
+  localhost, and hid why.** It registered an `http://` callback URL next to
+  the `https://` one, and Cognito accepts `http://` only for localhost. The
+  error went to `/dev/null`. The script now registers only
+  `https://<host>/grafana/login/generic_oauth` and the sign-out URL
+  `https://<host>/grafana/`, prints Cognito's errors and exits non-zero,
+  checks that the user pool has a domain before it creates the client, and
+  prints the root URL to store.
+- **Managed login: the sign-in pages weren't available to the app
+  client.** Cognito gives no branding style to app clients created through
+  the API, and serves managed login pages, the console's default for new
+  user pools, only to clients that have one. When the pool's domain uses
+  managed login, the setup script now creates a style with Cognito's
+  defaults, and deletes the client if that fails.
+- **SSO broke when the head or login node rebooted.** The client secret
+  file is on tmpfs, and only the installer wrote it. After a reboot, Docker
+  started Grafana with an empty client secret, and sign-in failed until
+  someone re-ran the installer. The new `grafana-cognito-refresh.service`
+  writes the file again at every boot and restarts Grafana, which Docker
+  starts before the file is back.
+- **Custom domains.** The installer built the Cognito endpoints as
+  `https://<domain>.auth.<region>.amazoncognito.com` for every `domain`,
+  also for the custom domain that the setup script printed, such as
+  `auth.example.com`. A `domain` with a dot is now used as the host name as
+  it is. A prefix still gets `.auth.<region>.amazoncognito.com`.
+- **Sign-out failed at Cognito.** Grafana sent users to Cognito's
+  `/logout` with `client_id` only, and Cognito requires a `logout_uri` or a
+  `redirect_uri`. Grafana now passes the root URL as `logout_uri`, which
+  the setup script registers as the sign-out URL.
+- **The installer hid errors in the Cognito parameter.** It took any
+  failure to read it, such as `AccessDeniedException`, for "no Cognito
+  config". An invalid JSON value stopped the install with a bare `jq`
+  error, and a missing key wrote `null` into Grafana's settings. Now only a
+  missing parameter means no Cognito. Other read errors and invalid values
+  print an `ERROR` line that names the parameter, and a warning, and the
+  install goes on with the local admin login only.
+- **AWS PCS: the install log's command for the admin password named the
+  ParallelCluster path.** It now names
+  `/pcs/<cluster-id>/grafana/admin-password` on PCS.
+
+### Changed
+
+- **Grafana's root URL is `https://localhost:8443/grafana/` by default**,
+  instead of `http://localhost/grafana/`, also without Cognito. It comes
+  from `/run/grafana-secrets/cognito.env` instead of `compose/head.yml`,
+  where a value would override the file's. Grafana builds the OAuth
+  callback URL and the absolute links it makes, such as shortened URLs,
+  from the root URL, and sign-out returns to it. The local admin login
+  works at any URL, as before.
+- **Cognito sign-in works at the root URL only.** Grafana has one root
+  URL, so a node serves Cognito sign-in through SSM port forwarding or
+  through an ALB, not both. The local admin login works on both.
+- **The installer restarts Grafana when the client secret changes.** The
+  image's entrypoint reads the secret only when the container starts, so a
+  new secret used to need `sudo docker restart grafana` after the
+  installer. The v2.11 rotation steps still work, and their restart is no
+  longer needed.
+- **`cognito.env` always sets `GF_SERVER_ROOT_URL`**, and the secret file
+  is deleted when Cognito isn't configured.
+- **`setup-grafana-client.sh` output:** `COGNITO_DOMAIN` is the full host
+  name of the user pool domain, a new `GRAFANA_ROOT_URL` line gives the
+  root URL, and progress messages go to stderr, so that stdout can be
+  `eval`ed.
+- **New files on head and login nodes:**
+  - `/usr/local/bin/refresh-grafana-cognito.sh`, which reads the parameter
+    and writes `cognito.env` and the secret file, for the installer and for
+    the service;
+  - `/etc/systemd/system/grafana-cognito-refresh.service`, enabled, which
+    runs it at every boot;
+  - `/etc/aws-parallelcluster-monitoring/grafana-cognito.env`, the
+    parameter's name and region for the service.
+
+### Documentation
+
+- `cognito/README.md` is rewritten: how the URL that users open, the root
+  URL and the registered callback URL must match; a table of the access
+  paths; the parameter's name on each platform; every key of its value;
+  managed login and custom domains; the boot service; troubleshooting; and
+  the secret file's real owner, `472:472`, not `root:nobody`.
+- README: the Cognito section uses each platform's parameter name, stores
+  `root_url`, and drops the manual Grafana restart.
+- `docs/public-access.md`: step 6 sets `root_url` for Cognito through the
+  ALB. It used to edit `compose/head.yml`, which the next install undid,
+  and named an SSM setting that didn't exist.
+- `iam/README.md`: the boot service also reads the Cognito parameter.
+
+### Upgrade notes
+
+- **With Cognito:** run this release's `post-install.sh` on the head or
+  login node, as the v2.12 upgrade notes show, with this release's tag, or
+  replace the node. `installer/install.sh` alone re-runs the installed
+  release. The installer recreates Grafana with the new root URL. If users
+  open Grafana at a URL other than `https://localhost:8443/grafana/`, add
+  `root_url` to the parameter first.
+- **App clients created by earlier releases' setup script** have the
+  sign-out URL `https://<host>/grafana`, without the final `/`, so sign-out
+  still fails at Cognito with them. On a managed login domain they also
+  have no style, so sign-in fails. Create a new app client with this
+  release's script, store its ID and secret in the parameter, re-run the
+  installer, then delete the old app client.
+
 ## v3.1 — 2026-11-27
 
 Adds support for AWS PCS compute node groups in standard configuration,

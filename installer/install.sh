@@ -255,81 +255,30 @@ except Exception:
         log "Grafana password refresh timer active"
 
         # -------------------------------------------------------------
-                # -------------------------------------------------------------
-        # Optional: Cognito SSO for Grafana (Phase 2b.2).
-        # Users populate /parallelcluster/<cluster>/grafana/cognito with a
-        # JSON blob (SecureString):
-        #   {
-        #     "user_pool_id":   "us-east-2_ABC123",
-        #     "client_id":      "xxxxxxxxxxxxxxxx",
-        #     "client_secret":  "yyyyyyyyyyyyyyyy",
-        #     "domain":         "my-pool-auth",
-        #     "region":         "us-east-2",
-        #     "allowed_domains": "amazon.com"
-        #   }
-        # When present, Grafana is configured to use Cognito OAuth2.
-        # When absent, local admin/password login is the only auth path.
+        # Grafana's root URL and the optional Cognito SSO (cognito/README.md).
+        # refresh-grafana-cognito.sh reads the SecureString JSON in
+        # /<platform>/<cluster>/grafana/cognito and writes
+        # /run/grafana-secrets/cognito.env and, with Cognito, the client
+        # secret file. /run is tmpfs, so grafana-cognito-refresh.service
+        # runs the script again at every boot. Without the parameter, or
+        # when it can't be read, Grafana offers only the local admin login.
+        # The script runs in its own process, so the client secret stays out
+        # of this script's trace.
         # -------------------------------------------------------------
         COGNITO_SSM_PARAM="/${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/cognito"
-        # Keep the client secret out of the trace (see xtrace_suspend). The
-        # whole if/else stays untraced, because even its test expands the
-        # JSON that holds the secret. The log lines still print.
-        { xtrace_suspend; } 2>/dev/null
-        cognito_json=$(aws ssm get-parameter --region "${PLATFORM_REGION}" \
-            --name "${COGNITO_SSM_PARAM}" --with-decryption \
-            --query 'Parameter.Value' --output text 2>/dev/null) || cognito_json=""
-
-        if [[ -n "${cognito_json}" ]]; then
-            log "Cognito SSO config found in ${COGNITO_SSM_PARAM}; enabling OAuth2"
-            # Extract fields via jq and write to a Grafana env-file that
-            # docker-compose loads. Put it under /run so nothing persistent
-            # on disk.
-            mkdir -p /run/grafana-secrets
-            chmod 0750 /run/grafana-secrets
-            chown 472:472 /run/grafana-secrets
-
-            cog_client=$(echo "${cognito_json}"  | jq -r .client_id)
-            cog_secret=$(echo "${cognito_json}"  | jq -r .client_secret)
-            cog_domain=$(echo "${cognito_json}"  | jq -r .domain)
-            cog_region=$(echo "${cognito_json}"  | jq -r '.region // "'"${PLATFORM_REGION}"'"')
-            cog_allowed=$(echo "${cognito_json}" | jq -r '.allowed_domains // ""')
-
-            cat > /run/grafana-secrets/cognito.env <<COGENV
-# Grafana OAuth2 config — loaded by compose at container start
-GF_AUTH_GENERIC_OAUTH_ENABLED=true
-GF_AUTH_GENERIC_OAUTH_NAME=Cognito
-GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
-GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${cog_client}
-GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET__FILE=/run/grafana-secrets/cognito-client-secret
-GF_AUTH_GENERIC_OAUTH_SCOPES=openid email profile
-GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/oauth2/authorize
-GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/oauth2/token
-GF_AUTH_GENERIC_OAUTH_API_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/oauth2/userInfo
-GF_AUTH_GENERIC_OAUTH_ALLOWED_DOMAINS=${cog_allowed}
-GF_AUTH_SIGNOUT_REDIRECT_URL=https://${cog_domain}.auth.${cog_region}.amazoncognito.com/logout?client_id=${cog_client}
-COGENV
-            # Write the client secret to its own file so it doesn't appear in
-            # docker inspect / `env` output. Grafana's __FILE env var variant
-            # reads it at startup.
-            umask 0077
-            printf '%s' "${cog_secret}" > /run/grafana-secrets/cognito-client-secret
-            chmod 0640 /run/grafana-secrets/cognito-client-secret
-            chown 472:472 /run/grafana-secrets/cognito-client-secret
-            umask 0022
-            chmod 0640 /run/grafana-secrets/cognito.env
-            chown 472:472 /run/grafana-secrets/cognito.env
-            log "Cognito env file written to /run/grafana-secrets/cognito.env"
-            unset cog_secret cog_client
-        else
-            log "No Cognito config in ${COGNITO_SSM_PARAM}; using local admin login only"
-            # Create an empty file so docker-compose doesn't complain about
-            # a missing env_file.
-            mkdir -p /run/grafana-secrets
-            : > /run/grafana-secrets/cognito.env
-            chmod 0640 /run/grafana-secrets/cognito.env
-        fi
-        unset cognito_json
-        { xtrace_restore; } 2>/dev/null
+        cognito_unit_env=/etc/aws-parallelcluster-monitoring/grafana-cognito.env
+        install -d -m 0755 /etc/aws-parallelcluster-monitoring
+        printf 'COGNITO_SSM_PARAM=%s\nREGION=%s\n' "${COGNITO_SSM_PARAM}" "${PLATFORM_REGION}" \
+            > "${cognito_unit_env}.new"
+        chmod 0644 "${cognito_unit_env}.new"
+        mv -f "${cognito_unit_env}.new" "${cognito_unit_env}"
+        install -m 0755 "${MONITORING_HOME}/custom-metrics/refresh-grafana-cognito.sh" /usr/local/bin/
+        install -m 0644 "${MONITORING_HOME}/systemd/grafana-cognito-refresh.service" /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable grafana-cognito-refresh.service
+        COGNITO_SSM_PARAM="${COGNITO_SSM_PARAM}" REGION="${PLATFORM_REGION}" \
+            /usr/local/bin/refresh-grafana-cognito.sh \
+            || warn "Cognito SSO is off: see the error above. Grafana offers only the local admin login"
 
                 # Set up credential refresh for Prometheus ec2_sd_configs.
         # ParallelCluster's Imds.Secured=true blocks IMDS from non-root
@@ -454,7 +403,7 @@ if [[ "${PLATFORM_NODE_TYPE}" == "head" || "${PLATFORM_NODE_TYPE}" == "login" ]]
     log "  ${GRAFANA_SSM_PARAM:-/${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/admin-password}"
     log "Retrieve with:"
     log "  aws ssm get-parameter --region ${PLATFORM_REGION} \\"
-    log "    --name /parallelcluster/${PLATFORM_CLUSTER_NAME}/grafana/admin-password \\"
+    log "    --name /${PLATFORM}/${PLATFORM_CLUSTER_NAME}/grafana/admin-password \\"
     log "    --with-decryption --query Parameter.Value --output text"
     log "==========================================================="
 fi

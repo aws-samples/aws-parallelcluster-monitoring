@@ -3,42 +3,71 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #
-# Creates (or updates) a Cognito App Client on an existing User Pool
-# configured for Grafana OAuth2 login, and prints the client_id +
-# client_secret to stdout in KEY=VALUE form.
+# Creates a Cognito app client for Grafana's OAuth2 sign-in on an existing
+# user pool, and prints the values that the Cognito parameter in SSM needs,
+# as KEY=VALUE lines on stdout (see cognito/README.md).
 #
 # Usage:
-#   ./setup-grafana-client.sh <pool-id> <grafana-fqdn-or-ip> [region]
+#   ./setup-grafana-client.sh <pool-id> <grafana-host> [region]
+#
+# <grafana-host> is the host, with the port unless it is 443, of the URL
+# that users open Grafana at:
+#   localhost:8443        SSM port forwarding, as in the README
+#   grafana.example.com   the ALB of docs/public-access.md
+#
+# The app client gets the callback URL
+# https://<grafana-host>/grafana/login/generic_oauth and the sign-out URL
+# https://<grafana-host>/grafana/. Cognito accepts http:// callback URLs
+# only for localhost, and nginx serves Grafana over HTTPS only, so the
+# script registers https:// URLs only.
 #
 # Example:
-#   ./setup-grafana-client.sh us-east-2_abc123 my-head-node.example.com us-east-2
-#
-# The <grafana-fqdn-or-ip> is how users will reach Grafana in their
-# browser. Usually the HeadNode's DNS name, public IP, or localhost
-# (when using SSM port-forward).
+#   ./setup-grafana-client.sh us-east-1_ABC123 localhost:8443 us-east-1
 #
 set -euo pipefail
 
-POOL_ID="${1:?usage: $0 <pool-id> <grafana-fqdn> [region]}"
-GRAFANA_HOST="${2:?usage: $0 <pool-id> <grafana-fqdn> [region]}"
+usage="usage: $0 <pool-id> <grafana-host> [region]"
+POOL_ID="${1:?${usage}}"
+GRAFANA_HOST="${2:?${usage}}"
 REGION="${3:-${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}}"
 
-# Grafana's OAuth callback URL. Use https by default; include http variant
-# for SSM port-forward / local testing.
-CALLBACK_URLS=(
-    "https://${GRAFANA_HOST}/grafana/login/generic_oauth"
-    "http://${GRAFANA_HOST}/grafana/login/generic_oauth"
-)
-LOGOUT_URLS=(
-    "https://${GRAFANA_HOST}/grafana"
-    "http://${GRAFANA_HOST}/grafana"
-)
-
+re='^[A-Za-z0-9.-]+(:[0-9]+)?$'
+if [[ ! "${GRAFANA_HOST}" =~ ${re} ]]; then
+    echo "ERROR: <grafana-host> must be a host name with an optional :<port>, such as localhost:8443 or grafana.example.com, not '${GRAFANA_HOST}'" >&2
+    exit 1
+fi
+ROOT_URL="https://${GRAFANA_HOST}/grafana/"
+CALLBACK_URL="${ROOT_URL}login/generic_oauth"
 CLIENT_NAME="aws-parallelcluster-monitoring-grafana"
 
-# Create the client. --generate-secret makes Cognito issue a random secret
-# that we'll retrieve via describe-user-pool-client.
-client_id=$(aws cognito-idp create-user-pool-client \
+# The hosted sign-in pages need a user pool domain: check it before the
+# client is created. A custom domain wins over a prefix domain, as in
+# Cognito's OIDC discovery.
+domains="$(aws cognito-idp describe-user-pool --region "${REGION}" --user-pool-id "${POOL_ID}" \
+    --query '[UserPool.CustomDomain, UserPool.Domain]' --output text)" || {
+    echo "ERROR: could not read user pool ${POOL_ID} in ${REGION} (see the error above)" >&2
+    exit 1
+}
+read -r custom_domain prefix_domain <<<"${domains}"
+if [[ -n "${custom_domain}" && "${custom_domain}" != None ]]; then
+    domain="${custom_domain}"
+    auth_host="${custom_domain}"
+elif [[ -n "${prefix_domain}" && "${prefix_domain}" != None ]]; then
+    domain="${prefix_domain}"
+    auth_host="${prefix_domain}.auth.${REGION}.amazoncognito.com"
+else
+    echo "ERROR: user pool ${POOL_ID} has no domain, which the hosted sign-in pages need." >&2
+    echo "Create one first: aws cognito-idp create-user-pool-domain --region ${REGION} --user-pool-id ${POOL_ID} --domain <some-unique-prefix>" >&2
+    exit 1
+fi
+# 1 is the classic hosted UI, 2 is managed login.
+login_version="$(aws cognito-idp describe-user-pool-domain --region "${REGION}" --domain "${domain}" \
+    --query 'DomainDescription.ManagedLoginVersion' --output text)" || {
+    echo "ERROR: could not read the user pool domain ${domain} (see the error above)" >&2
+    exit 1
+}
+
+created="$(aws cognito-idp create-user-pool-client \
     --region "${REGION}" \
     --user-pool-id "${POOL_ID}" \
     --client-name "${CLIENT_NAME}" \
@@ -46,41 +75,40 @@ client_id=$(aws cognito-idp create-user-pool-client \
     --allowed-o-auth-flows code \
     --allowed-o-auth-scopes openid email profile \
     --allowed-o-auth-flows-user-pool-client \
-    --callback-urls "${CALLBACK_URLS[@]}" \
-    --logout-urls "${LOGOUT_URLS[@]}" \
+    --callback-urls "${CALLBACK_URL}" \
+    --logout-urls "${ROOT_URL}" \
     --supported-identity-providers COGNITO \
     --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH \
-    --query 'UserPoolClient.ClientId' \
-    --output text 2>/dev/null) || {
-    echo "ERROR: could not create user pool client" >&2
+    --query 'UserPoolClient.[ClientId, ClientSecret]' \
+    --output text)" || {
+    echo "ERROR: Cognito did not create the app client (see the error above)" >&2
     exit 1
 }
+read -r client_id client_secret <<<"${created}"
+echo "Created app client ${client_id}: callback URL ${CALLBACK_URL}, sign-out URL ${ROOT_URL}" >&2
 
-# Fetch the secret (create doesn't return it in the same call)
-client_secret=$(aws cognito-idp describe-user-pool-client \
-    --region "${REGION}" \
-    --user-pool-id "${POOL_ID}" \
-    --client-id "${client_id}" \
-    --query 'UserPoolClient.ClientSecret' \
-    --output text)
+# Cognito serves managed login pages only to app clients that have a
+# branding style, and gives none to clients created through the API.
+if [[ "${login_version}" == 2 ]]; then
+    if ! aws cognito-idp create-managed-login-branding --region "${REGION}" \
+            --user-pool-id "${POOL_ID}" --client-id "${client_id}" \
+            --use-cognito-provided-values >/dev/null; then
+        echo "ERROR: Cognito did not create a managed login style for app client ${client_id} (see the error above)" >&2
+        echo "Deleting app client ${client_id}, so that a re-run starts clean" >&2
+        aws cognito-idp delete-user-pool-client --region "${REGION}" \
+            --user-pool-id "${POOL_ID}" --client-id "${client_id}" >&2 \
+            || echo "WARN: could not delete app client ${client_id}; delete it yourself" >&2
+        exit 1
+    fi
+    echo "Domain ${domain} uses managed login: created a style with Cognito's defaults for the client" >&2
+fi
 
-# Get the pool's Cognito-hosted domain (or custom domain if set).
-pool_domain=$(aws cognito-idp describe-user-pool \
-    --region "${REGION}" \
-    --user-pool-id "${POOL_ID}" \
-    --query 'UserPool.CustomDomain || UserPool.Domain' \
-    --output text)
-[[ "${pool_domain}" == "None" || -z "${pool_domain}" ]] && {
-    echo "ERROR: user pool ${POOL_ID} has no hosted UI domain." >&2
-    echo "Create one first: aws cognito-idp create-user-pool-domain --user-pool-id ${POOL_ID} --domain <some-unique-name>" >&2
-    exit 1
-}
-
-# Print KEY=VALUE for easy eval / source.
+# KEY=VALUE lines, for eval or source.
 cat <<KV
 COGNITO_CLIENT_ID=${client_id}
 COGNITO_CLIENT_SECRET=${client_secret}
-COGNITO_DOMAIN=${pool_domain}
+COGNITO_DOMAIN=${auth_host}
 COGNITO_REGION=${REGION}
 COGNITO_POOL_ID=${POOL_ID}
+GRAFANA_ROOT_URL=${ROOT_URL}
 KV

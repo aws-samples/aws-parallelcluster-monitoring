@@ -54,7 +54,8 @@ services:
       # (refresh-grafana-password.sh) populates from SSM Parameter Store.
       # Rotate the SSM parameter and the timer will pick up the new value.
       - 'GF_SECURITY_ADMIN_PASSWORD__FILE=/run/grafana-secrets/admin-password'
-      - 'GF_SERVER_ROOT_URL=http://%(domain)s/grafana/'
+      # GF_SERVER_ROOT_URL comes from cognito.env (env_file below): a value
+      # here would override the file's.
       - 'GF_SERVER_HTTP_ADDR=127.0.0.1'
       # Land every user on ParallelCluster Summary after login.
       - 'GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/ParallelCluster.json'
@@ -77,8 +78,12 @@ services:
       # change without a new image pin.
       - 'GF_PLUGINS_PREINSTALL_AUTO_UPDATE=false'
     env_file:
-      # Cognito OAuth2 config, materialized by installer from SSM.
-      # Empty file when Cognito is not configured (no-op).
+      # Written by refresh-grafana-cognito.sh at install and at every boot,
+      # from the optional Cognito parameter in SSM: GF_SERVER_ROOT_URL, the
+      # URL that users open Grafana at (root_url, by default
+      # https://localhost:8443/grafana/), and, when Cognito SSO is
+      # configured, the OAuth2 settings. Grafana builds the OAuth2 callback
+      # URL from the root URL.
       - '/run/grafana-secrets/cognito.env'
     volumes:
       - '__MONITORING_HOME__/grafana:/etc/grafana/provisioning'
