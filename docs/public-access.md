@@ -135,15 +135,22 @@ aws route53 change-resource-record-sets --hosted-zone-id <your-zone-id> \
 Without Cognito SSO, skip this step: the local admin login works at any
 URL.
 
-Grafana builds its Cognito callback URL from its root URL, which is
+Grafana builds its Cognito callback URL from its root URL, as
+`<root URL>login/generic_oauth`, and Cognito accepts only callback URLs
+registered on the app client. The root URL is
 `https://localhost:8443/grafana/` by default, the SSM port forwarding URL.
-For Cognito sign-in through the ALB, register the ALB's host name and make
-it the root URL (details in [cognito/README.md](../cognito/README.md)):
+For Cognito sign-in through the ALB, the root URL must be the URL that
+users open: `https://`, then the public host name of steps 1 and 5, then
+`/grafana/`. With the certificate and the alias record for
+`grafana.example.com`, it is `https://grafana.example.com/grafana/`, with
+no port, because the listener is on 443. Use that host name in every step
+below (details in [cognito/README.md](../cognito/README.md)):
 
-1. Create an app client for the ALB's host name:
+1. Create an app client for the public host name:
    ```bash
    ./cognito/setup-grafana-client.sh <pool-id> grafana.example.com <region>
    ```
+   It prints the root URL to store, `GRAFANA_ROOT_URL=https://grafana.example.com/grafana/`.
 2. Store its values in the Cognito parameter,
    `/parallelcluster/<cluster-name>/grafana/cognito` or
    `/pcs/<cluster-id>/grafana/cognito`, with
@@ -154,7 +161,10 @@ it the root URL (details in [cognito/README.md](../cognito/README.md)):
    ```
 
 Cognito sign-in then works at `https://grafana.example.com/grafana/`
-only. Over SSM port forwarding, use the local admin login.
+only. Users who open Grafana at another URL, such as the ALB's own
+`*.elb.amazonaws.com` name, are sent back to the root URL after they sign
+in at Cognito, and Grafana rejects that sign-in. Over SSM port
+forwarding, use the local admin login.
 
 #### 7. Browse
 
