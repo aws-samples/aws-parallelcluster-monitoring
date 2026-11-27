@@ -120,6 +120,60 @@ changes (see Changed).
   release's script, store its ID and secret in the parameter, re-run the
   installer, then delete the old app client.
 
+### Validation
+
+This release was validated live on 2026-11-27 in us-east-1, with Grafana
+13.3.2 and real Cognito user pools, on ParallelCluster 3.16.3 (Amazon Linux
+2023, Slurm 25.11.8) and on AWS PCS (Slurm 25.11.8, a login node group on
+the Amazon Linux 2023 sample AMI). Each platform read its own parameter,
+`/parallelcluster/<cluster-name>/grafana/cognito` or
+`/pcs/<cluster-id>/grafana/cognito`. Headless Chrome signed in through
+Cognito's managed login pages on both platforms, with the parameter's
+`domain` as the full host name and as the prefix only:
+
+- through SSM port forwarding, at the default root URL
+  `https://localhost:8443/grafana/`;
+- through an ALB set up as in `docs/public-access.md`, with `root_url` set
+  to the ALB's URL.
+
+It also signed in at `https://localhost:9443/grafana/`, set with
+`root_url`, on PCS, and through the classic hosted UI on ParallelCluster.
+Each sign-in reached Grafana as a Viewer, and sign-out ended the Cognito
+session. These checks passed too:
+
+- **Reboots.** After an EC2 reboot of the ParallelCluster head node, once
+  with each root URL, and a `scontrol reboot` of the PCS login node,
+  `grafana-cognito-refresh.service` wrote the secret again and restarted
+  Grafana. Sign-in worked without an installer re-run.
+- **Setup script.** Cognito accepted the app client, its callback and
+  sign-out URLs, and the managed login style. For a pool without a domain,
+  an unknown pool, a denied `CreateUserPoolClient` and a denied
+  `CreateManagedLoginBranding`, the script printed Cognito's error and
+  exited non-zero. After the denied style, it deleted the client it had
+  created. v3.0's script, run for a host other than localhost, printed only
+  `could not create user pool client`. The error it hid was Cognito's
+  `cannot use the HTTP protocol`.
+- **Installer.** A missing parameter, an invalid value and a denied
+  `ssm:GetParameter` each printed the message the docs quote, and Grafana
+  then offered only the local admin login. The v2.11 secret rotation steps
+  worked without their manual Grafana restart. On v3.0, Grafana sent
+  `redirect_uri=http://localhost/grafana/login/generic_oauth`, which Cognito
+  rejected. After an upgrade to this release, sign-in worked.
+- **Local admin login** worked through SSM port forwarding and through the
+  ALB at either root URL, and with Cognito off or misconfigured.
+- **`allowed_domains`**, with domains separated by a comma and a space, let
+  in only users with an email in those domains.
+- **The client secret** appeared in none of the install log, the journal,
+  `/var/log`, `docker inspect` and `docker exec grafana env`. Only the
+  Grafana server and CloudWatch plugin processes hold it, as documented.
+
+`docs/public-access.md` steps 1 (ACM DNS validation) and 5 (the Route 53
+alias record) weren't run live, because the test account has no public
+domain. Instead, the ALB's listener used a self-signed certificate for the
+ALB's own DNS name, imported into ACM, and the browser opened Grafana at
+that name. Cognito custom domains also need a domain, so they are covered
+by stub tests only.
+
 ## v3.1 — 2026-11-27
 
 Adds support for AWS PCS compute node groups in standard configuration,
