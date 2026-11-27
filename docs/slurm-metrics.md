@@ -92,6 +92,11 @@ On a running cluster:
 
    Re-running `post-install.sh` with a version, as for an upgrade, works too.
 
+   For 5 minutes after the switch, Prometheus still returns the last samples
+   of the `slurm_exporter` scrape job: Total Nodes and the other node and
+   CPU counts read double, and the panels that native metrics can't feed
+   show the exporter's last values.
+
 ## How the installer chooses
 
 On every run on a ParallelCluster head node, the installer requests

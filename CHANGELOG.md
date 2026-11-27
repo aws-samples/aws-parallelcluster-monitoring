@@ -174,6 +174,13 @@ powered-down and draining nodes as `sinfo` does, on AWS PCS too.
   chooses but doesn't write the install log, so check the switch with
   `systemctl` or Prometheus's targets
   ([docs/slurm-metrics.md](docs/slurm-metrics.md#check-which-source-a-head-node-uses)).
+- **For 5 minutes after the switch to native metrics, the Slurm panels show
+  both sources.** Prometheus restarts without the `slurm_exporter` job and
+  keeps returning that job's last samples for its 5-minute lookback. Total
+  Nodes and the other node and CPU counts read double, and the panels that
+  native metrics can't feed show the exporter's last values. Seen at every
+  switch in the validation, on Amazon Linux 2023 and Ubuntu 24.04; the
+  panels were correct once the 5 minutes had passed.
 - Never set `MetricsType` on ParallelCluster 3.14: its Slurm 24.11 rejects
   the key, and slurmctld doesn't start.
 - Clusters without `MetricsType` keep the Slurm exporter and every panel
@@ -224,6 +231,63 @@ powered-down and draining nodes as `sinfo` does, on AWS PCS too.
   link.
 - `parallelcluster-setup/pcluster.yaml` carries the `MetricsType` setting,
   commented out, with the 3.15 requirement and the 3.14 warning.
+
+### Validation
+
+This release was validated live on 2026-11-27 in us-east-1, on:
+- ParallelCluster 3.16.3 with Slurm 25.11.8: an Amazon Linux 2023 and an
+  Ubuntu 24.04 cluster that ran v3.0 with `MetricsType` set, upgraded in
+  place, with static and dynamic c6i.large nodes in two queues; and a new
+  Amazon Linux 2023 cluster created from `parallelcluster-setup/pcluster.yaml`
+  with its `SlurmSettings` block uncommented;
+- AWS PCS, size SMALL, with Slurm 26.05.5: a login node group and a CPU node
+  group of 1 to 3 c6i.large nodes on the Amazon Linux 2023 sample AMI, with
+  launch templates and the README's user data.
+
+Every check passed:
+- **Upgrade to native metrics.** On both operating systems, the installer
+  chose native metrics and removed the exporter's unit and binary, and
+  nothing listened on port 9092 any more. The marked block held the five
+  native scrape jobs, promtool accepted the configuration, the five targets
+  were up, the 29 compatibility rules were healthy and `cluster_cost` was
+  loaded. On the new cluster, the installer chose native metrics at
+  creation and never installed the exporter.
+- **Values.** Under a workload with running, suspended, held, begin-time,
+  completed, failed and cancelled jobs, and dynamic nodes powering up, the
+  nine job panels matched `squeue`, and the node, CPU and Partitions panels
+  matched `sinfo`, also with a draining node and a drained powered-down
+  node. Every difference was one of the known issues above.
+- **Switching both ways** (Ubuntu). After `pcluster update-cluster` removed
+  `MetricsType`, slurmctld answered with empty bodies, the targets stayed up
+  without samples, and Total Nodes read 0 until the installer re-ran. The
+  re-run chose the Slurm exporter and reinstalled it with its checksum
+  check, and the panels showed what v3.0 shows: pending reasons, RPC
+  statistics, CPU load and memory, and 0 on the job panels. A second re-run
+  left `prometheus.yml` unchanged, byte for byte. With `MetricsType` set
+  again, the head node kept the exporter, with no double count, until a
+  re-run switched it to native metrics. Running and suspended jobs kept
+  running through that update.
+- **Dashboards.** Cluster Summary and Slurm Detail rendered in Grafana
+  13.3.2 without an error, on both paths and on AWS PCS, and every panel
+  query ran through Grafana without an error. With native metrics, the four
+  notes showed in place of "No data", and Grafana served the new panel
+  descriptions.
+- **AWS PCS.** The installs succeeded on the login and compute nodes, and
+  the 29 rules were healthy. The job panels matched `squeue`. Nodes Idle
+  counted the two powered-down nodes, and Idle node-hours (last 24h) left
+  them out: its sum read 1 node, where v3.1's rules give 3. A draining node
+  counted under Nodes Down/Drain, where v3.1's rules count it under Nodes
+  Allocated. The 18 other rules returned the same series as v3.1's, and no
+  dashboard query changed.
+
+The 5-minute double count after a switch to native metrics, in the Upgrade
+notes above, was found in this validation.
+
+Not validated live: ParallelCluster 3.14 and 3.15, RHEL 9 and Ubuntu 22.04
+with the monitoring stack, arm64, and Slurm accounting. `PrivateData` and
+`CommunicationParameters=disable_http` were tested on slurmctld, and the
+installer's choice against a local test server, not with the installer on a
+cluster.
 
 ## v3.1.1 — 2026-11-27
 
