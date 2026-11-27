@@ -448,11 +448,17 @@ and disables `cockpit.socket` when it listens on 9090. To keep Cockpit, move
 it to another port in the AMI.
 
 Validated live on AWS PCS with Slurm 26.05 (x86_64), on custom AMIs of
-RHEL 10.3, Rocky Linux 10.3 and Ubuntu 26.04.1 with the PCS agent 1.6.0-1.
-Each operating system ran a login node and a CPU compute node (m6i.large),
-and a GPU compute node (g4dn.xlarge, NVIDIA T4, driver 620.70.10). Not
-validated: arm64, Slurm 25.11 on these operating systems, GPUs other than
-the T4, AlmaLinux 10 and CentOS Stream 10.
+RHEL 10.3, Rocky Linux 10.3 and Ubuntu 26.04.1 with the PCS agent 1.6.0-1:
+
+- **v3.0**, on 2026-11-27: a login node and a CPU compute node (m6i.large)
+  per operating system, installed fresh, Cluster Costs included.
+- **v2.13**: a login node and a CPU compute node (m6i.large), and a GPU
+  compute node (g4dn.xlarge, NVIDIA T4, driver 620.70.10), per operating
+  system. v3.0 doesn't change the GPU node's install or metrics path.
+
+Not validated: arm64, Slurm 25.11 on these operating systems, GPUs other
+than the T4, in-place upgrades from v2.13, AlmaLinux 10 and CentOS
+Stream 10.
 
 ## Architecture
 

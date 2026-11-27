@@ -692,11 +692,16 @@ Validated live:
 - AWS PCS with Slurm 25.11.8, upgraded in place to 26.05.5, on the Amazon
   Linux 2023 sample AMI (the GPU node on the PCS-ready DLAMI), size SMALL
   with accounting `STANDARD`;
+- after the release, on 2026-11-27: AWS PCS with Slurm 26.05.5, size SMALL
+  without accounting, on custom AMIs of RHEL 10.3, Rocky Linux 10.3 and
+  Ubuntu 26.04.1, with an On-Demand login node and CPU compute node per
+  operating system, installed fresh. An independent calculation matched
+  every figure within $0.000001 per hour (79 checks per login node), and
+  the RHEL instances were priced at the RHEL On-Demand rate (operation
+  `RunInstances:0010`);
 - the standalone PCS login node's discovery and fees;
-- AWS CLI 2.40.3 and 2.41.0 error formats.
+- AWS CLI 2.31.35, 2.33.0, 2.40.3 and 2.41.0 error formats.
 
 Covered by unit tests only:
 - the Slurm 24.11 JSON of older ParallelCluster versions;
-- multi-node GPU jobs;
-- RHEL 10, Rocky Linux 10 and Ubuntu 26.04, whose AWS CLI 2.33.0 and
-  2.31.35 error formats are unit-test fixtures.
+- multi-node GPU jobs.

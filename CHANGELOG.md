@@ -63,6 +63,12 @@ Neither changes what the installer deploys.
 
 - **Roadmap.** The CI item is done. hadolint is dropped from it, because
   the repository has no Dockerfiles.
+- **v3.0 on RHEL 10, Rocky Linux 10 and Ubuntu 26.04.** After its release,
+  on 2026-11-27, v3.0 was validated live on these operating systems on AWS
+  PCS with Slurm 26.05.5, with a login node and a CPU compute node each.
+  [docs/cost-estimates.md](docs/cost-estimates.md) moves them from "Covered
+  by unit tests only" to "Validated live", and the README's section on them
+  says what the v3.0 and v2.13 validations covered.
 
 ## v3.0 — 2026-11-27
 
