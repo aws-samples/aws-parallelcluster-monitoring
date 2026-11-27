@@ -127,12 +127,15 @@ class InstalledPathsTest(unittest.TestCase):
     def test_environment_variables(self):
         fmt = re.search(r"printf '([^']*)'", self.install).group(1)
         names = [line.partition("=")[0] for line in fmt.split("\\n") if line]
-        self.assertEqual(names, ["PLATFORM", "CLUSTER_ID", "REGION"])
-        for module, cluster in (("parallelcluster.sh", fakes.PC_CLUSTER), ("pcs.sh", fakes.PCS_CLUSTER)):
+        self.assertEqual(names, ["PLATFORM", "CLUSTER_ID", "REGION", "LOGIN_NODE_GROUP_ID"])
+        # LOGIN_NODE_GROUP_ID is empty on ParallelCluster and holds the login
+        # node's own node group on PCS.
+        for module, cluster, login_group, want in (("parallelcluster.sh", fakes.PC_CLUSTER, "", None),
+                                                    ("pcs.sh", fakes.PCS_CLUSTER, "pcs_ng0login01", "pcs_ng0login01")):
             platform = re.search(r'export PLATFORM="([a-z]+)"', read("installer", "platform", module)).group(1)
-            config = cc.load_config(dict(zip(names, (platform, cluster, "us-east-1"))))
-            self.assertEqual((config.platform, config.state_dir, config.textfile_dir),
-                             (platform, cc.STATE_DIR_DEFAULT, cc.TEXTFILE_DIR_DEFAULT))
+            config = cc.load_config(dict(zip(names, (platform, cluster, "us-east-1", login_group))))
+            self.assertEqual((config.platform, config.login_node_group_id, config.state_dir, config.textfile_dir),
+                             (platform, want, cc.STATE_DIR_DEFAULT, cc.TEXTFILE_DIR_DEFAULT))
 
     def test_directories(self):
         """Modes that check_private_dir accepts, and a root:root textfile

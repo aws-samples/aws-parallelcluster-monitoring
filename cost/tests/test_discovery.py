@@ -160,6 +160,23 @@ class PcsTest(unittest.TestCase):
         vols = {v["instance_id"] for v in self.h.report()["volumes"]}
         self.assertIn("i-0b00000000000a008", vols)
 
+    def test_login_node_group_from_config(self):
+        # LOGIN_NODE_GROUP_ID, the monitoring login node's own node group in
+        # cluster-cost.env, makes login-extra's instance a login node.
+        self.h.environ["LOGIN_NODE_GROUP_ID"] = "pcs_ng0login02"
+        self.assertEqual(self.h.run(), 0)
+        row = by_id(self.h.report())["i-0b00000000000a005"]
+        self.assertEqual((row["role"], row["queue"]), ("login", None))
+        m = self.h.metrics()
+        self.assertEqual(m.sum("cluster_cost_nodes", node_role="login"), 3)
+        self.assertEqual(m.sum("cluster_cost_nodes", node_role="compute"), 5)
+        for family in ("cluster_cost_idle_nodes", "cluster_cost_unallocated_usd_per_hour"):
+            self.assertTrue(m.series(family), family)
+            self.assertEqual([labels for labels, _ in m.series(family) if labels.get("queue") == "login-extra"],
+                             [], family)
+        fees = [f for f in self.h.report()["fees"] if f["component"] == "pcs_node_management"]
+        self.assertEqual(len(fees), 7)
+
     def test_first_call_failing_skips_the_second(self):
         self.h.runner.on(fakes.has_arg("tag:aws:pcs:cluster-id"), fakes.aws_error("RequestLimitExceeded", "DescribeInstances"))
         self.h.run()
@@ -201,6 +218,15 @@ class PcsTest(unittest.TestCase):
             tags = dict(pairs)
             inst, _ = cc.parse_instance(base, tags, "pcs")
             self.assertEqual((inst.role, inst.pcs_managed), want, pairs)
+        # With the login node's own node group (LOGIN_NODE_GROUP_ID).
+        group_cases = [
+            ([("aws:pcs:cluster-id", "x"), ("aws:pcs:compute-node-group-id", "g1")], "g1", ("login", True)),
+            ([("aws:pcs:cluster-id", "x"), ("aws:pcs:compute-node-group-id", "g1")], "g2", ("compute", True)),
+            ([("pcs-cluster-id", "x")], "g1", ("login", False)),
+        ]
+        for pairs, login_group, want in group_cases:
+            inst, _ = cc.parse_instance(base, dict(pairs), "pcs", login_group)
+            self.assertEqual((inst.role, inst.pcs_managed), want, (pairs, login_group))
 
 
 if __name__ == "__main__":

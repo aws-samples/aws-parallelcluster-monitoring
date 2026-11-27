@@ -445,8 +445,12 @@ install_cost_collector() {
     # The collector refuses a textfile directory that isn't root-owned or that
     # group or others can write. node_exporter runs as nobody, so it needs 0755.
     install -d -m 0755 -o root -g root /var/lib/prometheus/node-exporter
-    printf 'PLATFORM=%s\nCLUSTER_ID=%s\nREGION=%s\n' \
-        "${PLATFORM}" "${PLATFORM_CLUSTER_NAME}" "${PLATFORM_REGION}" > "${envdir}/cluster-cost.env.new"
+    # LOGIN_NODE_GROUP_ID: on PCS, this login node's own compute node group,
+    # whose instances the collector counts as login nodes. Empty on
+    # ParallelCluster and on a PCS login node launched outside PCS.
+    printf 'PLATFORM=%s\nCLUSTER_ID=%s\nREGION=%s\nLOGIN_NODE_GROUP_ID=%s\n' \
+        "${PLATFORM}" "${PLATFORM_CLUSTER_NAME}" "${PLATFORM_REGION}" "${PCS_NODE_GROUP_ID:-}" \
+        > "${envdir}/cluster-cost.env.new"
     chmod 0644 "${envdir}/cluster-cost.env.new"
     mv -f "${envdir}/cluster-cost.env.new" "${envdir}/cluster-cost.env"
     install -m 0755 -o root -g root "${MONITORING_HOME}/cost/cluster_cost.py" /usr/local/bin/cluster-cost-collector

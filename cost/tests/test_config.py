@@ -59,6 +59,15 @@ class LoadConfigTest(unittest.TestCase):
             with self.assertRaises(cc.ConfigError, msg=bad):
                 cc.load_config(env(REGION=bad))
 
+    def test_login_node_group_id(self):
+        self.assertIsNone(cc.load_config(env()).login_node_group_id)
+        self.assertIsNone(cc.load_config(env(LOGIN_NODE_GROUP_ID="")).login_node_group_id)
+        self.assertEqual(cc.load_config(env(LOGIN_NODE_GROUP_ID="pcs_ng0login02")).login_node_group_id,
+                         "pcs_ng0login02")
+        for bad in ("has space", "a,b", "x" * 129):
+            with self.assertRaises(cc.ConfigError, msg=bad):
+                cc.load_config(env(LOGIN_NODE_GROUP_ID=bad))
+
     def test_china_region_message(self):
         for region in ("cn-north-1", "cn-northwest-1"):
             with self.assertRaises(cc.ConfigError) as ctx:

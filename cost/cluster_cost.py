@@ -17,8 +17,10 @@ totals and the health of the run to node_exporter's textfile directory:
 
 Configuration comes from the environment (the unit's EnvironmentFile,
 /etc/aws-parallelcluster-monitoring/cluster-cost.env): PLATFORM, CLUSTER_ID
-and REGION. The accumulators (state.json), the price cache and the run
-report live in the state directory, /var/lib/aws-parallelcluster-monitoring/cost.
+and REGION, and LOGIN_NODE_GROUP_ID, the PCS login node's own compute node
+group, whose instances count as login nodes (empty or absent: none). The
+accumulators (state.json), the price cache and the run report live in the
+state directory, /var/lib/aws-parallelcluster-monitoring/cost.
 
     cluster-cost-collector            one run
     cluster-cost-collector --dry-run  one run that prints the exposition and
@@ -229,6 +231,7 @@ class Config:
     platform: str
     cluster_id: str
     region: str
+    login_node_group_id: Optional[str] = None
     state_dir: str = STATE_DIR_DEFAULT
     textfile_dir: str = TEXTFILE_DIR_DEFAULT
     slurm_bin_dir: Optional[str] = None
@@ -248,11 +251,15 @@ def load_config(environ):
         raise ConfigError("AWS China regions are not supported: their price lists are in CNY")
     if not REGION_RE.match(region):
         raise ConfigError("REGION %r is not a valid region code" % region[:64])
+    login_node_group_id = environ.get("LOGIN_NODE_GROUP_ID") or None
+    if login_node_group_id is not None and not NODE_GROUP_ID_RE.match(login_node_group_id):
+        raise ConfigError("LOGIN_NODE_GROUP_ID %r is not a valid compute node group ID" % login_node_group_id[:140])
     slurm_bin_dir = environ.get("CLUSTER_COST_SLURM_BIN_DIR") or None
     return Config(
         platform=platform,
         cluster_id=cluster_id,
         region=region,
+        login_node_group_id=login_node_group_id,
         state_dir=environ.get("CLUSTER_COST_STATE_DIR") or STATE_DIR_DEFAULT,
         textfile_dir=environ.get("CLUSTER_COST_TEXTFILE_DIR") or TEXTFILE_DIR_DEFAULT,
         slurm_bin_dir=slurm_bin_dir,
@@ -1071,8 +1078,13 @@ def parse_tags(raw):
     return tags
 
 
-def parse_instance(rec, tags, platform):
-    """(Instance, None), (None, 'invalid') or (None, 'unknown node type')."""
+def parse_instance(rec, tags, platform, login_group=None):
+    """(Instance, None), (None, 'invalid') or (None, 'unknown node type').
+
+    On PCS an instance is a login node when it has monitoring-role=login, no
+    compute node group (launched outside PCS), or the node group login_group
+    (the monitoring login node's own, LOGIN_NODE_GROUP_ID).
+    """
     iid, itype, az = rec.get("InstanceId"), rec.get("InstanceType"), rec.get("Az")
     if not isinstance(iid, str) or not INSTANCE_ID_RE.match(iid):
         return None, "invalid"
@@ -1104,7 +1116,8 @@ def parse_instance(rec, tags, platform):
         queue = (tags.get("parallelcluster:queue-name") or "unknown") if role == "compute" else None
         return Instance(role=role, queue=queue, **common), None
     group = tags.get(PCS_GROUP_TAG) or None
-    role = "login" if tags.get("monitoring-role") == "login" or group is None else "compute"
+    login = tags.get("monitoring-role") == "login" or group is None or group == login_group
+    role = "login" if login else "compute"
     return Instance(role=role, node_group_id=group, pcs_managed=group is not None, **common), None
 
 
@@ -1144,7 +1157,7 @@ def discover(run, stage):
                     continue
                 seen.add(iid)
             tagged += 1
-            inst, why = parse_instance(rec, tags, run.config.platform)
+            inst, why = parse_instance(rec, tags, run.config.platform, run.config.login_node_group_id)
             if inst is None:
                 if why == "invalid":
                     invalid += 1
