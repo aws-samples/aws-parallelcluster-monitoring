@@ -1,0 +1,389 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# promtool test rules for the node-state rules of
+# prometheus/rules/pcs-compat.yml, and for the dashboard queries that read
+# them. Run from this directory:
+#   promtool test rules slurm_compat_test.yml
+# The input series are the per-partition counts of Slurm's
+# /metrics/partitions, as a ParallelCluster head node scrapes them.
+rule_files:
+  - ../rules/pcs-compat.yml
+evaluation_interval: 30s
+tests:
+  # Case A, measured on ParallelCluster 3.16.3 under a workload. Partition
+  # cpu: one allocated, one mixed and one idle node, 6 CPUs. Partition cpu2:
+  # one mixed node and one powered-down node (idle~), 4 CPUs.
+  - interval: 30s
+    input_series:
+      - series: 'slurm_partition_nodes{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '3x10'
+      - series: 'slurm_partition_nodes_alloc{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_mixed{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_idle{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_drained{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_draining{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_powered_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '0x10'
+      - series: 'slurm_partition_cpus{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '6x10'
+      - series: 'slurm_partition_nodes{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '2x10'
+      - series: 'slurm_partition_nodes_alloc{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_mixed{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_idle{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_drained{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_draining{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_powered_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_cpus{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '4x10'
+    promql_expr_test:
+      - expr: 'slurm_node_count_per_state'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="alloc"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="mix"}'
+            value: 2
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drng"}'
+            value: 0
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="down"}'
+            value: 0
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drain"}'
+            value: 0
+      - expr: 'slurm_cpus_per_state{state="idle~"}'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_cpus_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~"}'
+            value: 2
+      - expr: 'slurm_partition_node_count{partition="cpu2"}'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="alloc",partition="cpu2"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="mix",partition="cpu2"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drng",partition="cpu2"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle",partition="cpu2"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~",partition="cpu2"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="down",partition="cpu2"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drain",partition="cpu2"}'
+            value: 0
+      # Cluster Summary: Total Nodes, Nodes Allocated, Nodes Idle and Nodes Down/Drain.
+      - expr: '(sum(slurm_node_count_per_state)) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 5
+      - expr: 'sum(slurm_node_count_per_state{state=~"(alloc|mix).*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 3
+      - expr: 'sum(slurm_node_count_per_state{state=~"idle.*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 2
+      - expr: 'sum(slurm_node_count_per_state{state=~"(down|drain|drng).*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      # Idle node-hours (last 24h), its inner sum: the idle nodes without idle~.
+      - expr: 'sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      # Slurm Detail Partitions: Nodes Busy (A), Nodes Idle (B) and Nodes Down/Drain (C).
+      - expr: 'sum by(partition) (slurm_partition_node_count{state!~"idle.*|down.*|drain.*|drng.*"}) or sum by(partition) (slurm_partition_node_count) * 0'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="cpu"}'
+            value: 2
+          - labels: '{partition="cpu2"}'
+            value: 1
+      - expr: 'sum by(partition) (slurm_partition_node_count{state=~"idle.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="cpu"}'
+            value: 1
+          - labels: '{partition="cpu2"}'
+            value: 1
+      - expr: 'sum by(partition) (slurm_partition_node_count{state=~"down.*|drain.*|drng.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="cpu"}'
+            value: 0
+          - labels: '{partition="cpu2"}'
+            value: 0
+  # Case B, the same cluster after a drain test. Partition cpu: the node with
+  # a running job is draining (drng), one node is mixed and one is
+  # powered down (idle~). Partition cpu2: one mixed node and one drained
+  # powered-down node (drain~). The exporter, which reads sinfo, gave Nodes
+  # Allocated 2 and Nodes Down/Drain 2.
+  - interval: 30s
+    input_series:
+      - series: 'slurm_partition_nodes{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '3x10'
+      - series: 'slurm_partition_nodes_alloc{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_mixed{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_idle{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_drained{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_draining{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_powered_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '1x10'
+      - series: 'slurm_partition_cpus{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu"}'
+        values: '6x10'
+      - series: 'slurm_partition_nodes{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '2x10'
+      - series: 'slurm_partition_nodes_alloc{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_mixed{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_idle{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_drained{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_draining{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_powered_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '1x10'
+      - series: 'slurm_partition_cpus{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="cpu2"}'
+        values: '4x10'
+    promql_expr_test:
+      - expr: 'slurm_node_count_per_state'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle"}'
+            value: 0
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="alloc"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="mix"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drng"}'
+            value: 1
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="down"}'
+            value: 0
+          - labels: 'slurm_node_count_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drain"}'
+            value: 1
+      - expr: 'slurm_cpus_per_state{state="idle~"}'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_cpus_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~"}'
+            value: 2
+      - expr: 'slurm_partition_node_count{partition="cpu"}'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="alloc",partition="cpu"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="mix",partition="cpu"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drng",partition="cpu"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle",partition="cpu"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~",partition="cpu"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="down",partition="cpu"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drain",partition="cpu"}'
+            value: 0
+      # Cluster Summary: Total Nodes, Nodes Allocated, Nodes Idle and Nodes Down/Drain.
+      - expr: '(sum(slurm_node_count_per_state)) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 5
+      - expr: 'sum(slurm_node_count_per_state{state=~"(alloc|mix).*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 2
+      - expr: 'sum(slurm_node_count_per_state{state=~"idle.*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'sum(slurm_node_count_per_state{state=~"(down|drain|drng).*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 2
+      # Idle node-hours (last 24h), its inner sum: the idle nodes without idle~.
+      - expr: 'sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      # Slurm Detail Partitions: Nodes Busy (A), Nodes Idle (B) and Nodes Down/Drain (C).
+      - expr: 'sum by(partition) (slurm_partition_node_count{state!~"idle.*|down.*|drain.*|drng.*"}) or sum by(partition) (slurm_partition_node_count) * 0'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="cpu"}'
+            value: 1
+          - labels: '{partition="cpu2"}'
+            value: 1
+      - expr: 'sum by(partition) (slurm_partition_node_count{state=~"idle.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="cpu"}'
+            value: 1
+          - labels: '{partition="cpu2"}'
+            value: 0
+      - expr: 'sum by(partition) (slurm_partition_node_count{state=~"down.*|drain.*|drng.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="cpu"}'
+            value: 1
+          - labels: '{partition="cpu2"}'
+            value: 1
+  # Case C, the documented approximation: two idle nodes and a drained down
+  # node give idle 1, down 1, drain 1, where sinfo shows idle 2, drain 1. A
+  # partition without nodes adds 0 idle~ CPUs, not NaN.
+  - interval: 30s
+    input_series:
+      - series: 'slurm_partition_nodes{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '3x10'
+      - series: 'slurm_partition_nodes_alloc{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_mixed{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_idle{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '2x10'
+      - series: 'slurm_partition_nodes_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_drained{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '1x10'
+      - series: 'slurm_partition_nodes_draining{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_powered_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '0x10'
+      - series: 'slurm_partition_cpus{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="q"}'
+        values: '6x10'
+      - series: 'slurm_partition_nodes{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_alloc{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_mixed{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_idle{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_drained{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_draining{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_nodes_powered_down{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+      - series: 'slurm_partition_cpus{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",partition="empty"}'
+        values: '0x10'
+    promql_expr_test:
+      - expr: 'slurm_partition_node_count{partition="q"}'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="alloc",partition="q"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="mix",partition="q"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drng",partition="q"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle",partition="q"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~",partition="q"}'
+            value: 0
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="down",partition="q"}'
+            value: 1
+          - labels: 'slurm_partition_node_count{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="drain",partition="q"}'
+            value: 1
+      - expr: 'slurm_cpus_per_state{state="idle~"}'
+        eval_time: 2m
+        exp_samples:
+          - labels: 'slurm_cpus_per_state{job="slurm_openmetrics_partitions",instance="localhost:6820",slurm_endpoint="partitions",state="idle~"}'
+            value: 0
+      # Cluster Summary: Total Nodes, Nodes Allocated, Nodes Idle and Nodes Down/Drain.
+      - expr: '(sum(slurm_node_count_per_state)) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 3
+      - expr: 'sum(slurm_node_count_per_state{state=~"(alloc|mix).*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      - expr: 'sum(slurm_node_count_per_state{state=~"idle.*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'sum(slurm_node_count_per_state{state=~"(down|drain|drng).*"}) or vector(0)'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 2
+      # Idle node-hours (last 24h), its inner sum: the idle nodes without idle~.
+      - expr: 'sum(slurm_node_count_per_state{state=~"idle.*", state!~".*~.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      # Slurm Detail Partitions: Nodes Busy (A), Nodes Idle (B) and Nodes Down/Drain (C).
+      - expr: 'sum by(partition) (slurm_partition_node_count{state!~"idle.*|down.*|drain.*|drng.*"}) or sum by(partition) (slurm_partition_node_count) * 0'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="empty"}'
+            value: 0
+          - labels: '{partition="q"}'
+            value: 0
+      - expr: 'sum by(partition) (slurm_partition_node_count{state=~"idle.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="empty"}'
+            value: 0
+          - labels: '{partition="q"}'
+            value: 1
+      - expr: 'sum by(partition) (slurm_partition_node_count{state=~"down.*|drain.*|drng.*"})'
+        eval_time: 2m
+        exp_samples:
+          - labels: '{partition="empty"}'
+            value: 0
+          - labels: '{partition="q"}'
+            value: 2

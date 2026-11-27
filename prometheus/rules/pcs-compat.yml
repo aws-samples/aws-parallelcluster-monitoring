@@ -2,12 +2,21 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 #
-# Recording rules that translate AWS PCS native Slurm OpenMetrics into
-# the metric names the dashboards (built around rivosinc/prometheus-
-# slurm-exporter) expect. This lets one set of dashboards work on both
-# platforms.
+# Recording rules that translate Slurm's native OpenMetrics into the
+# metric names the dashboards (built around rivosinc/prometheus-
+# slurm-exporter) expect. This lets one set of dashboards work with both
+# sources. Prometheus loads them on AWS PCS login nodes and on
+# ParallelCluster head nodes. A ParallelCluster head node scrapes the
+# native endpoints when its slurmctld serves them, and the Slurm exporter
+# otherwise; with the exporter the native series don't exist, so these
+# rules record nothing (docs/slurm-metrics.md).
 #
-# PCS native names come from Slurm's openmetrics plugin (the names used
+# Slurm counts nodes per partition and per state flag, not per node. The
+# node-state rules below place powered-down, draining and drained nodes as
+# sinfo does where those counts allow it; the comment of pcs_slurm_nodes
+# lists the cases that stay approximate.
+#
+# The native names come from Slurm's openmetrics plugin (the names used
 # here are the same in Slurm 25.11 and 26.05):
 #   /metrics/nodes        → slurm_nodes_*, slurm_node_*
 #   /metrics/jobs         → slurm_jobs_* (mostly already compatible)
@@ -25,30 +34,57 @@ groups:
   # Summed over the partitions, because Slurm's cluster-wide slurm_nodes_*
   # and slurm_node_cpus_* also count the login nodes, which PCS registers
   # as Slurm nodes without a partition. A node in several partitions counts
-  # once in each. Slurm counts a drained node (drain flag, no running jobs)
-  # in its base state, idle or down, as well as in
-  # slurm_partition_nodes_drained. Here it counts as drain only, as sinfo
-  # shows it, taken out of idle first and out of down for the rest, so the
-  # states add up to the number of nodes. Slurm's series don't say which
-  # base state a drained node has, so a drained down node in a partition
-  # with idle nodes is taken out of idle: two idle nodes and a drained down
-  # node give idle 1, down 1, drain 1, where sinfo shows idle 2, drain 1.
-  # Taking drained nodes out of down first would get a drained idle node
-  # wrong instead. A draining node (drain flag, jobs still running) counts
-  # as alloc or mix, as in Slurm's counts.
+  # once in each.
+  #
+  # Each node counts in one state, the one sinfo shows, so the states add
+  # up to the number of nodes:
+  #   - drain: a drained node (drain flag, no running jobs). Slurm counts it
+  #     in its base state, idle or down, as well as in
+  #     slurm_partition_nodes_drained. Here it is taken out of idle first
+  #     and out of down for the rest.
+  #   - idle~: a powered-down node, such as a ParallelCluster dynamic node
+  #     without an instance. Slurm counts it as idle and in
+  #     slurm_partition_nodes_powered_down. Here it is taken out of the idle
+  #     nodes that aren't drained.
+  #   - drng: a draining node (drain flag, jobs still running). Slurm counts
+  #     it as alloc or mix and in slurm_partition_nodes_draining. Here it is
+  #     taken out of mix first, then out of alloc.
+  #
+  # Slurm's series don't say which flags each node has, so these cases stay
+  # approximate:
+  #   - A drained down node in a partition with idle nodes is taken out of
+  #     idle: two idle nodes and a drained down node give idle 1, down 1,
+  #     drain 1, where sinfo shows idle 2, drain 1. Taking drained nodes out
+  #     of down first would get a drained idle node wrong instead.
+  #   - A powered-down node that is also down or drained (down~, drain~), in
+  #     a partition that also has powered-up idle nodes, moves one of those
+  #     idle nodes to idle~.
+  #   - A draining node counts as drng, but the split of the other busy
+  #     nodes between alloc and mix can differ from sinfo's, because
+  #     draining nodes are taken out of mix first. Their sum is exact.
+  #   - The idle~ CPUs are the partition's CPUs per node times its idle~
+  #     nodes, which is exact when all its nodes have the same CPU count.
+  #   - Slurm counts the free CPUs of drained, draining and down nodes as
+  #     idle, where sinfo counts them as other.
   # ─────────────────────────────────────────────────────────────────────
   - name: pcs_slurm_nodes
     interval: 30s
     rules:
       - record: slurm_node_count_per_state
-        expr: sum without(partition) (clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained, 0))
+        expr: sum without(partition) (clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained - slurm_partition_nodes_powered_down, 0))
         labels: {state: idle}
       - record: slurm_node_count_per_state
-        expr: sum without(partition) (slurm_partition_nodes_alloc)
+        expr: sum without(partition) (clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained, 0) - clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained - slurm_partition_nodes_powered_down, 0))
+        labels: {state: "idle~"}
+      - record: slurm_node_count_per_state
+        expr: sum without(partition) (clamp_min(slurm_partition_nodes_alloc - clamp_min(slurm_partition_nodes_draining - slurm_partition_nodes_mixed, 0), 0))
         labels: {state: alloc}
       - record: slurm_node_count_per_state
-        expr: sum without(partition) (slurm_partition_nodes_mixed)
+        expr: sum without(partition) (clamp_min(slurm_partition_nodes_mixed - slurm_partition_nodes_draining, 0))
         labels: {state: mix}
+      - record: slurm_node_count_per_state
+        expr: sum without(partition) (slurm_partition_nodes_draining)
+        labels: {state: "drng"}
       - record: slurm_node_count_per_state
         expr: sum without(partition) (clamp_min(slurm_partition_nodes_down - clamp_min(slurm_partition_nodes_drained - slurm_partition_nodes_idle, 0), 0))
         labels: {state: down}
@@ -63,13 +99,18 @@ groups:
       - record: slurm_cpus_per_state
         expr: sum without(partition) (slurm_partition_nodes_cpus_alloc)
         labels: {state: alloc}
+      # The CPUs of the idle~ nodes, which Idle CPU-hours (last 24h) leaves
+      # out. A partition without nodes adds nothing.
+      - record: slurm_cpus_per_state
+        expr: sum without(partition) ((clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained, 0) - clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained - slurm_partition_nodes_powered_down, 0)) * slurm_partition_cpus / (slurm_partition_nodes > 0))
+        labels: {state: "idle~"}
 
   # ─────────────────────────────────────────────────────────────────────
   # Per-partition metrics — used by Slurm Detail "Partitions" and
   # Cluster Summary "Top partitions".
-  # PCS exposes per-state node counts and CPU counts, each with a
+  # Slurm exposes per-state node counts and CPU counts, each with a
   # `partition` label:
-  #   slurm_partition_nodes_{alloc,mixed,idle,down,drained}
+  #   slurm_partition_nodes_{alloc,mixed,idle,down,drained,draining,powered_down}
   #   slurm_partition_nodes_cpus_{alloc,idle}
   # rivosinc uses slurm_partition_node_count{partition,state},
   # slurm_partition_alloc_cpus{partition,state} and
@@ -78,19 +119,25 @@ groups:
   - name: pcs_slurm_partitions
     interval: 30s
     rules:
-      # Per-state node counts in rivosinc's shape, with drained nodes
-      # counted as drain only (see pcs_slurm_nodes). Slurm Detail
-      # "Partitions" computes allocated nodes as all states minus idle,
-      # down and drain.
+      # Per-state node counts in rivosinc's shape, with the states and the
+      # approximations of pcs_slurm_nodes. Slurm Detail "Partitions" counts
+      # as Nodes Busy the nodes in every state except idle, down, drain and
+      # drng.
       - record: slurm_partition_node_count
-        expr: slurm_partition_nodes_alloc
+        expr: clamp_min(slurm_partition_nodes_alloc - clamp_min(slurm_partition_nodes_draining - slurm_partition_nodes_mixed, 0), 0)
         labels: {state: alloc}
       - record: slurm_partition_node_count
-        expr: slurm_partition_nodes_mixed
+        expr: clamp_min(slurm_partition_nodes_mixed - slurm_partition_nodes_draining, 0)
         labels: {state: mix}
       - record: slurm_partition_node_count
-        expr: clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained, 0)
+        expr: slurm_partition_nodes_draining
+        labels: {state: "drng"}
+      - record: slurm_partition_node_count
+        expr: clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained - slurm_partition_nodes_powered_down, 0)
         labels: {state: idle}
+      - record: slurm_partition_node_count
+        expr: clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained, 0) - clamp_min(slurm_partition_nodes_idle - slurm_partition_nodes_drained - slurm_partition_nodes_powered_down, 0)
+        labels: {state: "idle~"}
       - record: slurm_partition_node_count
         expr: clamp_min(slurm_partition_nodes_down - clamp_min(slurm_partition_nodes_drained - slurm_partition_nodes_idle, 0), 0)
         labels: {state: down}
@@ -100,8 +147,8 @@ groups:
       - record: slurm_partition_alloc_cpus
         expr: slurm_partition_nodes_cpus_alloc
         labels: {state: alloc}
-      # Slurm also counts the free CPUs of drained and down nodes as idle
-      # here, where sinfo counts them as other.
+      # Slurm also counts the free CPUs of drained, draining and down nodes
+      # as idle here, where sinfo counts them as other.
       - record: slurm_partition_idle_cpus
         expr: slurm_partition_nodes_cpus_idle
 
