@@ -1,6 +1,8 @@
 """AWS error codes (AC 33): the recorded CLI samples of CLI 2.38.0, 2.33.0
-and 2.31.35 map to the codes of design "AWS error codes"; the first failed
-call of a stage wins; no CLI text becomes a label."""
+and 2.31.35, and of the live validation nodes (2.40.3 on the ParallelCluster
+head node, 2.41.0 on the PCS login node), map to the codes of design "AWS
+error codes"; the first failed call of a stage wins; no CLI text becomes a
+label."""
 import glob
 import json
 import os
@@ -31,7 +33,8 @@ EXPECTED = {
     "cli-missing": "AwsCliNotFound",
 }
 # A proxy that accepts the connection and never answers.
-PROXY_SILENT = {"2.38.0": "EndpointUnreachable", "2.33.0": "EndpointUnreachable", "2.31.35": "Timeout"}
+PROXY_SILENT = {"2.38.0": "EndpointUnreachable", "2.33.0": "EndpointUnreachable", "2.31.35": "Timeout",
+                "2.40.3": "Timeout", "2.41.0": "Timeout"}
 NEEDS_PRICE_LIST = lambda data: isinstance(data, dict) and isinstance(data.get("PriceList"), list)  # noqa: E731
 
 
@@ -60,10 +63,10 @@ def load_samples():
 
 
 class SampleTest(unittest.TestCase):
-    def test_all_45_samples(self):
+    def test_all_75_samples(self):
         samples = load_samples()
-        self.assertEqual(len(samples), 45)
-        self.assertEqual(sorted({v for v, _, _ in samples}), ["2.31.35", "2.33.0", "2.38.0"])
+        self.assertEqual(len(samples), 75)
+        self.assertEqual(sorted({v for v, _, _ in samples}), ["2.31.35", "2.33.0", "2.38.0", "2.40.3", "2.41.0"])
         for version, name, result in samples:
             want = PROXY_SILENT[version] if name == "proxy-silent" else EXPECTED[name]
             got = cc.classify_aws_error(result, NEEDS_PRICE_LIST)

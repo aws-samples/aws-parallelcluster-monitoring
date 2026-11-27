@@ -1,0 +1,17 @@
+aws --version: aws-cli/2.40.3 Python/3.14.8 Linux/6.12.115-140.210.amzn2023.x86_64 exe/x86_64.amzn.2023
+pricing-throttled            rc=254   1.2s   aws: [ERROR]: An error occurred (ThrottlingException) when calling the GetProducts operation (reached max retries: 1): Rate exceeded 
+pricing-access-denied        rc=254   0.5s   aws: [ERROR]: An error occurred (AccessDeniedException) when calling the GetProducts operation: User is not authorized 
+ec2-unauthorized             rc=254   0.6s   aws: [ERROR]: An error occurred (UnauthorizedOperation) when calling the DescribeInstances operation: You are not authorized to perform this operation. 
+ec2-request-limit            rc=254   1.3s   aws: [ERROR]: An error occurred (RequestLimitExceeded) when calling the DescribeInstances operation (reached max retries: 1): Request limit exceeded. 
+ec2-auth-failure             rc=254   0.6s   aws: [ERROR]: An error occurred (AuthFailure) when calling the DescribeInstances operation: AWS was not able to validate the provided access credentials 
+pricing-not-json             rc=0     0.5s   
+pricing-not-json stdout:   {"FormatVersion":null}
+pricing-read-timeout-3s      rc=255   6.5s   aws: [ERROR]: Read timeout on endpoint URL: "http://127.0.0.1:18086/" 
+silent-endpoint-cap-30s      rc=124  30.0s   
+conn-refused                 rc=255   0.7s   aws: [ERROR]: Could not connect to the endpoint URL: "http://127.0.0.1:9/" 
+connect-timeout              rc=255  10.7s   aws: [ERROR]: Connect timeout on endpoint URL: "http://192.0.2.1/" 
+proxy-unroutable             rc=255  10.7s   aws: [ERROR]: Failed to connect to proxy URL: "http://192.0.2.1:3128" 
+proxy-silent                 rc=255  10.7s   aws: [ERROR]: Read timeout on endpoint URL: "https://127.0.0.2:8443/" 
+no-credentials               rc=253   0.8s   aws: [ERROR]: An error occurred (NoCredentials): Unable to locate credentials. You can configure credentials by running "aws login". 
+endpoint-env-override        rc=254   1.7s   aws: [ERROR]: An error occurred (ThrottlingException) when calling the GetProducts operation (reached max retries: 1): Rate exceeded 
+cli-missing                  rc=127   0.0s  run.sh: line 27: /nonexistent/aws: No such file or directory 

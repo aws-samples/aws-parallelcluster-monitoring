@@ -1,0 +1,397 @@
+{
+  "nodes": [
+    {
+      "architecture": "x86_64",
+      "burstbuffer_network_address": "",
+      "boards": 1,
+      "boot_time": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729427
+      },
+      "tls_cert_last_renewal": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "cert_flags": [
+      ],
+      "cluster_name": "",
+      "cores": 1,
+      "specialized_cores": 0,
+      "cpu_binding": 0,
+      "cpu_load": 47,
+      "free_mem": {
+        "set": true,
+        "infinite": false,
+        "number": 13327
+      },
+      "cpus": 4,
+      "effective_cpus": 4,
+      "specialized_cpus": "",
+      "energy": {
+        "average_watts": 0,
+        "base_consumed_energy": 0,
+        "consumed_energy": 0,
+        "current_watts": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "previous_consumed_energy": 0,
+        "last_collected": 0
+      },
+      "external_sensors": {
+      },
+      "extra": "",
+      "power": {
+      },
+      "features": [
+        "static",
+        "g4dn.xlarge",
+        "g4dnxl",
+        "gpu"
+      ],
+      "active_features": [
+        "static",
+        "g4dn.xlarge",
+        "g4dnxl",
+        "gpu"
+      ],
+      "gpu_spec": "",
+      "gres": "gpu:t4:1",
+      "gres_drained": "N\/A",
+      "gres_used": "gpu:t4:1(IDX:0)",
+      "instance_id": "i-0000000000000a001",
+      "instance_type": "g4dn.xlarge",
+      "last_busy": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729578
+      },
+      "mcs_label": "",
+      "specialized_memory": 0,
+      "name": "gpu-st-g4dnxl-1",
+      "next_state_after_reboot": [
+        "INVALID"
+      ],
+      "address": "10.0.0.10",
+      "hostname": "gpu-st-g4dnxl-1",
+      "state": [
+        "MIXED",
+        "CLOUD"
+      ],
+      "operating_system": "Linux 6.12.115-140.210.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Wed Nov 11 00:39:58 UTC 2026",
+      "owner": "",
+      "partitions": [
+        "gpu"
+      ],
+      "port": 6818,
+      "real_memory": 15564,
+      "res_cores_per_gpu": 0,
+      "comment": "",
+      "reason": "",
+      "reason_changed_at": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "reason_set_by_user": "",
+      "resume_after": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "reservation": "",
+      "alloc_memory": 0,
+      "alloc_cpus": 1,
+      "alloc_idle_cpus": 3,
+      "tres_used": "cpu=1",
+      "tres_weighted": 0.0,
+      "slurmd_start_time": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729577
+      },
+      "sockets": 4,
+      "threads": 1,
+      "temporary_disk": 0,
+      "weight": 1,
+      "topology": "",
+      "tres": "cpu=4,mem=15564M,billing=4",
+      "version": "25.11.8"
+    },
+    {
+      "architecture": "x86_64",
+      "burstbuffer_network_address": "",
+      "boards": 1,
+      "boot_time": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729424
+      },
+      "tls_cert_last_renewal": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "cert_flags": [
+      ],
+      "cluster_name": "",
+      "cores": 1,
+      "specialized_cores": 0,
+      "cpu_binding": 0,
+      "cpu_load": 50,
+      "free_mem": {
+        "set": true,
+        "infinite": false,
+        "number": 2030
+      },
+      "cpus": 2,
+      "effective_cpus": 2,
+      "specialized_cpus": "",
+      "energy": {
+        "average_watts": 0,
+        "base_consumed_energy": 0,
+        "consumed_energy": 0,
+        "current_watts": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "previous_consumed_energy": 0,
+        "last_collected": 0
+      },
+      "external_sensors": {
+      },
+      "extra": "",
+      "power": {
+      },
+      "features": [
+        "static",
+        "c6i.large",
+        "c6il"
+      ],
+      "active_features": [
+        "static",
+        "c6i.large",
+        "c6il"
+      ],
+      "gpu_spec": "",
+      "gres": "",
+      "gres_drained": "N\/A",
+      "gres_used": "",
+      "instance_id": "i-0000000000000a002",
+      "instance_type": "c6i.large",
+      "last_busy": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729589
+      },
+      "mcs_label": "",
+      "specialized_memory": 0,
+      "name": "od-st-c6il-1",
+      "next_state_after_reboot": [
+        "INVALID"
+      ],
+      "address": "10.0.0.11",
+      "hostname": "od-st-c6il-1",
+      "state": [
+        "MIXED",
+        "CLOUD"
+      ],
+      "operating_system": "Linux 6.12.115-140.210.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Wed Nov 11 00:39:58 UTC 2026",
+      "owner": "",
+      "partitions": [
+        "od"
+      ],
+      "port": 6818,
+      "real_memory": 3891,
+      "res_cores_per_gpu": 0,
+      "comment": "",
+      "reason": "",
+      "reason_changed_at": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "reason_set_by_user": "",
+      "resume_after": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "reservation": "",
+      "alloc_memory": 0,
+      "alloc_cpus": 1,
+      "alloc_idle_cpus": 1,
+      "tres_used": "cpu=1",
+      "tres_weighted": 0.0,
+      "slurmd_start_time": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729586
+      },
+      "sockets": 2,
+      "threads": 1,
+      "temporary_disk": 0,
+      "weight": 1,
+      "topology": "",
+      "tres": "cpu=2,mem=3891M,billing=2",
+      "version": "25.11.8"
+    },
+    {
+      "architecture": "x86_64",
+      "burstbuffer_network_address": "",
+      "boards": 1,
+      "boot_time": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729424
+      },
+      "tls_cert_last_renewal": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "cert_flags": [
+      ],
+      "cluster_name": "",
+      "cores": 1,
+      "specialized_cores": 0,
+      "cpu_binding": 0,
+      "cpu_load": 46,
+      "free_mem": {
+        "set": true,
+        "infinite": false,
+        "number": 2023
+      },
+      "cpus": 2,
+      "effective_cpus": 2,
+      "specialized_cpus": "",
+      "energy": {
+        "average_watts": 0,
+        "base_consumed_energy": 0,
+        "consumed_energy": 0,
+        "current_watts": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "previous_consumed_energy": 0,
+        "last_collected": 0
+      },
+      "external_sensors": {
+      },
+      "extra": "",
+      "power": {
+      },
+      "features": [
+        "static",
+        "c6i.large",
+        "c6il"
+      ],
+      "active_features": [
+        "static",
+        "c6i.large",
+        "c6il"
+      ],
+      "gpu_spec": "",
+      "gres": "",
+      "gres_drained": "N\/A",
+      "gres_used": "",
+      "instance_id": "i-0000000000000a000",
+      "instance_type": "c6i.large",
+      "last_busy": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729588
+      },
+      "mcs_label": "",
+      "specialized_memory": 0,
+      "name": "spot-st-c6il-1",
+      "next_state_after_reboot": [
+        "INVALID"
+      ],
+      "address": "10.0.0.12",
+      "hostname": "spot-st-c6il-1",
+      "state": [
+        "IDLE",
+        "CLOUD"
+      ],
+      "operating_system": "Linux 6.12.115-140.210.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Wed Nov 11 00:39:58 UTC 2026",
+      "owner": "",
+      "partitions": [
+        "spot"
+      ],
+      "port": 6818,
+      "real_memory": 3891,
+      "res_cores_per_gpu": 0,
+      "comment": "",
+      "reason": "Node start up",
+      "reason_changed_at": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729588
+      },
+      "reason_set_by_user": "root",
+      "resume_after": {
+        "set": true,
+        "infinite": false,
+        "number": 0
+      },
+      "reservation": "",
+      "alloc_memory": 0,
+      "alloc_cpus": 0,
+      "alloc_idle_cpus": 2,
+      "tres_used": "",
+      "tres_weighted": 0.0,
+      "slurmd_start_time": {
+        "set": true,
+        "infinite": false,
+        "number": 1795729585
+      },
+      "sockets": 2,
+      "threads": 1,
+      "temporary_disk": 0,
+      "weight": 1,
+      "topology": "",
+      "tres": "cpu=2,mem=3891M,billing=2",
+      "version": "25.11.8"
+    }
+  ],
+  "last_update": {
+    "set": true,
+    "infinite": false,
+    "number": 1795729844
+  },
+  "meta": {
+    "plugin": {
+      "type": "",
+      "name": "",
+      "data_parser": "data_parser\/v0.0.44",
+      "accounting_storage": ""
+    },
+    "client": {
+      "source": "",
+      "user": "root",
+      "group": "root"
+    },
+    "command": [
+      "show"
+    ],
+    "slurm": {
+      "version": {
+        "major": "25",
+        "micro": "8",
+        "minor": "11"
+      },
+      "release": "25.11.8",
+      "cluster": "costrb-al2023"
+    }
+  },
+  "errors": [
+  ],
+  "warnings": [
+  ]
+}

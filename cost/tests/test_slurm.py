@@ -179,6 +179,97 @@ class FixtureParsingTest(unittest.TestCase):
                          {("u" * 128, "p" * 128)})
 
 
+def live_instance(instance_id, role):
+    return cc.Instance(instance_id, "c6i.large", "us-east-1a", "default", "RunInstances", "on_demand", role)
+
+
+class LiveFixtureTest(unittest.TestCase):
+    """The sanitized `scontrol show nodes --json` and `squeue --json` output
+    captured during the live validation: ParallelCluster 3.16.3 with Slurm
+    25.11.8, and PCS with Slurm 25.11.8 and 26.05.5. Job A (-c 1 on an
+    On-Demand node, account a) and job B (--gres=gpu:1, account b) were
+    running, and the Spot node was idle. The expected values are the ones
+    the collector recorded in the same live run."""
+
+    # fixture prefix -> (data_parser, {node: (C, M, G, address, hostname, instance_id, states)},
+    #                    [(node, job, user, account, c, m, g, share)], instance IDs without a Slurm node)
+    CASES = {
+        "parallelcluster-3.16.3-slurm-25.11.8": (
+            "data_parser/v0.0.44",
+            {"gpu-st-g4dnxl-1": (4, 15564, 1, "10.0.0.10", "gpu-st-g4dnxl-1", "i-0000000000000a001", {"CLOUD", "MIXED"}),
+             "od-st-c6il-1": (2, 3891, 0, "10.0.0.11", "od-st-c6il-1", "i-0000000000000a002", {"CLOUD", "MIXED"}),
+             "spot-st-c6il-1": (2, 3891, 0, "10.0.0.12", "spot-st-c6il-1", "i-0000000000000a000", {"CLOUD", "IDLE"})},
+            [("gpu-st-g4dnxl-1", 2, "user2", "b", 1, 0, 1, 1.0),
+             ("od-st-c6il-1", 1, "user1", "a", 1, 0, 0, 0.5)],
+            ["i-0000000000000a003"]),                                    # the head node
+        "pcs-slurm-25.11.8": (
+            "data_parser/v0.0.44",
+            {"gpu-1": (2, 15564, 1, "10.0.0.10", "ip-10-0-0-10", "i-0000000000000a001", {"CLOUD", "MIXED"}),
+             "login-1": (1, 3891, 0, "10.0.0.11", "ip-10-0-0-11", "i-0000000000000a002", {"CLOUD", "IDLE"}),
+             "ondemand-1": (2, 7782, 0, "10.0.0.12", "ip-10-0-0-12", "i-0000000000000a003", {"CLOUD", "MIXED"}),
+             "spot-1": (1, 3891, 0, "10.0.0.13", "ip-10-0-0-13", "i-0000000000000a000", {"CLOUD", "IDLE"})},
+            [("gpu-1", 2, "user2", "b", 1, 0, 1, 1.0),
+             ("ondemand-1", 1, "user1", "a", 1, 0, 0, 0.5)],
+            []),
+        "pcs-slurm-26.05.5": (
+            "data_parser/v0.0.45",
+            {"gpu-1": (2, 15564, 1, "10.0.0.10", "ip-10-0-0-10", "i-0000000000000a003", {"CLOUD", "MIXED"}),
+             "login-1": (1, 3891, 0, "10.0.0.11", "ip-10-0-0-11", "i-0000000000000a002", {"CLOUD", "IDLE"}),
+             "ondemand-1": (2, 7782, 0, "10.0.0.12", "ip-10-0-0-12", "i-0000000000000a001", {"CLOUD", "MIXED"}),
+             "spot-1": (1, 3891, 0, "10.0.0.13", "ip-10-0-0-13", "i-0000000000000a000", {"CLOUD", "IDLE"})},
+            [("gpu-1", 5, "user2", "b", 1, 0, 1, 1.0),
+             ("ondemand-1", 4, "user1", "a", 1, 0, 0, 0.5)],
+            []),
+    }
+
+    def check(self, prefix, data_parser, nodes, want_shares, unmapped, select_type):
+        nodes_doc = stub_slurm.load(prefix + "-scontrol-show-nodes.json")
+        jobs_doc = stub_slurm.load(prefix + "-squeue.json")
+        self.assertEqual((cc._data_parser(nodes_doc), cc._data_parser(jobs_doc)), (data_parser, data_parser))
+        self.assertEqual({j["job_resources"]["select_type"][0] for j in jobs_doc["jobs"]}, {select_type})
+        s = parsed(prefix + "-scontrol-show-nodes.json", prefix + "-squeue.json")
+        got_nodes = {n.name: (n.cpus, n.memory, n.gpus, n.address, n.hostname, n.instance_id, set(n.states))
+                     for n in s.nodes.values()}
+        self.assertEqual(got_nodes, nodes)
+        self.assertEqual(s.jobs, 2)
+        got_shares = sorted((e.node, e.job_id, e.username, e.account, e.cpus, e.memory, e.gpus,
+                             cc.share_of(e, s.nodes[e.node])) for e in s.shares)
+        self.assertEqual(got_shares, want_shares)
+        self.assertFalse(any(e.memory_counts for e in s.shares))       # CR_CPU: memory isn't scheduled
+        busy = {e[0] for e in want_shares}
+        self.assertEqual((s.busy, s.holding), (busy, busy))
+        roles = {name: ("login" if name.startswith("login") else "compute") for name in nodes}
+        fleet = [live_instance(v[5], roles[name]) for name, v in nodes.items()]
+        fleet += [live_instance(iid, "head") for iid in unmapped]
+        mapping = cc.map_slurm_nodes(s.nodes, sorted(fleet, key=lambda i: i.instance_id), s.holding)
+        self.assertEqual({name: (inst.instance_id, inst.role, how) for name, (inst, how) in mapping.items()},
+                         {name: (v[5], roles[name], "instance_id") for name, v in nodes.items()})
+
+    def test_parallelcluster_25_11(self):
+        self.check("parallelcluster-3.16.3-slurm-25.11.8", *self.CASES["parallelcluster-3.16.3-slurm-25.11.8"],
+                   select_type="CPU")
+
+    def test_pcs_25_11(self):
+        self.check("pcs-slurm-25.11.8", *self.CASES["pcs-slurm-25.11.8"], select_type="CPU")
+
+    def test_pcs_26_05(self):
+        self.check("pcs-slurm-26.05.5", *self.CASES["pcs-slurm-26.05.5"], select_type="CR_CPU")
+
+    def test_pcs_26_05_unresolved_uids(self):
+        # The same fleet before user1 (5001) and user2 (5002) existed on the login node.
+        data_parser, nodes, want, unmapped = self.CASES["pcs-slurm-26.05.5"]
+        want = [s[:2] + ("uid:%d" % (5001 if s[2] == "user1" else 5002),) + s[3:] for s in want]
+        self.check("pcs-slurm-26.05.5-uid-unresolved", data_parser, nodes, want, unmapped, select_type="CR_CPU")
+
+    def test_gres_forms(self):
+        gres = {}
+        for prefix in ("pcs-slurm-25.11.8", "pcs-slurm-26.05.5"):
+            for n in stub_slurm.load(prefix + "-scontrol-show-nodes.json")["nodes"]:
+                if n["name"] == "gpu-1":
+                    gres[prefix] = n["gres"]
+        self.assertEqual(gres, {"pcs-slurm-25.11.8": "gpu:T4:1", "pcs-slurm-26.05.5": "gpu:T4:1(S:0)"})
+
+
 class SlurmCommandTest(unittest.TestCase):
     """The commands, their timeouts and their failure codes."""
 

@@ -113,19 +113,24 @@ ParallelCluster docs for inline custom roles.
 
 ## Validation
 
-vNEXT checks the rendered policy in two ways:
-- **IAM policy simulator** (`aws iam simulate-custom-policy`): every action
-  in the table is allowed on its intended resource in the cluster's region,
-  the cost collector's `ec2:DescribeVolumes` and
-  `ec2:DescribeSpotPriceHistory` included. `ec2:DescribeInstances`,
-  `ec2:DescribeVolumes` and `ec2:DescribeSpotPriceHistory` in another
-  region, another cluster's SSM parameter and log group, and actions the
-  policy doesn't list (such as `ec2:TerminateInstances`) are denied. The
-  same simulator check covers the five managed policies of the README's
-  quick start and of `parallelcluster-setup/pcluster.yaml`.
-- **A live cluster whose HeadNode has only this policy** and
-  `AmazonSSMManagedInstanceCore`: Prometheus EC2 service discovery finds
-  the nodes, the Storage dashboard shows FSx and EFS metrics, the Cluster
-  Logs panels return rows, the Grafana CloudWatch datasource passes its
-  health check, and the cost collector reports every stage OK, with no
-  AccessDenied error.
+vNEXT changes only the EC2 statement, so its validation checks the actions
+the cost collector calls. Both checks passed on 2026-11-26:
+- **IAM policy simulator** (`aws iam simulate-custom-policy`):
+  `ec2:DescribeInstances`, `ec2:DescribeVolumes`,
+  `ec2:DescribeSpotPriceHistory` and `pricing:GetProducts` are allowed for
+  the rendered policy in the cluster's region, for the five managed
+  policies of the README's quick start and of
+  `parallelcluster-setup/pcluster.yaml`, and for the README's PCS
+  login-node permissions, which also allow `pcs:GetCluster` and
+  `pcs:ListComputeNodeGroups`. The three EC2 actions are denied in another
+  region. Without `AmazonEC2ReadOnlyAccess`, as in v2.13's quick start,
+  `ec2:DescribeSpotPriceHistory` is denied.
+- **A live ParallelCluster 3.16.3 cluster whose HeadNode has only this
+  policy** and `AmazonSSMManagedInstanceCore`: three cost collector runs
+  reported every stage OK, with no AccessDenied error, and a run after the
+  price cache was removed fetched the list prices again and reported every
+  stage OK.
+
+The policy's other statements are unchanged since v2.12, and their checks
+(SSM parameters, log groups, FSx, EFS and the Grafana CloudWatch
+datasource) weren't repeated for vNEXT.

@@ -264,17 +264,62 @@ overwritten at install.
 
 ### Validation
 
-This release's live validation is planned on ParallelCluster 3.16.3
-(Amazon Linux 2023 with On-Demand, Spot and GPU queues, upgraded in place
-from v2.13; and Ubuntu 24.04) and on AWS PCS with Slurm 25.11, upgraded in
-place to 26.05 (Amazon Linux 2023 sample AMI, accounting `STANDARD`, a login
-node group and a standalone login node). It covers the in-place upgrade, an
-independent calculation of every figure within $0.000001 per hour, failure
-injection (denied permissions, an unreachable endpoint, a stopped
-collector), the integrity of the figures against forged pushes and
-exporters, accumulation across gaps and restarts, the dashboards and the
-four fixes in headless Chrome, and the IAM policy simulator for every
-documented policy.
+This release was validated live on 2026-11-26 in us-east-1, on:
+
+- ParallelCluster 3.16.3 with Slurm 25.11.8: Amazon Linux 2023 with
+  On-Demand c6i.large, Spot c6i.large and g4dn.xlarge GPU queues, upgraded
+  in place from v2.13; and Ubuntu 24.04, installed fresh;
+- AWS PCS, size SMALL with accounting `STANDARD`: Slurm 25.11.8, upgraded in
+  place to 26.05.5, with a login node group (Amazon Linux 2023 sample AMI),
+  On-Demand, Spot and GPU node groups (the GPU node on the PCS-ready
+  DLAMI), and a standalone login node.
+
+Every check passed on both platforms:
+
+- **In-place upgrade from v2.13.** The cost cron entry, the old script,
+  `cost-cache` and the Pushgateway `job="cost"` group were removed, other
+  root crontab lines were kept, and `cluster-cost.timer` ran every 60–61 s
+  with every stage OK.
+- **Figures.** An independent calculation from the same AWS responses and
+  Slurm allocations matched every instance price, cost line, breakdown, PCS
+  fee, user, account, idle and unallocated figure within $0.000001 per
+  hour: 59 checks on ParallelCluster, and 82 to 85 on PCS for each of
+  Slurm 25.11, Slurm 26.05 and the standalone login node. Users, idle and
+  unallocated cost added up to the compute cost.
+- **Failures.** With `ec2:DescribeInstances`, `ec2:DescribeVolumes`,
+  `ec2:DescribeSpotPriceHistory`, `pricing:GetProducts`, `pcs:GetCluster`
+  or `pcs:ListComputeNodeGroups` denied, a silent Pricing endpoint or an
+  unroutable proxy, the dashboard read Degraded, named the stage and its
+  error code, and no cost line read 0. Cached prices stayed in use where
+  documented. Runs stayed within their time budget, and every run without
+  an injected timeout took under 20 s.
+- **Integrity.** Non-root users couldn't change the collector's file, and
+  a forged Pushgateway push and a fake exporter on a compute node didn't
+  change the figures. After the collector had been stopped for more than 5
+  minutes, the dashboard read "Not reporting".
+- **Accumulation.** The since-start and this-month totals kept growing
+  across a 5-minute stop, a reboot, an installer re-run, a restart of
+  node-exporter and Prometheus, and the PCS Slurm 26.05 upgrade. Replacing
+  the PCS login node restarted tracking, as documented.
+- **Dashboards.** On Grafana 13.3.2 every Cluster Costs query returned
+  data, and headless Chrome rendered Cluster Costs, HeadNode Details,
+  Compute Node Details, Cluster Summary and Storage with no error badge.
+  The landing-page card opened Cluster Costs. The four fixes (HeadNode
+  Details, the Compute Node Details links, the 24-hour idle stats and the
+  EFS Infrequent Access line) showed the right data.
+- **IAM.** The IAM policy simulator allowed every collector call for the
+  README quick start, the commented quick start in
+  `parallelcluster-setup/pcluster.yaml` and the least-privilege policy, and
+  a head node with only the least-privilege policy and
+  `AmazonSSMManagedInstanceCore` reported every stage OK.
+- **AWS CLI error formats.** The error samples of AWS CLI 2.40.3 (the
+  ParallelCluster head node) and 2.41.0 (the PCS login node) map to the
+  expected error codes. They are unit-test fixtures now, with the Slurm JSON
+  captured on both platforms.
+
+RHEL 10, Rocky Linux 10 and Ubuntu 26.04 are covered by unit tests only: the
+smoke test on a v2.13 operating system didn't run, because its AMI no longer
+exists. Multi-node GPU jobs are covered by unit tests only.
 
 ## v2.13 — 2026-11-26
 

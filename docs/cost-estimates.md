@@ -490,7 +490,7 @@ monitoring node:
 | `ec2:DescribeVolumes` | the attached EBS volumes | `ebs` fails; after one hour every instance counts as a `volume_list_unavailable` volume. |
 | `ec2:DescribeSpotPriceHistory` | Spot prices | `spot_prices` fails; after 6 hours Spot instances are unpriced. |
 | `pricing:GetProducts` | EC2, EBS and PCS list prices | `on_demand_prices`, `ebs` or `pcs` fails; cached prices stay in use. |
-| `pcs:GetCluster` (PCS) | cluster size, status and accounting mode | `pcs` fails; after 24 hours the controller fee is unpriced. |
+| `pcs:GetCluster` (PCS) | cluster size, status and accounting mode | `pcs` fails; after 24 hours the controller fee, and the accounting fee when accounting is `STANDARD`, are unpriced. |
 | `pcs:ListComputeNodeGroups` (PCS) | node group names for the queue breakdown | `pcs` fails; node group IDs are shown instead of names. |
 
 Without one of them, the dashboard reads Degraded and names the stage with
@@ -672,23 +672,31 @@ AWS price list and the current Spot price. Your bill differs by what's
 [left out](#whats-left-out) and by any discount. EBS rates use the number
 of days in the current month, as EBS bills per GB-month.
 
-The release's live validation compares the collector's figures with an
-independent calculation from the same AWS responses and Slurm allocations,
-within $0.000001 per hour: instance prices, cost lines, breakdowns, fees,
-users, accounts, idle and unallocated cost. It also injects failures (denied
-permissions, an unreachable endpoint, a stopped collector) and checks the
-health the dashboard shows.
+The release's live validation, on 2026-11-26, compared the collector's
+figures with an independent calculation from the same AWS responses and
+Slurm allocations: instance prices, cost lines, breakdowns, fees, users,
+accounts, idle and unallocated cost. Every figure matched within $0.000001
+per hour: 59 checks on ParallelCluster, and 82 to 85 on each PCS run. The
+fleets had On-Demand, Spot and GPU nodes, and two jobs from two users and
+two accounts. The validation also injected failures (each permission of the
+[IAM](#iam) table denied, a silent Pricing endpoint, an unroutable proxy, a
+stopped collector) and checked that the dashboard showed Degraded or Not
+reporting with the failed stage, never zeros. The Slurm JSON it captured on
+each platform, and the AWS CLI error samples of its nodes, are unit-test
+fixtures in `cost/tests/fixtures/`.
 
 Validated live:
-- ParallelCluster 3.16.x on Amazon Linux 2023 (On-Demand, Spot and GPU
-  queues, upgraded in place from v2.13) and Ubuntu 24.04;
-- AWS PCS with Slurm 25.11, upgraded in place to 26.05, on the Amazon
-  Linux 2023 sample AMI, with accounting `STANDARD`;
-- the standalone PCS login node's discovery and fees.
+- ParallelCluster 3.16.3 with Slurm 25.11.8 on Amazon Linux 2023
+  (On-Demand, Spot and GPU queues, upgraded in place from v2.13) and on
+  Ubuntu 24.04;
+- AWS PCS with Slurm 25.11.8, upgraded in place to 26.05.5, on the Amazon
+  Linux 2023 sample AMI (the GPU node on the PCS-ready DLAMI), size SMALL
+  with accounting `STANDARD`;
+- the standalone PCS login node's discovery and fees;
+- AWS CLI 2.40.3 and 2.41.0 error formats.
 
 Covered by unit tests only:
 - the Slurm 24.11 JSON of older ParallelCluster versions;
 - multi-node GPU jobs;
 - RHEL 10, Rocky Linux 10 and Ubuntu 26.04, whose AWS CLI 2.33.0 and
-  2.31.35 error formats are unit-test fixtures, except the operating system
-  of a PCS login-node smoke test on a v2.13 AMI, if that test runs.
+  2.31.35 error formats are unit-test fixtures.
