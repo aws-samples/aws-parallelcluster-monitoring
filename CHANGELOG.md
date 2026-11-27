@@ -1,5 +1,226 @@
 # Changelog
 
+## vNEXT — 2026-11-27
+
+Uses Slurm's native metrics on ParallelCluster head nodes whose slurmctld
+serves them, as AWS PCS already does, and keeps the Slurm exporter
+(rivosinc/prometheus-slurm-exporter) on every other ParallelCluster head
+node. With native metrics, the job panels show data instead of 0, and the
+head node no longer runs the exporter, which a maintainer has proposed to
+retire. Some panels that the exporter feeds have no data with native
+metrics, and they say so. The shared compatibility rules also place
+powered-down and draining nodes as `sinfo` does, on AWS PCS too.
+[docs/slurm-metrics.md](docs/slurm-metrics.md) describes both sources.
+
+### Added
+
+- **Native Slurm metrics on ParallelCluster.** On every run on a
+  ParallelCluster head node, the installer requests
+  `http://127.0.0.1:6820/metrics/jobs`; 6820 is the first port of
+  ParallelCluster's `SlurmctldPort` range. slurmctld answers with HTTP 200
+  and the `slurm_jobs` series on ParallelCluster 3.15 and later when
+  `Scheduling/SlurmSettings/CustomSlurmSettings` sets
+  `MetricsType: metrics/openmetrics`. The installer then:
+  - has Prometheus scrape the five native endpoints on `localhost:6820`
+    (`/metrics/nodes`, `jobs`, `partitions`, `scheduler` and
+    `jobs-users-accts`), with the scrape jobs that PCS uses;
+  - stops and disables `slurm_exporter.service`, and deletes its unit and
+    `/usr/bin/prometheus-slurm-exporter`, if they exist.
+
+  In every other case it installs the Slurm exporter, as before. The
+  install log names the source and the reason, for example
+  `Slurm metrics source: native (slurmctld serves them on 127.0.0.1:6820)`
+  or `Slurm metrics source: exporter (HTTP 200 without the slurm_jobs
+  series: MetricsType is not metrics/openmetrics)`.
+- `prometheus/scrape-slurm-native.yml` and
+  `prometheus/scrape-slurm-exporter.yml`, the Slurm scrape jobs of each
+  source.
+- Tests: promtool tests for the compatibility rules and the node panels'
+  queries (`prometheus/tests/slurm_compat_test.yml`), and unit tests for the
+  scrape block, the installer's rewrite of it and the dashboard notes
+  (`cost/tests/test_slurm_metrics.py`).
+
+### Changed
+
+- **The compatibility rules place powered-down and draining nodes as
+  `sinfo` does**, on AWS PCS too. `prometheus/rules/pcs-compat.yml` records
+  a powered-down node as `idle~` and a draining node (drain flag, jobs still
+  running) as `drng`, from Slurm's per-partition
+  `slurm_partition_nodes_powered_down` and
+  `slurm_partition_nodes_draining`, and the CPUs of powered-down nodes as
+  `slurm_cpus_per_state{state="idle~"}`. The dashboards' queries already
+  read these states, so with native metrics, on both platforms:
+  - Nodes Idle is unchanged, because it counts `idle~` as idle;
+  - Idle node-hours and Idle CPU-hours (last 24h) leave powered-down nodes
+    out, so on PCS they read lower where node groups have powered-down
+    nodes;
+  - a draining node counts under Nodes Down/Drain, not Nodes Allocated, on
+    Cluster Summary, and under Nodes Down/Drain, not Nodes Busy, in the
+    Slurm Detail Partitions table. Node States draws it as Drain.
+
+  The file keeps its name. ParallelCluster's `prometheus.yml` now loads it
+  too. With the Slurm exporter, whose series have other names, the rules
+  record nothing.
+- **The Slurm panels say what each source can't feed.** On Slurm Detail,
+  Pending Jobs by Reason and Top Pending Reasons (now) show "No pending
+  jobs, or native Slurm metrics, which have no pending reasons" instead of
+  "No data" when they are empty, and Top RPC Message Types (avg time) and
+  Top Users by RPC Count show "No data: native Slurm metrics have no RPC
+  statistics". When these panels have data, their empty cells stay empty.
+  The descriptions of these four panels, of the nine job panels, of
+  Controller Threads, and of the Partitions, Top Users, Top Accounts and
+  Account Quota Utilization tables say which source feeds them or their
+  empty column. No query changed.
+- **Slurm Detail "Failed (since boot)" is now "Failed (recent)".** With
+  native metrics, as on PCS, it counts the failed jobs that slurmctld still
+  holds, for `MinJobAge` after they end (300 s by default). With the Slurm
+  exporter it reads 0.
+- **ParallelCluster's `prometheus.yml` marks its Slurm scrape jobs** with
+  the lines `  # BEGIN slurm_metrics` and `  # END slurm_metrics`, and the
+  installer replaces the lines between them on every run. A `prometheus.yml`
+  without both lines, such as one you maintain yourself, keeps its Slurm
+  jobs: the installer logs a warning and uses the Slurm exporter.
+- The landing page's subtitle reads "Grafana + Prometheus + Slurm metrics".
+
+### Fixed
+
+- **ParallelCluster: the job counts read 0** (a v2.12 known issue), on
+  clusters with native metrics. Cluster Summary **Jobs Running**, **Jobs
+  Pending**, **Jobs Completed**, **Jobs Failed** and **Jobs Over Time**, and
+  Slurm Detail **Total Pending Now**, **Total Running Now**, **Failed
+  (recent)** and **Suspended** read Slurm's `slurm_jobs_*` series, which the
+  Slurm exporter doesn't export. With the exporter they still read 0 (see
+  Known issues).
+- **AWS PCS: Idle node-hours and Idle CPU-hours (last 24h) counted
+  powered-down nodes** (a v2.12 known issue). They leave them out now, as
+  they already did on ParallelCluster with the Slurm exporter.
+- **AWS PCS: a draining node counted under Nodes Allocated, and under Nodes
+  Busy in the Slurm Detail Partitions table** (part of a v2.12 known issue).
+  It counts under Nodes Down/Drain now, as `sinfo` shows it. CPUs Idle still
+  counts the free CPUs of drained, draining and down nodes (see Known
+  issues).
+
+### Design decisions
+
+- **How the installer chooses the source.** It requests `/metrics/jobs` on
+  port 6820 and uses native metrics only when the response is HTTP 200 with
+  the `slurm_jobs` series. In every other case it uses the Slurm exporter.
+  Without an HTTP response, it tries 6 times, 5 s apart, in case slurmctld
+  is restarting. Where slurmctld gives no HTTP response, as on
+  ParallelCluster 3.14, this adds 25 to 55 s to each install on the head
+  node. Reasons:
+  - The request tests what Prometheus will scrape, so every case found in
+    testing falls back correctly, with no version check and no
+    configuration parsing: an empty 200 without `MetricsType`, 401 with
+    `PrivateData`, and no response with Slurm 24.11, `disable_http`, a
+    missing http-parser library or another `SlurmctldPort`.
+  - Reading `MetricsType` from `scontrol show config` would choose native
+    metrics when `PrivateData` or `disable_http` makes the endpoints
+    unusable.
+  - A ParallelCluster version check would get Amazon Linux 2023 on 3.15
+    wrong, because that case depends on the cookbook's http-parser fix, not
+    on the Slurm version.
+  - An installer option would add a second switch next to `MetricsType`, and
+    could select native metrics where they don't work.
+- **Existing clusters don't switch on their own.** A head node switches at
+  its next installer run (a re-run or an upgrade), not when `MetricsType`
+  changes. An upgrade is an installer run, so a cluster that already sets
+  `MetricsType` switches at the upgrade (see Upgrade notes). Reasons:
+  - `pcluster update-cluster` doesn't re-run `OnNodeConfigured`: in
+    testing, it restarted slurmctld, and the installer didn't run.
+  - Switching on its own would need a periodic re-probe, which is a new
+    timer that stops services and rewrites Prometheus's configuration in
+    the background, or an `OnNodeUpdated` action, which re-runs the whole
+    installer at every cluster update and needs a cluster-config change of
+    its own. Either one would change the metric names under custom
+    dashboards and alerts without the operator asking.
+  - One rule for creation, re-runs and upgrades, "native metrics whenever
+    slurmctld serves them", is predictable.
+  - A re-run takes about a minute, and it's how every other monitoring
+    setting is applied today (Cognito, RES, the Docker network).
+- **Native metrics only, where slurmctld serves them.** The Slurm exporter
+  doesn't run next to them to fill the panels they can't feed. Reasons:
+  - it removes the exporter, which a maintainer has proposed to retire,
+    wherever native metrics work, and it is the simplest option;
+  - the panels without data are the ones that are empty on AWS PCS today;
+  - keeping the exporter for the missing series would keep every cluster
+    dependent on it.
+
+  Filling those panels from `squeue`, `sinfo` and `sdiag` in this project's
+  own collector would be a separate feature.
+
+### Upgrade notes
+
+- **A cluster that already sets `MetricsType` switches to native metrics at
+  the upgrade, and these panels lose their data:** Slurm Detail **Pending
+  Jobs by Reason**, **Top Pending Reasons (now)**, **Top RPC Message Types
+  (avg time)** and **Top Users by RPC Count**, the **CPU Load** column of
+  **Partitions**, and the memory columns of **Top Users**, **Top Accounts**
+  and **Account Quota Utilization**. The nine job panels show data instead
+  of 0.
+- With native metrics, the installer stops, disables and deletes
+  `slurm_exporter.service` and `/usr/bin/prometheus-slurm-exporter`, and the
+  series of the scrape job `slurm_exporter` stop. Custom dashboards and
+  alerts on the exporter's metric names must move to the native names;
+  [docs/slurm-metrics.md](docs/slurm-metrics.md#metric-names) maps each one.
+- To keep the Slurm exporter, remove `MetricsType` from the cluster config
+  and run `pcluster update-cluster` before you upgrade.
+- To switch either way later, change `MetricsType` with
+  `pcluster update-cluster`, then re-run the installer on the head node
+  (`sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`).
+  Until the re-run, a head node that scrapes native metrics reads 0 on its
+  Slurm panels once `MetricsType` is gone.
+- Never set `MetricsType` on ParallelCluster 3.14: its Slurm 24.11 rejects
+  the key, and slurmctld doesn't start.
+- Clusters without `MetricsType` keep the Slurm exporter and every panel
+  they have today.
+
+### Known issues
+
+- **ParallelCluster with the Slurm exporter: the job counts still read 0**,
+  as in earlier releases. Native metrics fix them.
+- **Native metrics, on ParallelCluster and AWS PCS:**
+  - the CPUs of suspended jobs count as allocated in Top users (CPUs
+    allocated), Top Users, Top Accounts and Account Quota Utilization;
+  - Controller Threads reads 0 on an idle controller, where it reads 1 with
+    the Slurm exporter, whose own sdiag request counts as a thread;
+  - Jobs Completed, Jobs Failed and Failed (recent) count only the jobs that
+    ended in the last `MinJobAge`, 300 s by default;
+  - without Slurm accounting, Top Accounts shows an empty account, where the
+    Slurm exporter shows `(null)`;
+  - the default partition's name has no `*` in Top partitions (CPUs
+    allocated) and the Partitions table, where the exporter shows `cpu*`.
+- **Native metrics: the node states stay approximate in some cases**,
+  because Slurm counts nodes per partition and per state flag, not per node
+  (the comments of `prometheus/rules/pcs-compat.yml` give the details):
+  - a drained node that is also down, in a partition with idle nodes, makes
+    Nodes Idle read one low and Nodes Down/Drain one high (a v2.12 known
+    issue);
+  - a powered-down node that is also down or drained (`down~`, `drain~`), in
+    a partition with powered-up idle nodes, moves one idle node to `idle~`,
+    so Idle node-hours (last 24h) counts one idle node too few;
+  - draining nodes are taken out of `mix` before `alloc`, so Node States can
+    split the busy nodes differently from `sinfo`; Nodes Allocated is exact;
+  - the CPUs of powered-down nodes, which Idle CPU-hours (last 24h) leaves
+    out, are estimated from each partition's CPUs per node, which is exact
+    when all nodes of a partition have the same CPU count;
+  - CPUs Idle also counts the free CPUs of drained, draining and down nodes,
+    which `sinfo` counts as other (a v2.12 known issue).
+
+### Documentation
+
+- New [docs/slurm-metrics.md](docs/slurm-metrics.md): the two sources, the
+  requirements, how to enable native metrics at creation and on a running
+  cluster, how the installer chooses, how to check and switch back, the
+  metric names, labels and panels that change, security and cost.
+- README: the Features bullet, a "Native Slurm metrics (ParallelCluster
+  3.15 and later)" section after the ParallelCluster quickstart, the
+  Supported platforms row, the architecture diagram, the Components row, a
+  Security bullet on the unauthenticated endpoints, and the Documentation
+  link.
+- `parallelcluster-setup/pcluster.yaml` carries the `MetricsType` setting,
+  commented out, with the 3.15 requirement and the 3.14 warning.
+
 ## v3.1.1 — 2026-11-27
 
 Makes Cognito SSO for Grafana work as documented (the repo review's P1-8),
