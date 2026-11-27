@@ -13,7 +13,7 @@ cluster for rightsizing.
 
 - **Dual-platform**: works on both ParallelCluster and AWS PCS
 - **Zero-setup**: add a few lines to your config, create the cluster, done
-- **Slurm 25.11 native metrics** (PCS): scrapes OpenMetrics directly from slurmctld — no extra exporter
+- **Slurm 25.11 native metrics**: scrapes OpenMetrics directly from slurmctld — no extra exporter — on AWS PCS, and on ParallelCluster 3.15 and later when `MetricsType` is set ([details](docs/slurm-metrics.md))
 - **Per-user / per-account / per-partition visibility**: see who's using what, queue health, scheduler RPC stats
 - **GPU profiling**: SM activity, tensor-core utilization, FP64/32/16 pipe activity (Volta+)
 - **GPU health monitoring**: XID errors, throttle reasons, ECC counters, NVLink errors, retired pages
@@ -165,6 +165,39 @@ See [iam/README.md](iam/README.md) for details.
 >       - Policy: arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
 >       - Policy: arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess   # Spot prices for Cluster Costs
 > ```
+
+### Native Slurm metrics (ParallelCluster 3.15 and later)
+
+Recommended on ParallelCluster 3.15 and later. With this setting, slurmctld
+serves Slurm's native metrics, and the head node scrapes them instead of
+running the Slurm exporter (rivosinc/prometheus-slurm-exporter), which a
+maintainer has proposed to retire:
+
+```yaml
+Scheduling:
+  SlurmSettings:
+    CustomSlurmSettings:
+      - MetricsType: metrics/openmetrics
+```
+
+- **What you gain:** the job panels show data. With the Slurm exporter, they
+  read 0: Cluster Summary **Jobs Running**, **Jobs Pending**, **Jobs
+  Completed**, **Jobs Failed** and **Jobs Over Time**, and Slurm Detail
+  **Total Pending Now**, **Total Running Now**, **Failed (recent)** and
+  **Suspended**.
+- **What you lose:** native metrics have no data, as on AWS PCS, for Slurm
+  Detail **Pending Jobs by Reason**, **Top Pending Reasons (now)**, **Top RPC
+  Message Types (avg time)** and **Top Users by RPC Count**, for the CPU Load
+  column of **Partitions**, and for the memory columns of **Top Users**, **Top
+  Accounts** and **Account Quota Utilization**.
+- **Never on ParallelCluster 3.14.** Its Slurm 24.11 rejects `MetricsType`,
+  and slurmctld doesn't start.
+
+The installer uses native metrics whenever slurmctld serves them, and the
+Slurm exporter otherwise. On a running cluster, run `pcluster update-cluster`,
+then re-run the installer. [docs/slurm-metrics.md](docs/slurm-metrics.md)
+covers the requirements, how the installer chooses, the metric names that
+change and how to switch back.
 
 ## Quickstart — AWS PCS
 
@@ -549,7 +582,7 @@ rightsizing candidates stand out.
 
 | Platform | Slurm Source | Notes |
 |----------|-------------|-------|
-| ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
+| ParallelCluster 3.14–3.16 | Native OpenMetrics (slurmctld:6820) when slurmctld serves them ([3.15 and later, `MetricsType` set](#native-slurm-metrics-parallelcluster-315-and-later)); rivosinc/prometheus-slurm-exporter otherwise | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
 | AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade. RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on custom AMIs ([requirements](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs)), validated live on Slurm 26.05 (x86_64). Both node group configurations: [standard configuration](#standard-configuration-node-lifecycle-actions) (node lifecycle actions) and [launch templates](#launch-template-configuration-user-data) (user data). Standard configuration validated live on Slurm 26.05 with login, CPU and GPU node groups on the PCS-ready DLAMI and a CPU node group on the AL2023 sample AMI |
 | Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
@@ -608,14 +641,14 @@ ParallelCluster HeadNode / PCS Login Node
 │ pushgateway :9091 (127.0.0.1)         │       │   (GPU nodes only)    │
 │ node_exporter :9100                   │       └──────────────────────┘
 │ slurm_exporter :9092 (127.0.0.1)      │
-│   (PC only)                           │
+│   (PC without native metrics)         │
 │ cloudwatch-exporter :9106 (127.0.0.1) │
 │ cluster-cost collector (timer)        │       Slurm Controller
 │ slurm-job-nodes (timer)               │       │ :6817/metrics/*       │
-│   (head + PCS login)                  │◄──────│   (PCS only)          │
-│ Prometheus recording rules            │       └──────────────────────┘
-│   (PCS: native → compat names)        │
-└───────────────────────────────────────┘
+│   (head + PCS login)                  │◄──────│   (PCS)               │
+│ Prometheus recording rules            │       │ :6820/metrics/*       │
+│   (native → compat names)             │       │   (PC, native)        │
+└───────────────────────────────────────┘       └──────────────────────┘
 ```
 
 ## Components
@@ -628,7 +661,7 @@ ParallelCluster HeadNode / PCS Login Node
 | Node Exporter | v1.13.1 |
 | NGINX | `1.30-alpine` (stable branch, 1.30.8 at release) |
 | NVIDIA DCGM Exporter | 4.9.0 (`4.7.0-4.9.0`, pinned by digest, DCGM 4.7.0) |
-| prometheus-slurm-exporter | 1.8.0 (ParallelCluster only, SHA-256 verified) |
+| prometheus-slurm-exporter | 1.8.0 (ParallelCluster without native Slurm metrics, SHA-256 verified) |
 | Docker Compose | 5.8.0 (Amazon Linux 2/2023 binary; Ubuntu and RHEL use the docker-ce repo's plugin) |
 | CloudWatch Exporter | v0.19.0 |
 
@@ -641,8 +674,9 @@ Images are pinned in `compose/*.yml` and never use `latest`: NGINX tracks the 1.
 - **IAM**: least-privilege policy available — see [iam/README.md](iam/README.md)
 - **TLS**: self-signed cert with SANs (localhost, private IP, hostname)
 - **IMDS**: works with `Imds.Secured=true` via credential sidecar; the credentials file is readable only by root and the monitoring containers — see [docs/imds-secured-design.md](docs/imds-secured-design.md)
-- **Network**: on the head/login node, Grafana, Prometheus, the Pushgateway, the Slurm exporter and cloudwatch-exporter listen on 127.0.0.1, and only nginx (80/443) and node_exporter (9100) listen on the network. nginx serves `/prometheus/` and `/pushgateway/` only to local clients (the node itself and SSM port forwarding). Compute nodes run node_exporter (9100) and, on GPU nodes, dcgm-exporter (9400), which Prometheus scrapes over the network
+- **Network**: on the head/login node, Grafana, Prometheus, the Pushgateway, the Slurm exporter (when used) and cloudwatch-exporter listen on 127.0.0.1, and only nginx (80/443) and node_exporter (9100) listen on the network. nginx serves `/prometheus/` and `/pushgateway/` only to local clients (the node itself and SSM port forwarding). Compute nodes run node_exporter (9100) and, on GPU nodes, dcgm-exporter (9400), which Prometheus scrapes over the network
 - **Docker network**: on the head/login node, cloudwatch-exporter runs on a Docker bridge network, `monitoring-head_default`. Docker gives it a subnet from its default address pools, usually 172.18.0.0/16, and the node routes that subnet to the bridge. If the node must reach hosts in that range, move the network: run `sudo docker compose -f /opt/aws-parallelcluster-monitoring/compose/head.yml -p monitoring-head down`, set `default-address-pools` in `/etc/docker/daemon.json` to an unused range, restart Docker (`sudo systemctl restart docker`) and re-run the installer (`sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`)
+- **Native Slurm metrics**: on ParallelCluster with `MetricsType` set, slurmctld serves them on ports 6820-6829 without authentication, to every user and node of the cluster. They show what `sinfo` and `squeue` show. The default head node security group admits only the cluster's compute nodes and SSH; don't open these ports wider — see [docs/slurm-metrics.md](docs/slurm-metrics.md#security)
 - **No secrets in code**: passwords, tokens, and keys are in SSM or tmpfs only
 
 ## Documentation
@@ -652,6 +686,7 @@ Images are pinned in `compose/*.yml` and never use `latest`: NGINX tracks the 1.
 - [IMDS credential sidecar design](docs/imds-secured-design.md)
 - [Least-privilege IAM policy](iam/README.md)
 - [How the Cluster Costs estimates are made](docs/cost-estimates.md)
+- [Slurm metrics on ParallelCluster: native metrics or the Slurm exporter](docs/slurm-metrics.md)
 - [Cognito SSO setup](cognito/README.md)
 
 ## Roadmap
