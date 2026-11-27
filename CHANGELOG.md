@@ -282,6 +282,12 @@ Every check passed:
   counted under Nodes Down/Drain, where v3.1's rules count it under Nodes
   Allocated. The 18 other rules returned the same series as v3.1's, and no
   dashboard query changed.
+- **On top of v3.1.1.** After the rebase onto v3.1.1, an in-place upgrade
+  of the Amazon Linux 2023 head node kept native metrics, with the five
+  native targets up and the 29 rules healthy. Grafana ran with v3.1.1's root
+  URL from `cognito.env`, and its local admin login worked through nginx.
+  Cluster Summary and Slurm Detail rendered without an error, and their job,
+  node and CPU panels matched `squeue` and `sinfo`.
 
 The 5-minute double count after a switch to native metrics, in the Upgrade
 notes above, was found in this validation.
