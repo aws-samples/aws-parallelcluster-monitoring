@@ -21,7 +21,7 @@ the collector reports its own health, and how to troubleshoot it.
 - [IAM](#iam)
 - [Metric reference](#metric-reference)
 - [Who can see the figures and who can change them](#who-can-see-the-figures-and-who-can-change-them)
-- [PCS login node groups without `monitoring-role=login`](#pcs-login-node-groups-without-monitoring-rolelogin)
+- [PCS login node groups](#pcs-login-node-groups)
 - [Supported partitions](#supported-partitions)
 - [Upgrade notes](#upgrade-notes)
 - [Accuracy and validation](#accuracy-and-validation)
@@ -58,8 +58,11 @@ the projection for the month and a freshness signal. A run ends within
 The installer writes the configuration to
 `/etc/aws-parallelcluster-monitoring/cluster-cost.env`: `PLATFORM`
 (`parallelcluster` or `pcs`), `CLUSTER_ID` (the ParallelCluster cluster name
-or the PCS cluster ID) and `REGION`. Re-running the installer keeps the
-accumulated totals.
+or the PCS cluster ID), `REGION`, and `LOGIN_NODE_GROUP_ID`: on PCS, the
+compute node group of the login node that runs the collector, empty on
+ParallelCluster and on a login node launched outside PCS (see
+[PCS login node groups](#pcs-login-node-groups)). Re-running the installer
+keeps the accumulated totals.
 
 ## What the dashboard shows
 
@@ -621,16 +624,27 @@ pushed series named `cluster_cost_*`, `cluster:cluster_cost_*` or
 and RES desktops can't change a figure either. If you maintain your own
 `prometheus.yml`, keep the drop rule of the `pushgateway` job.
 
-## PCS login node groups without `monitoring-role=login`
+## PCS login node groups
 
-On PCS, the collector treats an instance as a login node when it has
-`monitoring-role=login` or wasn't launched by a compute node group. An
-instance of a login node group without that tag counts as compute, as the
-installer and Prometheus service discovery already treat it: it shows in
-the queue breakdown under its group's name and, because no Slurm node maps
-to it, as an idle node. Its cost is in the total either way. When the
-group's launch template doesn't run the monitoring installer, tag its
-instances `monitoring-role=login`.
+On PCS, the collector treats an instance as a login node when:
+- it has the tag `monitoring-role=login`;
+- it wasn't launched by a compute node group (it has no
+  `aws:pcs:compute-node-group-id` tag); or
+- it belongs to the compute node group of the login node that runs the
+  collector, `LOGIN_NODE_GROUP_ID` in `cluster-cost.env`. This is how a
+  login node group in standard configuration (no launch template, so no
+  tags) is recognized; Prometheus service discovery uses the same node
+  group.
+
+Every other instance counts as compute, as Prometheus service discovery
+also treats it. So an instance of another login node group, in standard
+configuration or with a launch template that doesn't set
+`monitoring-role=login`, counts as compute: it shows in the queue
+breakdown under its group's name and, because no Slurm node maps to it,
+as an idle node. Its cost is in the total either way. With a launch
+template, tag such instances `monitoring-role=login`; in standard
+configuration, only the monitoring login node's own node group is
+recognized.
 
 ## Supported partitions
 
@@ -664,6 +678,10 @@ Upgrading from an earlier release, in place or with a new cluster:
   [proxy drop-in](#endpointunreachable-or-timeout).
 - Head and login nodes need `python3` 3.7 or later. The installer installs it
   from the OS repositories when it's missing.
+- A `cluster-cost.env` written by v3.0 has no `LOGIN_NODE_GROUP_ID`. The
+  collector then keeps v3.0's classification (the first two rules of
+  [PCS login node groups](#pcs-login-node-groups)) until the installer runs
+  again and adds the key.
 
 ## Accuracy and validation
 

@@ -179,7 +179,128 @@ aws pcs update-cluster --cluster-identifier <cluster-id> \
 
 Ensure your security group allows port 6817 from the login node to the slurmctld endpoint.
 
-### 2. Configure launch templates
+### 2. Install on your node groups
+
+Every node runs `post-install.sh`. On the login node it installs the
+monitoring stack; on compute nodes, node_exporter and, on GPU nodes,
+dcgm-exporter. How it runs depends on the node group's configuration, and
+one cluster can mix both:
+
+- [Standard configuration](#standard-configuration-node-lifecycle-actions),
+  the console's default since 2026-11-12: the node group has no launch
+  template, and the script runs as a node lifecycle action.
+- [Launch template configuration](#launch-template-configuration-user-data):
+  the node group uses your launch template, and the script runs from its
+  user data.
+
+#### Standard configuration (node lifecycle actions)
+
+Add the script to each node group as a node lifecycle action. In the PCS
+console, on the node group's create or edit page, under **Node lifecycle
+actions**, choose **Add script**, then **Add via HTTPS**:
+
+| Field | Login node group | Compute node groups |
+|---|---|---|
+| Node stage | `nodeBootstrapped` | `nodeBootstrapped` |
+| Script location | `https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh` | the same |
+| Name | `aws-parallelcluster-monitoring` | the same |
+| Arguments | `--role`, `login`, `latest` | `latest` |
+| Error handling behavior | `TERMINATE` | `TERMINATE` |
+| Execution policy | `FIRST_BOOT_ONLY` | `FIRST_BOOT_ONLY` |
+
+`nodeBootstrapped` runs before slurmd starts, so no job lands on the node
+while the installer restarts Docker on GPU nodes. `FIRST_BOOT_ONLY` is
+enough: the containers and the systemd timers come back by themselves after
+a reboot.
+
+With the AWS CLI, save the login node group's settings as
+`monitoring-login.json`:
+
+```json
+{
+  "stages": {
+    "nodeBootstrapped": [
+      {
+        "name": "aws-parallelcluster-monitoring",
+        "scriptSource": {
+          "scriptLocation": "https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh"
+        },
+        "arguments": ["--role", "login", "latest"],
+        "onError": "TERMINATE",
+        "executionPolicy": "FIRST_BOOT_ONLY"
+      }
+    ]
+  }
+}
+```
+
+and the compute node groups' settings as `monitoring-compute.json`:
+
+```json
+{
+  "stages": {
+    "nodeBootstrapped": [
+      {
+        "name": "aws-parallelcluster-monitoring",
+        "scriptSource": {
+          "scriptLocation": "https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-monitoring/main/post-install.sh"
+        },
+        "arguments": ["latest"],
+        "onError": "TERMINATE",
+        "executionPolicy": "FIRST_BOOT_ONLY"
+      }
+    ]
+  }
+}
+```
+
+Then pass the file to `create-compute-node-group` or
+`update-compute-node-group`:
+
+```bash
+aws pcs update-compute-node-group --region <region> \
+    --cluster-identifier <cluster-id> \
+    --compute-node-group-identifier <login-node-group> \
+    --node-lifecycle-actions file://monitoring-login.json
+```
+
+- **Updating a node group.** The value replaces the node group's whole
+  lifecycle configuration, so add the scripts it already runs to the file.
+  PCS then replaces the node group's instances once their jobs finish.
+- **Requirements.** Node lifecycle actions need the PCS agent 1.5.0-1 or
+  later in the AMI; the current PCS-ready DLAMIs and PCS sample AMIs have
+  1.6.0-1. The node needs outbound internet access, as with user data.
+  Standard configuration requires IMDSv2, which the installer always uses,
+  and the installer needs no tags on the node group or its instances.
+- **How the login node is identified.** `--role login` makes the node a
+  login node: it runs the monitoring stack and records its own compute node
+  group (`PCS_COMPUTE_NODE_GROUP_ID`, exported by the PCS agent). Prometheus
+  service discovery and Cluster Costs then treat every instance of that node
+  group as a login node, so use a node group that only holds login nodes.
+  A node without `--role` is a compute node.
+- **Limitation: one login node group.** Only the monitoring login node's own
+  node group is known. Instances of another standard-configuration login
+  node group show in Compute Node List, and in Cluster Costs as idle compute
+  nodes in their node group's queue line. Their cost is in the total either
+  way. With a launch template, tag such instances `monitoring-role=login`.
+- **Logs.** The script's output goes to
+  `/var/log/amazon/pcs/lifecycle/actions/nodeBootstrapped/aws-parallelcluster-monitoring.log`,
+  the PCS agent's to `/var/log/amazon/pcs/lifecycle/actions/executor.log`,
+  and the installer's full trace to
+  `/var/log/parallelcluster-monitoring-install.log` (root only).
+- **Re-runs.** The installer saves the node's identity in
+  `/etc/aws-parallelcluster-monitoring/pcs-node.env`, so
+  `sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`
+  (for example for [Cognito SSO](#optional-cognito-sso) or
+  [RES](#monitoring-amazon-res-desktops)) keeps the node's role without the
+  lifecycle action's environment. An AMI baked from a monitored node
+  doesn't pass its role on: the file only counts on the instance that wrote
+  it.
+- **Debugging a failed install.** With `TERMINATE`, PCS replaces a node
+  whose install fails. To keep it for inspection, set the error handling
+  behavior to `STOP_SEQUENCE` while you debug, then set it back.
+
+#### Launch template configuration (user data)
 
 Node type (login vs compute) is determined by the `monitoring-role` tag, not by
 `Name`. The `Name` tag is free for arbitrary operator use. Login nodes
@@ -213,9 +334,15 @@ tmp="$(mktemp)" &&
 > field names. Supply the image **by digest** to bypass the Docker 29.x
 > OCI-index pull failure, e.g.
 > `export DCGM_EXPORTER_IMAGE=nvcr.io/nvidia/k8s/dcgm-exporter@sha256:<digest>`.
-> Leave it unset to use the default.
+> Leave it unset to use the default. Node lifecycle actions can't set
+> environment variables, so this override needs a launch template.
 
 ### 3. IAM instance profile permissions
+
+These lists hold for both configurations: standard configuration needs no
+other permission. If you host `post-install.sh` in Amazon S3 for a node
+lifecycle action, the instance profile also needs `s3:GetObject` on it, as
+PCS requires for every lifecycle script stored in S3.
 
 The **login node** instance profile needs:
 - `pcs:GetCluster`, to find the slurmctld endpoint, and for the cost
@@ -348,6 +475,10 @@ Args:
 tmp="$(mktemp)" &&
     curl -fsSL https://raw.githubusercontent.com/<you>/aws-parallelcluster-monitoring/<tag-or-branch>/post-install.sh -o "${tmp}" &&
     bash "${tmp}" <tag-or-branch> <you>/aws-parallelcluster-monitoring
+
+# PCS (node lifecycle action; compute node groups leave out "--role", "login")
+"scriptSource": {"scriptLocation": "https://raw.githubusercontent.com/<you>/aws-parallelcluster-monitoring/<tag-or-branch>/post-install.sh"},
+"arguments": ["--role", "login", "<tag-or-branch>", "<you>/aws-parallelcluster-monitoring"]
 ```
 
 ## Monitoring Amazon RES desktops
@@ -413,7 +544,7 @@ rightsizing candidates stand out.
 | Platform | Slurm Source | Notes |
 |----------|-------------|-------|
 | ParallelCluster 3.14–3.16 | rivosinc/prometheus-slurm-exporter | AL2023, Ubuntu 22.04/24.04, RHEL 9; Amazon Linux 2 only on 3.14–3.15 (ParallelCluster 3.16 dropped it). Validated live on 3.16.3 (AL2023, Ubuntu 24.04) |
-| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade. RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on custom AMIs ([requirements](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs)), validated live on Slurm 26.05 (x86_64) |
+| AWS PCS (Slurm 25.11+) | Native OpenMetrics (slurmctld:6817) | AL2023 (PCS sample AMIs) and Ubuntu 22.04/24.04 PCS AMIs, such as the PCS-ready DLAMI (Ubuntu 24.04). Validated live on Slurm 25.11, and on 26.05 after an in-place upgrade. RHEL 10, Rocky Linux 10 and Ubuntu 26.04 on custom AMIs ([requirements](#rhel-10-rocky-linux-10-and-ubuntu-2604-on-aws-pcs)), validated live on Slurm 26.05 (x86_64). Both node group configurations: [standard configuration](#standard-configuration-node-lifecycle-actions) (node lifecycle actions) and [launch templates](#launch-template-configuration-user-data) (user data) |
 | Amazon RES (VDI desktops) | n/a — not Slurm-managed | Add-on: desktops monitored as compute nodes via an existing ParallelCluster/PCS monitoring host; discovered by the `res:EnvironmentName` tag |
 
 ParallelCluster 3.10–3.13 are past their AWS end-of-support date; see the

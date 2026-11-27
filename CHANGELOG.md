@@ -70,6 +70,148 @@ Neither changes what the installer deploys.
   by unit tests only" to "Validated live", and the README's section on them
   says what the v3.0 and v2.13 validations covered.
 
+## vNEXT — 2026-11-27
+
+Adds support for AWS PCS compute node groups in standard configuration,
+which have no launch template. Since 2026-11-12 the PCS console creates
+node groups this way by default. Their nodes get no user data, and only a
+custom launch template can set instance metadata options such as instance
+tags, which the installer needed to find the cluster and the node's role:
+it stopped with `Cannot detect platform`. `post-install.sh` now runs there
+as a PCS node lifecycle action, on login, CPU and GPU nodes. Node groups
+that use a launch template with user data keep working with the same
+configuration.
+
+### Added
+
+- **Install as a node lifecycle action.** Add `post-install.sh` to a node
+  group at the `nodeBootstrapped` stage, with the arguments
+  `--role login latest` on the login node group and `latest` on compute
+  node groups. The README gives the console fields and the
+  `--node-lifecycle-actions` JSON. The installer takes the cluster and the
+  compute node group from the `PCS_CLUSTER_ID` and
+  `PCS_COMPUTE_NODE_GROUP_ID` variables that the PCS agent exports to
+  lifecycle scripts. It needs PCS agent 1.5.0-1 or later.
+- **`post-install.sh --role login|compute`** (also `--role=<role>`,
+  anywhere among the arguments) sets the node's role. Any other value exits
+  with status 2 before anything is downloaded. Without `--role`, the role
+  comes from the `monitoring-role` instance tag as before, else the node is
+  a compute node. The positional `[ref] [repo_slug]` arguments are
+  unchanged.
+- **The installer saves each PCS node's identity** in
+  `/etc/aws-parallelcluster-monitoring/pcs-node.env` (root, 0644): the
+  instance ID, cluster ID, compute node group ID and role. A re-run of
+  `sudo bash /opt/aws-parallelcluster-monitoring/installer/install.sh`, for
+  Cognito SSO or RES, uses it when the lifecycle action's variables and the
+  instance tags are missing, so a standard-configuration login node stays a
+  login node. The file is parsed, never sourced, and only counts on the
+  instance that wrote it, so the instances of an AMI baked from a monitored
+  node don't inherit its role. The install log names the source it used:
+  `PCS identity from node lifecycle action`, `instance tags` or
+  `saved identity`.
+
+### How a login node is identified in standard configuration
+
+This was an open design decision. **A node is a login node when its node
+group's lifecycle action passes `--role login`.** The login node then
+records its own compute node group, and Prometheus EC2 service discovery
+and the cost collector treat every instance of that node group as a login
+node.
+
+Why: standard configuration gives a node no user data, no launch-template
+tags and no instance metadata tags, so nothing on the node or in EC2 can
+carry a role, and the PCS API has no role field for a node group. Lifecycle
+actions are configured per node group and take arguments, so the role
+belongs there, and the PCS agent exports the node group ID that ties the
+role to the fleet. This needs no tags and no new IAM permission, and
+Prometheus and the collector classify instances the same way.
+
+Rejected:
+- **Queue membership** (a node group in no queue is a login group). It
+  needs `pcs:ListQueues` and `pcs:GetQueue` on the login node's role, which
+  v3.0 deferred as a change for existing users. It also isn't final when the
+  login node installs: the console lets a node group join a queue only once
+  it is active, so a compute node group created with the login group would
+  still be in no queue when the login node writes its Prometheus
+  configuration, and would be left out of monitoring.
+- **The node group's name**, such as `login`: a naming convention, not a
+  contract.
+- **Tagging itself** with `ec2:CreateTags`: a write permission on EC2 for
+  the login node's role.
+- **Node group tags**: PCS doesn't document that they reach the instances.
+
+### Changed
+
+- **PCS detection no longer looks for `/etc/aws-pcs`**, a path that PCS
+  doesn't create. A node is a PCS node when it has `PCS_CLUSTER_ID` from a
+  lifecycle action, an identity saved on this instance, or the `aws:pcs:*`
+  or `pcs-cluster-id` instance tags.
+- **The cluster and node group IDs are checked.** They must consist of
+  letters, digits, `_` and `-` (every PCS ID does), because they go into
+  the Prometheus configuration and env files. The install now stops with a
+  message naming the source, for example on an empty `pcs-cluster-id` tag.
+- **Prometheus: EC2 service discovery drops the login node's own node
+  group.** The `ec2_instances` job of `prometheus-pcs.yml` has a second drop
+  rule, on `aws:pcs:compute-node-group-id`, with the ID that the installer
+  substitutes, or `none` (which matches no node group) for a login node
+  launched outside PCS. Without it, a standard-configuration login node was
+  scraped a second time as `Compute`, with duplicate `node_uname_info`
+  series (#45). The static `login_node` job still serves the login node as
+  `instance_name=HeadNode`, so the dashboards are unchanged. With a launch
+  template, the instances of the login node's group already carry
+  `monitoring-role=login`, so the same instances are dropped as before.
+- **Cluster Costs: the login node's own node group counts as login.**
+  `cluster-cost.env` has a new key, `LOGIN_NODE_GROUP_ID`: the login node's
+  compute node group on PCS, empty on ParallelCluster and on a login node
+  launched outside PCS. The collector counts that group's instances as login
+  nodes. Before, a login node without `monitoring-role=login` counted as an
+  idle compute node in its group's queue line. The total is unchanged; the
+  login, compute and idle figures move. An env file without the key keeps
+  v3.0's classification until the installer runs again.
+- **The Grafana password refresh** reads the cluster ID from
+  `pcs-node.env` first, then from the instance tags as before, so it works
+  on nodes without tags.
+- **Ubuntu head and login nodes with Docker preinstalled**, such as the
+  PCS-ready DLAMI: the `apt-get install` of a missing `jq`, `bc` or
+  `python3` waits up to 10 minutes for the dpkg lock
+  (`DPkg::Lock::Timeout=600`) instead of failing, as v2.13 did for the NVIDIA
+  Container Toolkit. A lifecycle action runs minutes after boot, when
+  unattended-upgrades can hold that lock.
+
+### Known limitations
+
+- **One login node group in standard configuration.** Only the monitoring
+  login node's own node group is known. Instances of another
+  standard-configuration login node group show in Compute Node List, and in
+  Cluster Costs as idle compute nodes in their group's queue line; their
+  cost is in the total either way. With a launch template, tag them
+  `monitoring-role=login` as before.
+- **`DCGM_EXPORTER_IMAGE` needs a launch template.** Node lifecycle actions
+  can't set environment variables, so the dcgm-exporter override is only
+  available through user data.
+- **No instance tags in standard configuration.** PCS documents instance
+  metadata options as configurable only with a custom launch template, so
+  `--role` is the only way to set the role on these node groups, and
+  `monitoring-role=none` has no equivalent there: to skip a node group,
+  leave the lifecycle action off it.
+
+### Documentation
+
+- README, "Quickstart — AWS PCS": step 2 is now "Install on your node
+  groups", with a "Standard configuration (node lifecycle actions)"
+  subsection (console fields, the `--node-lifecycle-actions` JSON for login
+  and compute node groups, updates, requirements, how the login node is
+  identified and the limitation, logs, re-runs, debugging with
+  `STOP_SEQUENCE`) and the existing launch-template text under "Launch
+  template configuration (user data)". Step 3 says both configurations need
+  the same permissions, plus `s3:GetObject` when the script is hosted in S3.
+  "Testing from a fork" adds the lifecycle form, and the PCS row of
+  Supported platforms names both configurations.
+- `docs/cost-estimates.md`: "PCS login node groups" (formerly "PCS login
+  node groups without `monitoring-role=login`") gives the three rules and
+  the limitation; "How it works" lists `LOGIN_NODE_GROUP_ID`; an upgrade
+  note covers env files without it.
+
 ## v3.0 — 2026-11-27
 
 Rebuilds the Cluster Costs feature, collector and dashboard, on
