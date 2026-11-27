@@ -3,9 +3,14 @@
 installer/install.sh replaces the lines between the BEGIN and END lines of
 prometheus/prometheus.yml with prometheus/scrape-slurm-exporter.yml or
 prometheus/scrape-slurm-native.yml. These tests check the marked block, the
-two snippets and the rule files that prometheus.yml loads.
+two snippets, the rule files that prometheus.yml loads, and the installer's
+set_slurm_scrape_jobs, run with bash on copies of prometheus.yml.
 """
 import os
+import shutil
+import stat
+import subprocess
+import tempfile
 import unittest
 
 from . import test_queries as q
@@ -44,6 +49,14 @@ def job_names(lines):
     return list(q.jobs("\n".join(lines) + "\n"))
 
 
+def set_slurm_scrape_jobs(config, snippet):
+    """installer/common.sh's set_slurm_scrape_jobs on config, as install.sh runs it."""
+    return subprocess.run(
+        ["bash", "-c", '. "$1/installer/common.sh" && set_slurm_scrape_jobs "$2" "$3"', "_",
+         q.REPO, config, snippet],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+
+
 class ScrapeBlockTest(unittest.TestCase):
     def setUp(self):
         self.config = q.read(CONFIG)
@@ -76,6 +89,52 @@ class ScrapeBlockTest(unittest.TestCase):
         text = q.without_comments(self.config)
         self.assertRegex(text, r"\nrule_files:\n(?:  - \S+\n)*  - /etc/prometheus/rules/pcs-compat\.yml\n"
                                r"(?:  - \S+\n)*\s*\nscrape_configs:\n")
+
+
+class SetSlurmScrapeJobsTest(unittest.TestCase):
+    """set_slurm_scrape_jobs on a 0644 copy of prometheus.yml."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir)
+        self.template = q.read(CONFIG)
+        self.other_jobs = [j for j in q.jobs(self.template) if j not in EXPORTER_JOBS]
+
+    def copy(self, text):
+        path = os.path.join(self.dir, "prometheus.yml")
+        with open(path, "w") as f:
+            f.write(text)
+        os.chmod(path, 0o644)
+        return path
+
+    def test_both_directions_and_re_runs(self):
+        path = self.copy(self.template)
+        inode = os.stat(path).st_ino
+        for n, (snippet, expected) in enumerate(((NATIVE, NATIVE_JOBS), (NATIVE, NATIVE_JOBS),
+                                                 (EXPORTER, EXPORTER_JOBS), (EXPORTER, EXPORTER_JOBS)), 1):
+            with self.subTest(run=n, snippet=os.path.basename(snippet)):
+                result = set_slurm_scrape_jobs(path, snippet)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = q.read(path)
+                lines = text.split("\n")
+                self.assertEqual((lines.count(BEGIN), lines.count(END)), (1, 1))
+                self.assertEqual(block_lines(text), snippet_lines(q.read(snippet)))
+                self.assertEqual(list(q.jobs(text)), expected + self.other_jobs)
+        # Back on the exporter, the file is the template again, with its mode
+        # and inode.
+        self.assertEqual(q.read(path), self.template)
+        st = os.stat(path)
+        self.assertEqual((stat.S_IMODE(st.st_mode), st.st_ino), (0o644, inode))
+
+    def test_a_file_without_both_markers_is_left_alone(self):
+        lines = self.template.split("\n")
+        for label, drop in (("no markers", (BEGIN, END)), ("no END", (END,)), ("no BEGIN", (BEGIN,))):
+            with self.subTest(copy=label):
+                text = "\n".join(line for line in lines if line not in drop)
+                path = self.copy(text)
+                result = set_slurm_scrape_jobs(path, NATIVE)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertEqual(q.read(path), text)
 
 
 if __name__ == "__main__":

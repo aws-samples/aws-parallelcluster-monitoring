@@ -148,6 +148,99 @@ install_slurm_exporter() {
 }
 
 # ---------------------------------------------------------------------------
+# The port where a ParallelCluster head node's slurmctld serves Slurm's
+# native metrics: the first port of ParallelCluster's SlurmctldPort range
+# (6820-6829). See docs/slurm-metrics.md.
+# ---------------------------------------------------------------------------
+readonly SLURM_NATIVE_METRICS_PORT=6820
+
+# ---------------------------------------------------------------------------
+# Choose the Slurm metrics source of a ParallelCluster head node. Sets the
+# global SLURM_METRICS_SOURCE to "native" when slurmctld answers
+# /metrics/jobs with HTTP 200 and the slurm_jobs series, and to "exporter"
+# (the Slurm exporter) in every other case, and logs the reason. Without an
+# HTTP response it tries again every 5 s, 6 times in all, in case slurmctld
+# is restarting. The body stays in a temp file: a variable would copy it
+# into the install trace.
+# ---------------------------------------------------------------------------
+detect_slurm_metrics_source() {
+    local url="http://127.0.0.1:${SLURM_NATIVE_METRICS_PORT}/metrics/jobs"
+    local body code reason try
+    body="$(mktemp)"
+    for try in 1 2 3 4 5 6; do
+        code="$(curl -s -o "${body}" -w '%{http_code}' --max-time 5 "${url}")" || code=000
+        if [[ "${code}" != 000 || "${try}" == 6 ]]; then
+            break
+        fi
+        sleep 5
+    done
+    if [[ "${code}" == 200 ]] && grep -q '^slurm_jobs ' "${body}"; then
+        SLURM_METRICS_SOURCE=native
+        reason="slurmctld serves them on 127.0.0.1:${SLURM_NATIVE_METRICS_PORT}"
+    else
+        SLURM_METRICS_SOURCE=exporter
+        case "${code}" in
+            200) reason="HTTP 200 without the slurm_jobs series: MetricsType is not metrics/openmetrics" ;;
+            401) reason="HTTP 401: PrivateData is set, and slurmctld then refuses the metrics" ;;
+            000) reason="no HTTP response on 127.0.0.1:${SLURM_NATIVE_METRICS_PORT}: Slurm older than 25.11, CommunicationParameters=disable_http, the http-parser library missing, or another SlurmctldPort" ;;
+            *)   reason="HTTP ${code} from ${url}" ;;
+        esac
+    fi
+    rm -f "${body}"
+    log "Slurm metrics source: ${SLURM_METRICS_SOURCE} (${reason})"
+}
+
+# ---------------------------------------------------------------------------
+# Replace the Slurm scrape jobs of a ParallelCluster prometheus.yml with the
+# jobs of a snippet (prometheus/scrape-slurm-exporter.yml or
+# scrape-slurm-native.yml): the lines between "  # BEGIN slurm_metrics" and
+# "  # END slurm_metrics" become the snippet without its leading comment and
+# empty lines, indented by two spaces. Returns 1 and leaves the file as it
+# is unless both lines are there, for example in a prometheus.yml that the
+# operator maintains. Rewrites the file in place, so it keeps its mode
+# (Prometheus reads it as nobody), its owner and its inode.
+#   set_slurm_scrape_jobs <prometheus.yml> <snippet>
+# ---------------------------------------------------------------------------
+set_slurm_scrape_jobs() {
+    local config="$1" snippet="$2" tmp
+    grep -qx '  # BEGIN slurm_metrics' "${config}" || return 1
+    grep -qx '  # END slurm_metrics' "${config}" || return 1
+    tmp="$(mktemp)"
+    awk -v snippet="${snippet}" '
+        $0 == "  # BEGIN slurm_metrics" {
+            print
+            body = 0
+            while ((getline line < snippet) > 0) {
+                if (!body && (line ~ /^#/ || line == "")) continue
+                body = 1
+                print (line == "" ? "" : "  " line)
+            }
+            close(snippet)
+            skip = 1
+            next
+        }
+        $0 == "  # END slurm_metrics" { skip = 0 }
+        !skip { print }
+    ' "${config}" > "${tmp}"
+    cat "${tmp}" > "${config}"
+    rm -f "${tmp}"
+}
+
+# ---------------------------------------------------------------------------
+# On the native path, remove what install_slurm_exporter installed: stop and
+# disable slurm_exporter.service, and delete its unit and the binary. Does
+# nothing when neither is there.
+# ---------------------------------------------------------------------------
+remove_slurm_exporter() {
+    local unit=/etc/systemd/system/slurm_exporter.service bin=/usr/bin/prometheus-slurm-exporter
+    [[ -e "${unit}" || -e "${bin}" ]] || return 0
+    systemctl disable --now slurm_exporter.service || true
+    rm -f "${unit}" "${bin}"
+    systemctl daemon-reload
+    log "Removed the Slurm exporter (slurm_exporter.service and ${bin}): Prometheus scrapes slurmctld's native metrics"
+}
+
+# ---------------------------------------------------------------------------
 # Install the EFA hw_counters textfile collector + systemd timer.
 # Safe on all nodes/instances: efa-metrics.sh writes an empty file when no
 # EFA hardware is present. Called on head/login and compute nodes so EFA

@@ -115,6 +115,16 @@ case "${PLATFORM_NODE_TYPE}" in
             sed -i "s|__LOGIN_INSTANCE_ID__|${login_id}|g"         "${MONITORING_HOME}/prometheus/prometheus.yml"
         else
             sed -i "s|__PC_CLUSTER_NAME__|${PLATFORM_CLUSTER_NAME}|g" "${MONITORING_HOME}/prometheus/prometheus.yml"
+            # Slurm metrics: slurmctld's native metrics when it serves them,
+            # the Slurm exporter otherwise (docs/slurm-metrics.md). Written
+            # before the stack starts; re-runs load it at the Prometheus
+            # restart at the end.
+            detect_slurm_metrics_source
+            set_slurm_scrape_jobs "${MONITORING_HOME}/prometheus/prometheus.yml" \
+                "${MONITORING_HOME}/prometheus/scrape-slurm-${SLURM_METRICS_SOURCE}.yml" || {
+                warn "${MONITORING_HOME}/prometheus/prometheus.yml has no slurm_metrics block (the lines '  # BEGIN slurm_metrics' and '  # END slurm_metrics'): keeping its Slurm scrape jobs as they are and using the Slurm exporter"
+                SLURM_METRICS_SOURCE=exporter
+            }
         fi
         # Amazon RES (Research and Engineering Studio) VDI discovery — opt-in.
         # Only when RES_ENVIRONMENT_NAME is set on this monitoring node do we
@@ -323,10 +333,17 @@ except Exception:
         install_efa_collector
 
         # Slurm metrics source:
-        #   - ParallelCluster: rivosinc/prometheus-slurm-exporter (port 9092)
+        #   - ParallelCluster: native OpenMetrics on slurmctld:6820 when
+        #     slurmctld serves them (detect_slurm_metrics_source above); the
+        #     Slurm exporter is then removed. Otherwise
+        #     rivosinc/prometheus-slurm-exporter (port 9092)
         #   - PCS: native OpenMetrics on slurmctld:6817 (no extra process)
         if [[ "${PLATFORM}" == "parallelcluster" ]]; then
-            install_slurm_exporter
+            if [[ "${SLURM_METRICS_SOURCE:-exporter}" == native ]]; then
+                remove_slurm_exporter
+            else
+                install_slurm_exporter
+            fi
         fi
 
         # Cluster cost collector (systemd timer, every 60 s). Prometheus is
